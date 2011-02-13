@@ -1,0 +1,6 @@
+* C tools
+create a makefile
+
+* R tools
+setup sql parser, documentation, bein wrapper
+
