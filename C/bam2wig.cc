@@ -70,7 +70,7 @@ void createsql( posh &counts, const double cntw=1.0 ) {
     int start = 0, stop = 0;
     sqlite3 *db_fwd, *db_rev, *db_both, *mydb;
     char *sqlErrMsg = 0;
-    std::string sql_exec = std::string("create table ")
+    std::string sql_exec = std::string("create table if not exists ")
 	+opts.chrn
 	+std::string(" (start integer, end integer, score real)");
     if (opts.merge < 0) {
