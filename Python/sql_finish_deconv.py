@@ -6,11 +6,10 @@ from numpy import *
 import getopt
 import os
 
-usage = """sql_finish_deconv.py input output chrname
+usage = """sql_finish_deconv.py input output
 
-input     input Rdata file
-output    output sql file
-chrname  chromosome name (sql table to insert into)
+input    input Rdata file
+output   output sql file
 """
 
 class Usage(Exception):
@@ -26,7 +25,6 @@ def main(argv = None):
 
         infile = argv[0]
         outfile = argv[1]
-        chrname = argv[2]
         if not(os.path.exists(infile)):
             raise Usage("File %s does not exist." % infile)
         if os.path.exists(outfile):
@@ -37,11 +35,19 @@ def main(argv = None):
         last_score
         start = 0
         for p in robjects.r.wig.iter_row():
+            chr = p.rx2('chr')[0]
             pos = p.rx2('pos')[0]
             vals.append((pos-1,pos,p.rx2('score')[0]))
-        connection.executemany('insert into %s (start,end,score) values (?,?,?)'%chrname,vals)
+        connection.executemany('insert into %s (start,end,score) values (?,?,?)'%chr,vals)
         connection.commit()
         connection.close()
+        with open(outfile+'_deconv.bed','w') as fbed:
+            for p in robjects.r.wig.iter_row():
+                bed_row = [p.rx2('chr')[0],
+                           p.rx2('start')[0],p.rx2('end')[0],
+                           p.rx2('name')[0],p.rx2('score')[0]]
+                fbed.write("\t".join(bed_row))
+            fbed.close()
         sys.exit(0)
     except Usage, err:
         print >>sys.stderr, err.msg

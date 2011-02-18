@@ -1,13 +1,13 @@
 library(quadprog)
 
-bedcols=c("character","integer","integer","NULL","numeric","character")
-gffcols=c("character","NULL","NULL","integer","integer","numeric","character","NULL","NULL")
+read.data = function(file) {
+    load(file)
+    split(counts[,c("pos","plus","minus","prod")],counts$name)
+}
 
-cross.correlate = function(counts,threshold=1,lag.max=600,val.cut=.4) {
+cross.correlate = function(counts,threshold=1,lag.max=600) {
     signal=matrix(0,ncol=2,nrow=0)
-    for (chr in names(counts[[1]])) {
-        I = which(counts[[2]][[chr]]<val.cut)
-        for (c in counts[[1]][[chr]][I])
+    for (c in counts) {
           signal = rbind(signal,cbind(c$minus,c$plus))
     }
     if (nrow(signal) < 2) return(list(lag=c(0),acf=c(0)))
@@ -79,28 +79,24 @@ solve.one = function(counts,mu,lambda,len,reg,ktype) {
     allout=list(rtn=vector(mode="list", length=length(counts)),score=0)
     names(allout$rtn)=names(counts)
     ngood=0
-    for (chr in names(counts)) {
-#        allout$rtn[[chr]] = vector(mode="list", length=length(counts[[chr]]))
-#        score = 0
-        for (n in 1:length(counts[[chr]])) {
-            cnt=counts[[chr]][[n]]
-            N=length(cnt$minus)
-            if (N > 5000 || N < 10 || sum(c(cnt$minus,cnt$plus)^2)<2) {
-                allout$rtn[[chr]][[n]] = list(prob=rep(0,N),value=1)
-                next
-            }
-            D = make.matrix(cnt$minus,cnt$plus,mu,lambda,len,reg,ktype)
-            N = nrow(D$Dmat)
-            prob = solve.QP.compact(Dmat=D$Dmat,dvec=D$dvec,Amat=D$Amat,Aind=D$Aind)
-                                        #,bvec=D$bvec,factorized=TRUE)
-            padpr=c(rep(0,len),prob$sol,rep(0,len))
-            fit = fit.solution(padpr,mu,lambda,len,ktype)
-            val = sqrt(sum(c(cnt$minus-fit$minus,cnt$plus-fit$plus)^2)/sum(c(cnt$minus,cnt$plus)^2))
-#            allout$score = allout$score+prob$value
-            allout$score = allout$score+val
-            ngood=ngood+1
-            allout$rtn[[chr]][[n]] = list(prob=padpr,value=val)
+    for (n in names(counts)) {
+        cnt=counts[[n]]
+        N=length(cnt$minus)
+        if (N > 5000 || N < 10 || sum(c(cnt$minus,cnt$plus)^2)<2) {
+            allout$rtn[[n]] = list(prob=rep(0,N),value=1)
+            next
         }
+        D = make.matrix(cnt$minus,cnt$plus,mu,lambda,len,reg,ktype)
+        N = nrow(D$Dmat)
+        prob = solve.QP.compact(Dmat=D$Dmat,dvec=D$dvec,Amat=D$Amat,Aind=D$Aind)
+                                #,bvec=D$bvec,factorized=TRUE)
+        padpr=c(rep(0,len),prob$sol,rep(0,len))
+        fit = fit.solution(padpr,mu,lambda,len,ktype)
+        val = sqrt(sum(c(cnt$minus-fit$minus,cnt$plus-fit$plus)^2)/sum(c(cnt$minus,cnt$plus)^2))
+        #allout$score = allout$score+prob$value
+        allout$score = allout$score+val
+        ngood=ngood+1
+        allout$rtn[[n]] = list(prob=padpr,value=val)
     }
     allout$score = allout$score/ngood
     allout
@@ -114,115 +110,22 @@ fit.score = function(par,counts,len,reg,ktype) {
     1
 }
 
-inverse.solve = function(counts,mu=50,lambda=120,len=36,regul=1e-4,
-  val.cut=.35,ktype="geometric",optimize=FALSE) {
+inverse.solve = function(counts,
+  mu=50,lambda=120,len=36,regul=1e-4,
+  ktype="geometric",optimize=FALSE) {
     if (mu <= len) stop("mu must be larger than len\n")
     par = c(mu,lambda)
+    solved = solve.one(counts,par[1],par[2],len,regul,ktype)
     if (optimize) {
-        cnt.high=list()
-        for (chr in names(counts[[1]])) {
-            I = which(counts[[2]][[chr]]<val.cut)
-            cnt.high[[chr]]=counts[[1]][[chr]][I]
-        }
-        par = optim(par=par,fn=fit.score,counts=cnt.high,
+        O = order(sapply(solved,function(x)x$val))
+        npeaks = min(10,length(O))
+        par = optim(par=par,fn=fit.score,counts=counts[O[1:npeaks]],
           len=len,reg=regul,ktype=ktype,
           gr=NULL,method='L-BFGS-B',lower=c(len+1,len+1),upper=c(1000,1000),
           control=list(maxit=100,trace=4))$par
+        solved = solve.one(counts,par[1],par[2],len,regul,ktype)
     }
-    solved = solve.one(counts[[1]],par[1],par[2],len,regul,ktype)
     return(list(sol=solved$rtn,par=list(mu=par[1],lambda=par[2],len=len)))
-}
-
-read.data = function(filename,chrlist=c(),reglist=list(),offset=FALSE,gff=FALSE) {
-    print(paste("Read data from",filename))
-    con=gzfile(filename)
-    open(con,open="r")
-    if (gff) {
-        colc=gffcols
-    } else {
-        colc=bedcols
-    }
-    data=read.table(con,comment.char="#",sep="\t",colClasses=colc)
-    close(con)
-    if (offset) data[,2]=data[,2]+1
-    dspl=split(data[,-1],data[,1])
-    if (length(chrlist)) {
-        dspl=dspl[intersect(chrlist,names(dspl))]
-        if (length(reglist)) reglist=reglist[intersect(chrlist,names(reglist))]
-    }
-    if (length(reglist)) {
-        for (c in names(reglist)) {
-            I=c()
-            for (nr in 1:nrow(reglist[[c]])) {
-                I=c(I,which(dspl[[c]][,1]<reglist[[c]][nr,2]
-                  & dspl[[c]][,2]>reglist[[c]][nr,1]))
-            }
-            dspl[[c]]=dspl[[c]][unique(I),]
-        }
-    }
-    dspl
-}
-
-data.to.strands = function(chrlist,data,lambda=120) {
-    outlist=list()
-    for (chr in chrlist) {
-        dm = data[[chr]][which(data[[chr]][,4]=="-"),-4]
-        dp = data[[chr]][which(data[[chr]][,4]=="+"),-4]
-        dpunroll = data.frame(
-          pos=as.integer(unlist(apply(dp[,1:2],1,function(x){x[1]:x[2]+lambda/2}))),
-          counts=as.numeric(rep(dp[,3],dp[,2]-dp[,1]+1)))
-        dmunroll = data.frame(
-          pos=as.integer(unlist(apply(dm[,1:2],1,function(x){x[1]:x[2]-lambda/2}))),
-          counts=as.numeric(rep(dm[,3],dm[,2]-dm[,1]+1)))
-        d = merge(dpunroll, dmunroll, by="pos", all=TRUE)
-        d$prod = sqrt(d$counts.x*d$counts.y)
-        dclean = matrix(nrow=nrow(d),ncol=3)
-        dsize = 1
-        clast = -1
-        left = 0
-        right = 0
-        for (n in which(!is.na(d$prod))) {
-            if (d$prod[n] == clast && d$pos[n] == right+1) {
-                right = d$pos[n]
-            } else {
-                dclean[dsize,] = c(left,right,clast)
-                dsize = dsize+1
-                left = d$pos[n]
-                right = d$pos[n]
-                clast = d$prod[n]
-            }
-        }
-        dclean[dsize,] = c(left,right,clast)
-        outlist$plus[[chr]]=dp
-        outlist$minus[[chr]]=dm
-        outlist$prod[[chr]]=dclean[2:dsize,]
-    }
-    outlist
-}
-
-setMinCoverage = function(count,plot=FALSE) {
-    w = c()
-    cnt = c()
-    for (chr in names(count)) {
-        w = c(w,count[[chr]][,2]-count[[chr]][,1]+1)
-        cnt = c(cnt,count[[chr]][,3])
-    }
-#    w = count[,2]-count[,1]+1
-    ww = w/sum(w)
-    mu = sum(cnt*ww)
-    sig = sum((cnt-mu)^2*ww)
-    print(paste("Mean/sd +:",mu,sqrt(sig)))
-    p = 1-exp(-(10:1e4)*1e-3)
-    foreground = quantile(rep(cnt, w),p)
-    background = qpois(p=p,lambda=mu)
-    dev = sd((foreground-background)[p<.5])
-    T = background[max(which(foreground-background<2*dev))]
-    if (plot) {
-        plot(background,foreground-background,pch=20,main="Deviation from Poisson")
-        abline(h=dev)
-        abline(v=T,col='blue')
-    }
-    T
 }
 
 find.enriched.regions = function(pfactor,threshold,datalist) {
@@ -311,97 +214,6 @@ merge.regions = function(regions,gap) {
     matrix(regions2[1:rptr,],ncol=2)
 }
 
-fit.filter = function(regions,datalist,chr,
-  mu=90,lambda=100,len=36,regul=1e-2,ktype="geometric",var.cut=.65) {
-    nr = nrow(regions)
-    if (is.null(nr) || nr==0) return(regions)
-    regs = cbind(regions,rep(1,nrow(regions)))
-    n1 = 0
-    for (n in 1:nr) {
-        allpos = regions[n,1]:regions[n,2] 
-        cp = make.counts(allpos,datalist$plus[[chr]])[,2]
-        cm = make.counts(allpos,datalist$minus[[chr]])[,2]
-        D = make.matrix(cm,cp,mu,lambda,len,regul,ktype)
-        N = nrow(D$Dmat)
-        if (N > 3000 || N < 10) {next}
-        prob = solve.QP.compact(Dmat=D$Dmat,dvec=D$dvec,Amat=D$Amat,Aind=D$Aind)
-                                        #,bvec=D$bvec,factorized=TRUE)
-        padpr=c(rep(0,len),prob$sol,rep(0,len))
-        fit = fit.solution(padpr,mu,lambda,len,ktype)
-        val = sqrt(sum(c(cm-fit$minus,cp-fit$plus)^2)/sum(c(cm,cp)^2))
-        if (!is.na(val) && val<var.cut) {
-            n1 = n1+1
-            regs[n1,] = c(regions[n,1:2],val)
-        } else {
-            print(paste("Region [",regions[n,1],",",regions[n,2],"] rejected: val =",val))
-        }
-    }
-    regs[1:n1,]
-}
-
-regions2counts = function(regionlist,datalist,threshold)  {
-    counts = list()
-    vals = list()
-    for (chr in intersect(names(regionlist),names(datalist$prod))) {
-        regions = regionlist[[chr]]
-        nr = nrow(regions)
-        if (is.null(nr) || nr==0) next
-        for (n in 1:nr) {
-            allpos = regions[n,1]:regions[n,2]
-            cnts = cbind(
-              make.counts(allpos,datalist$prod[[chr]]),
-              make.counts(allpos,datalist$plus[[chr]])[,2],
-              make.counts(allpos,datalist$minus[[chr]])[,2])
-            colnames(cnts) = c("pos","prod.counts","plus.counts","minus.counts")
-            if ((threshold < 0) ||
-                (max(cnts[,2]) > threshold && all(apply(cnts[,-1],2,sum) > 0))) {
-                counts[[chr]] = c(counts[[chr]],list(cnts))
-                if (ncol(regions)>2) vals[[chr]] = c(vals[[chr]],regions[n,3])
-                else vals[[chr]] = c(vals[[chr]],-1)
-            }
-        }
-    }
-    list(counts,vals)
-}
-
-make.counts = function(allpos,data,shift=0) {
-    pmin = allpos[1]
-    pmax = allpos[length(allpos)]
-    I = which(data[,1]<=pmax & data[,2]>=pmin)
-    if (length(I)>1) {
-        unroll = data.frame(
-          pos=as.integer(unlist(apply(data[I,1:2],1,function(x){x[1]:x[2]+shift}))),
-          counts=as.numeric(rep(data[I,3],data[I,2]-data[I,1]+1)))
-    } else if (length(I)==1) {
-        unroll = data.frame(
-          pos=as.integer(data[I,1]:data[I,2]+shift),
-          counts=as.numeric(rep(data[I,3],data[I,2]-data[I,1]+1)))
-    } else {
-        unroll=data.frame(pos=allpos,counts=rep(0,length(allpos)))
-    }
-    cnts = merge(allpos,unroll,by.x=1,by.y="pos",all=T)
-    if (any(is.na(cnts[,2])))    cnts[which(is.na(cnts[,2])),2] = 0
-    if (cnts[1,1]<pmin)          cnts = cnts[-which(cnts[,1]<pmin),]
-    if (cnts[nrow(cnts),1]>pmax) cnts = cnts[-which(cnts[,1]>pmax),]
-    cnts
-}
-
-plot.counts = function(counts,data,cumul=TRUE) {
-    if (cumul) {
-        ymax = sum(data[,3])
-        plot(data[,1]*1e-3,cumsum(data[,3]),type='l',ylim=c(0,ymax),
-             xlab="Position [kbp]",ylab="Cumulative counts",main="Enriched regions")
-        for (c in counts) 
-          lines(x=range(c$pos)*1e-3,y=c(ymax,ymax)/2,col='cyan',lwd=5)
-    } else {
-        ymax = max(data[,3])
-        plot(data[,1]*1e-3,data[,3],type='l',ylim=c(0,ymax),
-             xlab="Position [kbp]",ylab="Counts",main="Enriched regions")
-        for (c in counts) 
-          lines(x=range(c$pos)*1e-3,y=c(0,0),col='cyan',lwd=5)
-    }
-}
-
 plot.sol = function(counts,solution,par,ktype="geometric",legend=TRUE,ymax) {
     xlab=''
     if (legend) xlab="Position [kbp]"
@@ -437,7 +249,7 @@ write.bed.counts = function(data,header,file,offset=TRUE) {
 
 write.bed.sol = function(sol,counts,header,file,offset=TRUE,append=FALSE,cutoff=1e-3,gff=FALSE) {
     result = matrix(nrow=0,ncol=4)
-    for (n in 1:length(counts)) {
+    for (n in names(counts)) {
         I = which(sol[[n]]$prob>cutoff*sum(sol[[n]]$prob))
         if (length(I)<2) next
         interval = range(counts[[n]]$pos[I])
