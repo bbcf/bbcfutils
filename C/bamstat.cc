@@ -1,5 +1,5 @@
 /***************
-g++ -O3 -Wall -I/home/epfl/bbcf/bin/ -o bamstat bamstat.cc -L/home/epfl/bbcf/bin/samtools -lbam -lz
+g++ -O3 -Wall -I/archive/epfl/bbcf/bin/ -o bamstat bamstat.cc -L/archive/epfl/bbcf/bin/samtools -lbam -lz
 ****************/
 #include <map>
 #include <iostream>

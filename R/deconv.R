@@ -2,8 +2,8 @@
 args=commandArgs(trailingOnly = TRUE)
 counts.file=args[1]
 pdf.file=args[2]
-read.length = args[3]
-chr.name =args[4]
+read.length = as.integer(args[3])
+chr.name = args[4]
 output.file = args[5]
 script.path = args[6]
 mu = 80

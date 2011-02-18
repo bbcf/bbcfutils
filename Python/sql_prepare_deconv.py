@@ -5,6 +5,7 @@ import re
 from numpy import *
 import getopt
 import os
+import sys
 
 usage = """sql_prepare_deconv.py input_sql input_bed output chrname chrlength cutoff read_len
 
@@ -25,7 +26,7 @@ def select_bed_line(c,s,e):
     sql = "select max(start,"+str(s)+"), "
     sql += "min(end,"+str(e)+"), "
     sql += "score from "+c+" where "
-    sql += "end>="+str(start)+" and start<"+str(end)+";"
+    sql += "end>="+str(s)+" and start<"+str(e)+";"
     return sql
 
 def parse_bed(file_name, seqname=None):
@@ -55,8 +56,8 @@ def main(argv = None):
         read_length = argv[6]
         prod_shift = 50
 
-        strands = {'_fwd.sql':('plus',prod_shift),'_rev.sql':('minus',-prod_shift)}
-        for suffix in strands.key():
+        strands = {'_fwd.sql':'plus','_rev.sql':'minus'}
+        for suffix in strands.keys():
             if not(os.path.exists(db+suffix)):
                 raise Usage("Sqlite file %s does not exist." % db+suffix)
         if not(os.path.exists(bedfile)):
@@ -85,9 +86,9 @@ def main(argv = None):
             data_block = {'pos': robjects.IntVector(allpos),
                           'plus': robjects.FloatVector([0 for i in allpos]),
                           'minus': robjects.FloatVector([0 for i in allpos]),
-                          'prod': robjects.FloatVector([1 for i in allpos]),
+                          'prod': robjects.FloatVector([0 for i in allpos]),
                           'name': robjects.StrVector([reg_name for i in allpos])}
-            for suffix, (name, shift) in strands.iteritems():
+            for suffix,name in strands.iteritems():
                 connection = sqlite3.connect(db+suffix)
                 cur = connection.cursor()
                 cur.execute(select_bed_line(chr, start, end))
@@ -96,15 +97,16 @@ def main(argv = None):
                 for sql_row in cur:
                     while data_block['pos'][n] <= sql_row[0]:
                         n+=1
-                for p in range(sql_row[0],sql_row[1]):
-                    data_block[name][n] = sql_row[2]
-                    if n+shift>=0 and n+shift < len(allpos):
-                        data_block['prod'][n+shift] *= sqrt(sql_row[2]) 
-                    n+=1
+                    for p in range(sql_row[0],sql_row[1]):
+                        data_block[name][n] = sql_row[2]
+                        n+=1
                 cur.close()
-                r_block = robjects.DataFrame(data_block)
-                robjects.r('counts=rbind(counts,%s)'%r_block.r_repr())
-        robjects.r('save(counts,file=%s)' %output_file)
+            for n in range(prod_shift,len(allpos)-prod_shift):
+                data_block['prod'][n] = sqrt(data_block['plus'][n-prod_shift]*
+                                             data_block['minus'][n+prod_shift]) 
+            r_block = robjects.DataFrame(data_block)
+            robjects.r('counts=rbind(counts,%s)'%r_block.r_repr())
+        robjects.r('save(counts,file="%s")' %output_file)
         sys.exit(0)
     except Usage, err:
         print >>sys.stderr, err.msg

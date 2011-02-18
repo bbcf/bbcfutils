@@ -1,10 +1,9 @@
 #!/archive/epfl/bbcf/bin/bin.x86_64/python
 import rpy2.robjects as robjects
 import sqlite3
-import re
-from numpy import *
 import getopt
 import os
+import sys
 
 usage = """sql_finish_deconv.py input output
 
@@ -20,8 +19,8 @@ def main(argv = None):
     if argv is None:
         argv = sys.argv[1:]
     try:
-        if len(argv) != 3:
-            raise Usage("sql_finish_deconv.py takes exactly three arguments.")
+        if len(argv) != 2:
+            raise Usage("sql_finish_deconv.py takes exactly two arguments.")
 
         infile = argv[0]
         outfile = argv[1]
@@ -29,7 +28,7 @@ def main(argv = None):
             raise Usage("File %s does not exist." % infile)
         if os.path.exists(outfile):
             raise Usage("File %s already exists." % outfile)
-        robjects.r.load('%s' %infile)
+        robjects.r.load('"%s"' %infile)
         connection = sqlite3.connect( outfile )
         vals = []
         last_score
