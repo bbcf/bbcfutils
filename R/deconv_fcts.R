@@ -117,7 +117,7 @@ inverse.solve = function(counts,
     par = c(mu,lambda)
     solved = solve.one(counts,par[1],par[2],len,regul,ktype)
     if (optimize) {
-        O = order(sapply(solved,function(x)x$val))
+        O = order(sapply(solved$rtn,function(x)x$value))
         npeaks = min(10,length(O))
         par = optim(par=par,fn=fit.score,counts=counts[O[1:npeaks]],
           len=len,reg=regul,ktype=ktype,
