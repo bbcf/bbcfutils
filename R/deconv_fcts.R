@@ -2,7 +2,7 @@ library(quadprog)
 
 read.data = function(file) {
     load(file)
-    split(counts[,c("pos","plus","minus","prod")],counts$name)
+    split(counts[,c("pos","plus","minus")],counts$name)
 }
 
 cross.correlate = function(counts,threshold=1,lag.max=600) {
@@ -39,9 +39,6 @@ camel.kernel = function(size,mu,lambda,len,ktype) {
 fit.solution = function(prob,mu,lambda,len,ktype) {
     size = length(prob)
     kernel = camel.kernel(size=size,mu,lambda,len,ktype)
-#    a1 = amp[1]
-#    a2 = a1
-#    if (length(amp)>1) a2 = amp[2]
     data.frame(plus=convolve(kernel,prob,type="open")[len+size:1],
                minus=convolve(kernel,rev(prob),type="open")[len+1:size])
 }
@@ -115,16 +112,16 @@ inverse.solve = function(counts,
   ktype="geometric",optimize=FALSE) {
     if (mu <= len) stop("mu must be larger than len\n")
     par = c(mu,lambda)
-    solved = solve.one(counts,par[1],par[2],len,regul,ktype)
     if (optimize) {
+        solved = solve.one(counts,par[1],par[2],len,1e-2,ktype)
         O = order(sapply(solved$rtn,function(x)x$value))
         npeaks = min(10,length(O))
         par = optim(par=par,fn=fit.score,counts=counts[O[1:npeaks]],
-          len=len,reg=regul,ktype=ktype,
+          len=len,reg=1e-2,ktype=ktype,
           gr=NULL,method='L-BFGS-B',lower=c(len+1,len+1),upper=c(1000,1000),
           control=list(maxit=100,trace=4))$par
-        solved = solve.one(counts,par[1],par[2],len,regul,ktype)
     }
+    solved = solve.one(counts,par[1],par[2],len,regul,ktype)
     return(list(sol=solved$rtn,par=list(mu=par[1],lambda=par[2],len=len)))
 }
 
@@ -142,7 +139,6 @@ find.enriched.regions = function(pfactor,threshold,datalist) {
         pos0 = 1
         back = rep(0,nrow=nrow(data))
         score = list(x=0,y=0)
-### I should build the whole matrix first, then apply max/cumsum?
         for (n in 1:nrow(data)) {
             xs = c(score$x,score$y+penalty,score$x+2*penalty)
             increment = (data[n,3]-threshold)*(data[n,2]-data[n,1]+1)
@@ -238,50 +234,3 @@ plot.sol = function(counts,solution,par,ktype="geometric",legend=TRUE,ymax) {
     }
 }
 
-write.bed.counts = function(data,header,file,offset=TRUE) {
-    bounds = t(sapply(data,function(x){range(x$pos)},simplify=TRUE))
-    if (offset) bounds[,1] = bounds[,1]-1
-    score = sapply(counts,function(x){(sum(x$plus)+sum(x$minus))/2},simplify=TRUE)
-    name = paste("region",1:length(data),sep='')
-    dbed = rbind(c(header[1],rep('',3)),cbind(header[2],bounds,name,score))
-    write.table(dbed,file=file,row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
-}
-
-write.bed.sol = function(sol,counts,header,file,offset=TRUE,append=FALSE,cutoff=1e-3,gff=FALSE) {
-    result = matrix(nrow=0,ncol=4)
-    for (n in names(counts)) {
-        I = which(sol[[n]]$prob>cutoff*sum(sol[[n]]$prob))
-        if (length(I)<2) next
-        interval = range(counts[[n]]$pos[I])
-        score = sum(sol[[n]]$prob[I])
-        result = rbind(result,c(interval,score,round(sol[[n]]$val,digits=4)))
-    }
-    if (offset) result[,1] = result[,1]-1
-    name = paste("ID=",header[2],"_",1:nrow(result),";FERR=",result[,4],sep='')
-    if (nrow(result)==1) {
-        dbed = c(header[2],result[,1:2],name,result[,3])
-    } else {
-        dbed = cbind(header[2],result[,1:2],name,result[,3])
-    }
-    if (gff) {
-        dbed = cbind(dbed[,1],"deconvolution","binding_site",dbed[,c(2,3,5,6)],".",name)
-    } else {
-        if (!append) dbed = rbind(c(header[1],rep('',4)),dbed)
-    }
-    write.table(dbed,file=file,row.names=FALSE,col.names=FALSE,quote=FALSE,
-                append=append,sep="\t")
-}
-
-write.wig = function(data,header,file,offset=TRUE,append=FALSE,cutoff=1e-3) {
-    if (nrow(data)<10) return(0)
-#    I0 = range(which(data[,3]>cutoff))
-#    I = I0[1]:I0[2]
-    I=which(data[,3]>cutoff*sum(data[,3]))
-    if (offset) data[,1] = data[,1]-1
-    dwig = cbind(rep(as.character(header[2]),length(I)),
-      as.integer(data[I,1]),as.integer(data[I,2]),as.numeric(data[I,3]))
-#    I = which(dwig[,4]<=cutoff)
-#    dwig[I,4] = 0
-    if (!append) {dwig = rbind(c(header[1],rep('',3)),dwig)}
-    write.table(dwig,file=file,row.names=FALSE,col.names=FALSE,quote=FALSE,append=append,sep="\t")
-}

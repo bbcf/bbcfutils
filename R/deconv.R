@@ -12,6 +12,7 @@ source(paste(script.path,"/deconv_fcts.R",sep=''))
 
 counts = read.data(counts.file)
 pdf(file=pdf.file,title='chip-seq',paper="a4",width=8,height=11)
+par(cex=1.5,lwd=1.5)
 ccf = cross.correlate(counts,threshold=.5)
 plot(ccf$lag,ccf$acf,t='l',ylim=c(0,1),
      xlab='Lag',ylab='Cross-correlation',
@@ -20,8 +21,18 @@ cut.ccf=ccf$acf
 cut.ccf[which(ccf$lag<mu)]=0
 lambda=ccf$lag[which.max(ccf$acf)]
 sol = inverse.solve(counts,mu=mu,lambda=lambda,len=read.length,regul=1e-5,optimize=TRUE)
-abline(v=sol$par$lambda,col='red')
-text(sol$par$lambda,0,sol$par$lambda,col='red',pos=4)
+col='red'
+lab=substitute(expression(lambda=x),list(x=sol$par$lambda))
+abline(v=sol$par$lambda,col=col)
+text(sol$par$lambda,0,lab,col=col,pos=4)
+col='cyan'
+lab=substitute(expression(mu=x),list(x=sol$par$mu))
+abline(v=sol$par$mu,col=col)
+text(sol$par$mu,0.3,lab,col=col,pos=4)
+col='magenta'
+lab=substitute(expression(ell=x),list(x=read.length))
+abline(v=read.length,col=col)
+text(read.length,0.6,lab,col=col,pos=4)
 par(mfrow=c(4,2))
 for (n in names(counts)) {
     if (sol$sol[[n]]$value>.65) next
@@ -53,4 +64,4 @@ for (n in names(counts)) {
       pos=as.integer(counts[[n]]$pos[I]),
       score=as.numeric(sol$sol[[n]]$prob[I])))
 }
-save(bed,wig,file=output.file)
+save(bed,wig,sol$par,file=output.file)

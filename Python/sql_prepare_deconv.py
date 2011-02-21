@@ -54,7 +54,7 @@ def main(argv = None):
         chromosome_length = argv[4]
         size_cutoff = argv[5]
         read_length = argv[6]
-        prod_shift = 50
+#        prod_shift = 50
 
         strands = {'_fwd.sql':'plus','_rev.sql':'minus'}
         for suffix in strands.keys():
@@ -86,7 +86,7 @@ def main(argv = None):
             data_block = {'pos': robjects.IntVector(allpos),
                           'plus': robjects.FloatVector([0 for i in allpos]),
                           'minus': robjects.FloatVector([0 for i in allpos]),
-                          'prod': robjects.FloatVector([0 for i in allpos]),
+#                          'prod': robjects.FloatVector([0 for i in allpos]),
                           'name': robjects.StrVector([reg_name for i in allpos])}
             for suffix,name in strands.iteritems():
                 connection = sqlite3.connect(db+suffix)
@@ -101,9 +101,9 @@ def main(argv = None):
                         data_block[name][n] = sql_row[2]
                         n+=1
                 cur.close()
-            for n in range(prod_shift,len(allpos)-prod_shift):
-                data_block['prod'][n] = sqrt(data_block['plus'][n-prod_shift]*
-                                             data_block['minus'][n+prod_shift]) 
+#            for n in range(prod_shift,len(allpos)-prod_shift):
+#                data_block['prod'][n] = sqrt(data_block['plus'][n-prod_shift]*
+#                                             data_block['minus'][n+prod_shift]) 
             r_block = robjects.DataFrame(data_block)
             robjects.r('counts=rbind(counts,%s)'%r_block.r_repr())
         robjects.r('save(counts,file="%s")' %output_file)

@@ -28,10 +28,9 @@ def main(argv = None):
             raise Usage("File %s does not exist." % infile)
         if os.path.exists(outfile):
             raise Usage("File %s already exists." % outfile)
-        robjects.r.load('"%s"' %infile)
+        robjects.r.load('%s' %infile)
         connection = sqlite3.connect( outfile )
         vals = []
-        last_score
         start = 0
         for p in robjects.r.wig.iter_row():
             chr = p.rx2('chr')[0]

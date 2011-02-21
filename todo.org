@@ -2,5 +2,5 @@
 create a makefile
 
 * R tools
-setup sql parser, documentation, bein wrapper
-
+documentation, 
+pickle sol$par
