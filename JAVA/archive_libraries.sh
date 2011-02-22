@@ -1,4 +1,7 @@
 #/bin/sh
+## this script compile and archive all java librairies
+## & regroup them in the jar directory
+## you MUST run it from it's current location
 CUR=$PWD
 
 cd access
