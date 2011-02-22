@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+
+<project basedir="." default="build" name="parser">
+    <property environment="env"/>
+    <property name="debuglevel" value="source,lines,vars"/>
+    <property name="target" value="1.6"/>
+    <property name="source" value="1.6"/>
+    <path id="parser.classpath">
+      <pathelement location="bin"/>
+    </path>
+    
+    <target name="init">
+        <mkdir dir="bin"/>
+        <copy includeemptydirs="false" todir="bin">
+            <fileset dir="src">
+                <exclude name="**/*.launch"/>
+                <exclude name="**/*.java"/>
+            </fileset>
+        </copy>
+    </target>
+    
+    <target name="clean">
+        <delete dir="bin"/>
+        <delete file="bbcf_parser.jar"/>
+    </target>
+    
+    <target depends="clean" name="cleanall"/>
+    <target depends="compile,jar" name="build"/>
+    
+    <target name="jar" depends="clean,compile">
+    <jar destfile="bbcf_parser.jar"
+         basedir="bin"
+         includes="**/*.class"
+         />
+  </target>
+    
+    
+    <target depends="init" name="compile">
+        <echo message="${ant.project.name}: ${ant.file}"/>
+        <javac includeantruntime="true" debug="true" debuglevel="${debuglevel}" destdir="bin" source="${source}" target="${target}">
+            <src path="src"/>
+            <classpath refid="parser.classpath"/>
+        </javac>
+    </target>
+    
+</project>
