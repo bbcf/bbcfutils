@@ -26,8 +26,6 @@ def main(argv = None):
         outfile = argv[1]
         if not(os.path.exists(infile)):
             raise Usage("File %s does not exist." % infile)
-        if os.path.exists(outfile):
-            raise Usage("File %s already exists." % outfile)
         robjects.r.load('%s' %infile)
         connection = sqlite3.connect( outfile )
         vals = []
@@ -35,7 +33,8 @@ def main(argv = None):
         for p in robjects.r.wig.iter_row():
             chr = p.rx2('chr')[0]
             pos = p.rx2('pos')[0]
-            vals.append((pos-1,pos,p.rx2('score')[0]))
+            score = p.rx2('score')[0]
+            vals.append((pos-1,pos,score))
         connection.executemany('insert into %s (start,end,score) values (?,?,?)'%chr,vals)
         connection.commit()
         connection.close()
