@@ -1,0 +1,14 @@
+JAVA PARSERS FOR GENOMICS FILES
+
+WIG & BEDGRAPH, BED
+
+for GFF and SAM/BAM you should use Biojava and Picard respectivly
+
+see javadoc for more information
+
+### BUILD INFO ###
+download project
+cd project_dir
+ant jar
+
+

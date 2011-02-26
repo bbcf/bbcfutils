@@ -1,0 +1,16 @@
+ACCESS TO GENREP
+
+this library is intended to access Genrep, a genome repository 
+in the BBCF.
+
+
+
+
+
+
+### BUILD INFO ###
+download project
+cd project_dir
+ant jar
+
+
