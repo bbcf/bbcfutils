@@ -39,12 +39,11 @@ def main(argv = None):
         connection.commit()
         connection.close()
         with open(outfile+'_deconv.bed','w') as fbed:
-            for p in robjects.r.wig.iter_row():
+            for p in robjects.r.bed.iter_row():
                 bed_row = [p.rx2('chr')[0],
-                           p.rx2('start')[0],p.rx2('end')[0],
-                           p.rx2('name')[0],p.rx2('score')[0]]
-                fbed.write("\t".join(bed_row))
-            fbed.close()
+                           str(int(p.rx2('start')[0])),str(int(p.rx2('end')[0])),
+                           p.rx2('name')[0],str(p.rx2('score')[0])]
+                fbed.write("\t".join(bed_row)+"\n")
         sys.exit(0)
     except Usage, err:
         print >>sys.stderr, err.msg
