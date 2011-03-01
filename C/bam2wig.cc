@@ -1,6 +1,3 @@
-/*******************
- g++ -Wall -I/mnt/common/DevTools/install/Linux/x86_64/sqlite/sqlite-3.7.3/include/ -I/archive/epfl/bbcf/bin/Peaks/ -I/archive/epfl/bbcf/bin/ -O3 -o bam2wig bam2wig.cc -L/archive/epfl/bbcf/bin/samtools -L/mnt/common/DevTools/install/Linux/x86_64/sqlite/sqlite-3.7.3/lib -lbam -lz -lsqlite3
-******************/
 /***************** STL *************************/
 #include <map>
 #include <vector>

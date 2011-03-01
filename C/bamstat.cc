@@ -1,6 +1,3 @@
-/***************
-g++ -O3 -Wall -I/archive/epfl/bbcf/bin/ -o bamstat bamstat.cc -L/archive/epfl/bbcf/bin/samtools -lbam -lz
-****************/
 #include <map>
 #include <iostream>
 #include <fstream>
@@ -100,14 +97,15 @@ int main( int argc, char **argv )
     std::cout << "Alignments " << nali
 	      << " (fwd: " << nfwd << "/rev: " 
 	      << nrev << ")\n";
-    if ( stats.count(0) ) std::cout << "Unmapped " << stats[0] << "\n";
+    int unmap = 0;
+    if ( stats.count(0) ) unmap = stats.count(0);
+    std::cout << "Unmapped " << unmap << "\n";
     std::cout << "Expected coverage " 
 	      << (double)ntag/(double)(2.0*genome_size)
 	      << "\n";
-    if ( stats.count(-1)) 
-	std::cout << "Actual coverage " 
-		  << (double)stats[-1]/(double)(2.0*genome_size)
-		  << "\n";
+    double act_cov = 0;
+    if ( stats.count(-1)) act_cov = (double)stats[-1]/(double)(2.0*genome_size);
+    std::cout << "Actual coverage " << act_cov << "\n";
     std::cout << "Mismatches Reads\n";
     for ( std::map< int, size_t >::const_iterator I = stats.upper_bound(-3); 
 	  I != stats.begin(); ) {
