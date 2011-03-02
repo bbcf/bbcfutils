@@ -401,16 +401,21 @@ public class SQLiteAccess {
 	/**
 	 * {CONSTRUCTION}
 	 * finalize the database with the creation of the
-	 * table chrNames (name,length)
+	 * table chrNames (name,length) and an index
 	 * @param chr_length a Map with key = chromosome name and value = it's length
 	 * @throws SQLException
 	 */
 	public void finalizeDatabase(Map<String,Integer> chr_length) throws SQLException{
 		Statement stat = this.connection.createStatement();
 		stat.executeUpdate("create table chrNames (name text, length integer);");
+		
 		PreparedStatement prep = this.connection.prepareStatement("insert into chrNames values (?,?);");
+		int i=0;
 		for(Map.Entry<String, Integer>entry : chr_length.entrySet()){
+			i++;
 			String chr = entry.getKey();
+			Statement stat2 = this.connection.createStatement();
+			stat2.executeUpdate("create index if not exist ind_name_"+i+" on "+chr+" (name);");
 			int length = entry.getValue();
 			prep.setString(1, chr);
 			prep.setInt(2,length);
