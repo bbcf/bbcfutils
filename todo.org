@@ -1,6 +1,3 @@
-* C tools
-create a makefile
-
 * R tools
 documentation, 
 pickle sol$par

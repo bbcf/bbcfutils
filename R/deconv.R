@@ -22,15 +22,18 @@ cut.ccf[which(ccf$lag<mu)]=0
 lambda=ccf$lag[which.max(ccf$acf)]
 sol = inverse.solve(counts,mu=mu,lambda=lambda,len=read.length,regul=1e-5,optimize=TRUE)
 col='red'
-lab=substitute(expression(lambda=x),list(x=sol$par$lambda))
+#lab=substitute(expression(lambda=x),list(x=sol$par$lambda))
+lab=paste('lambda=',sol$par$lambda,sep='')
 abline(v=sol$par$lambda,col=col)
 text(sol$par$lambda,0,lab,col=col,pos=4)
-col='cyan'
-lab=substitute(expression(mu=x),list(x=sol$par$mu))
+col='blue'
+#lab=substitute(expression(mu=x),list(x=sol$par$mu))
+lab=paste('mu=',sol$par$mu,sep='')
 abline(v=sol$par$mu,col=col)
 text(sol$par$mu,0.3,lab,col=col,pos=4)
-col='magenta'
-lab=substitute(expression(ell=x),list(x=read.length))
+col='darkgreen'
+#lab=substitute(expression(ell=x),list(x=read.length))
+lab=paste('l=',read.length,sep='')
 abline(v=read.length,col=col)
 text(read.length,0.6,lab,col=col,pos=4)
 par(mfrow=c(4,2))
@@ -64,4 +67,5 @@ for (n in names(counts)) {
       pos=as.integer(counts[[n]]$pos[I]),
       score=as.numeric(sol$sol[[n]]$prob[I])))
 }
-save(bed,wig,sol$par,file=output.file)
+par = sol$par
+save(bed,wig,par,file=output.file)
