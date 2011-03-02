@@ -262,7 +262,34 @@ public class SQLiteAccess {
 		return r;
 	}
 
-
+	/**
+	 * {MANIPULATION}
+	 * try to find coordinates (start,end) of a gene by it's name
+	 * - EXACT MATCH -
+	 * @param chr - the chromosome
+	 * @param name - the gene name
+	 * @return a list of coordinates (start,end,start,end,start,end,....)
+	 * @throws SQLException
+	 */
+	public List<Integer> searchForGeneNameOnChromosome(String chr,String name) throws SQLException {
+		List<Integer> result = new ArrayList<Integer>();
+		String query = "SELECT start,end FROM "+protect(chr)+" where name = ?; ";
+		PreparedStatement prep = connection.prepareStatement(query);
+		prep.setString(1, name);
+		ResultSet r = getResultSet(prep, query);
+		while(r.next()){
+			result.add(r.getInt(1));
+			result.add(r.getInt(2));
+		}
+		r.close();
+		return result;
+	}
+	
+	
+	
+	
+	
+	
 
 	//CONSTRUCTION METHODS//
 	/**
@@ -408,7 +435,6 @@ public class SQLiteAccess {
 	public void finalizeDatabase(Map<String,Integer> chr_length) throws SQLException{
 		Statement stat = this.connection.createStatement();
 		stat.executeUpdate("create table chrNames (name text, length integer);");
-		
 		PreparedStatement prep = this.connection.prepareStatement("insert into chrNames values (?,?);");
 		int i=0;
 		for(Map.Entry<String, Integer>entry : chr_length.entrySet()){
