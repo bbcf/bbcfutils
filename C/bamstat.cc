@@ -97,8 +97,8 @@ int main( int argc, char **argv )
     std::cout << "Alignments " << nali
 	      << " (fwd: " << nfwd << "/rev: " 
 	      << nrev << ")\n";
-    int unmap = 0;
-    if ( stats.count(0) ) unmap = stats.count(0);
+    size_t unmap = 0;
+    if ( stats.count(0) ) unmap = stats[0];
     std::cout << "Unmapped " << unmap << "\n";
     std::cout << "Expected coverage " 
 	      << (double)ntag/(double)(2.0*genome_size)
