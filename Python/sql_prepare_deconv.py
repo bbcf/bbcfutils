@@ -25,7 +25,7 @@ class Usage(Exception):
 def select_bed_line(c,s,e):
     sql = "select max(start,"+str(s)+"), "
     sql += "min(end,"+str(e)+"), "
-    sql += "score from "+c+" where "
+    sql += "score from '"+c+"' where "
     sql += "end>="+str(s)+" and start<"+str(e)+";"
     return sql
 
