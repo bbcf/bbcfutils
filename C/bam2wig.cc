@@ -67,9 +67,8 @@ void createsql( posh &counts, const double cntw=1.0 ) {
     int start = 0, stop = 0;
     sqlite3 *db_fwd, *db_rev, *db_both, *mydb;
     char *sqlErrMsg = 0;
-    std::string sql_exec = std::string("create table if not exists ")
-	+opts.chrn
-	+std::string(" (start integer, end integer, score real)");
+    std::string sql_exec = std::string("create table if not exists '")+opts.chrn
+	+std::string("' (start integer, end integer, score real)");
     if (opts.merge < 0) {
 	std::string fwd = opts.ofile+"fwd";
 	if ( sqlite3_open_v2(fwd.c_str(), &db_fwd, 
@@ -114,9 +113,8 @@ void createsql( posh &counts, const double cntw=1.0 ) {
     }
     sqlite3_stmt *stmt;
     const char *_dummy;
-    sql_exec = std::string("insert  into ")
-	+opts.chrn
-	+std::string(" (start, end, score) values (?,?,?)");
+    sql_exec = std::string("insert  into '")+opts.chrn
+	+std::string("' (start, end, score) values (?,?,?)");
     if (opts.merge < 0) {
 	mydb = db_rev;
 	sqlite3_exec( mydb, "begin transaction", NULL, NULL, NULL );
