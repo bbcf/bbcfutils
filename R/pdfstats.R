@@ -9,8 +9,10 @@ for (sample in names(stats.by.sample)) {
     stats=stats.by.sample[[sample]]
     df=data.frame(hits=names(stats$multi_hits),reads=as.numeric(stats$multi_hits))
     df=rbind(df,c(0,as.numeric(stats$unmapped)))
+    if ('pcr_duplicates' %in% names(stats))
+      df=rbind(df,c(0,as.numeric(stats$pcr_duplicates)))
 #    col='darkorange'
-    col=heat.colors(6)[c(2,rep(4,length(df$reads)-2),6)]
+    col=heat.colors(6)[c(2,rep(4,length(df$reads)-2),6,6)]
     p=barplot(df$reads,names.arg=df$hits,border=0,
       log='y',col=col,xlab='# hits',ylab='# reads',
       main='Reads with multiple hits')
