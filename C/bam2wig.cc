@@ -70,7 +70,7 @@ void createsql( posh &counts, const double cntw=1.0 ) {
     std::string sql_exec = std::string("create table if not exists '")+opts.chrn
 	+std::string("' (start integer, end integer, score real)");
     if (opts.merge < 0) {
-	std::string fwd = opts.ofile+"fwd";
+	std::string fwd = opts.ofile+"fwd.sql";
 	if ( sqlite3_open_v2(fwd.c_str(), &db_fwd, 
 			     SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL) ) {
 	    std::cerr << "Could not open " << fwd << ": " 
@@ -78,7 +78,7 @@ void createsql( posh &counts, const double cntw=1.0 ) {
 	    sqlite3_close(db_fwd);
 	    return;
 	}
-	std::string rev = opts.ofile+"rev";
+	std::string rev = opts.ofile+"rev.sql";
 	if ( sqlite3_open_v2(rev.c_str(), &db_rev,  
 			     SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL) ) {
 	    std::cerr << "Could not open " << rev << ": " 
@@ -97,7 +97,7 @@ void createsql( posh &counts, const double cntw=1.0 ) {
 	    sqlite3_free(sqlErrMsg);
 	}
     } else {
-	std::string both = opts.ofile+"merged";
+	std::string both = opts.ofile+"merged.sql";
 	if ( sqlite3_open_v2(both.c_str(), &db_both, 
 			     SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL) ) {
 	    std::cerr << "Could not open " << both << ": " 
