@@ -306,7 +306,7 @@ int main( int argc, char **argv )
 {
     try {
 	TCLAP::CmdLine cmd( "Reads bam file and creates bedGraph or sqlite with cumulative counts" );
-	TCLAP::ValueArg< std::string > of( "o", "outptut", "Output file name (default stdout)", false, "", "string" );
+	TCLAP::ValueArg< std::string > of( "o", "outptut", "Output file prefix (default stdout)", false, "", "string" );
 	cmd.add( of ); 
 	TCLAP::ValueArg< std::string > sf( "s", "sample", "Sample bam file", true, "", "string" );
 	cmd.add( sf ); 
