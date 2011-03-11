@@ -2,16 +2,16 @@
 options(stringsAsFactors=F)
 library(rjson)
 args=commandArgs(trailingOnly = TRUE)
-stats.by.sample=fromJSON(args[1])
+stats.by.sample=fromJSON(file=args[1])
 pdf(file=args[2],paper="a4",height=11,width=8)
 par(cex=1.5,lwd=1.5,mfrow=c(4,1),oma=c(0,0,4,0))
-for (sample in names(stats.by.sample)) {
+for (sample in sort(names(stats.by.sample))) {
     stats=stats.by.sample[[sample]]
     df=data.frame(hits=names(stats$multi_hits),reads=as.numeric(stats$multi_hits))
-    df=rbind(df,c(0,as.numeric(stats$unmapped)))
+    if (stats$unmapped>0) df=rbind(df,c(0,as.numeric(stats$unmapped)))
 #    col='darkorange'
     col=heat.colors(6)[c(2,rep(4,length(stats$multi_hits)-1),6)]
-    p=barplot(df$reads,names.arg=df$hits,border=0,
+    p=barplot(df$reads+.1,names.arg=df$hits,border=0,
       log='y',col=col,xlab='# hits',ylab='# reads',
       main='Reads with multiple hits')
     text(x=p,y=median(df$reads),lab=df$reads,srt=90,adj=c(0,0),cex=1.1)
