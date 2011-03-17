@@ -1,0 +1,34 @@
+#################
+### BBCFUTILS ### different libraries used by the BBCF
+#################
+
+build them by choosing the appropriate ant task
+run $ant tasks to know them
+### GENREP ACCESS  
+This library is intended to access Genrep, a genome repository 
+in the BBCF.
+- ant task : ant buildgenrep
+- product : genrepaccess.jar
+
+
+### PARSER -- bbcf_parser.jar
+Java parsers for genomics files(WIG & BEDGRAPH, BED)
+N.B:for GFF and SAM/BAM you should use Biojava and Picard respectively
+- ant task : ant buildparser
+- product : bbcf_parser.jar
+
+### SQLITE
+A libraries which regroup methods to access and build a sqlite 
+database, formatted for the BBCF (for qualitative and quantitative data)
+- ant task : ant buildsqlite
+- product : bbcf_sqlite.jar
+
+### POST TO GDV
+Runnable jar file which send request to GDV
+- ant task : ant buildgdv
+- product : gdvsender.jar
+
+Run $java -jar gdvsender.jar help to see some help
+or $java -jar gdvsender.jar gender to generate a README
+
+

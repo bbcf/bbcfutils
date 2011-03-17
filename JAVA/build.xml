@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+
+
+<project basedir="." default="buildall" name="bbcgutils">
+  <property name="sqlite.dir"     value="sqlite/src"/>
+  <property name="access.dir"     value="access/src"/>
+  <property name="parser.dir"     value="parser/src"/>
+  <property environment="env"/>
+  <property name="debuglevel" value="source,lines,vars"/>
+  <property name="target" value="1.6"/>
+  <property name="source" value="1.6"/>
+  <path id="all.classpath">
+    <pathelement location="bin"/>
+    <pathelement location="lib/jackson-all-1.7.4.jar"/>
+  </path>
+
+  <!-- tasks -->
+  <target name="tasks">
+    <echo message="buildall - build all libraries"/>
+    <echo message="buildgdv - build gdv sender"/>
+    <echo message="buildgenrep - build genrep library"/>
+    <echo message="buildsqlite - build sqlite library"/>
+    <echo message="buildparser - build parser library"/>
+  </target>
+  <!-- classpath -->
+  <pathconvert property="mf.classpath" pathsep=" ">
+    <path refid="all.classpath"/>
+    <mapper>
+      <chainedmapper>
+	<flattenmapper/>
+	<globmapper from="*.jar" to="lib/*.jar"/>
+      </chainedmapper>
+    </mapper>
+  </pathconvert>
+  
+  <!-- initialization -->
+  <target name="init">
+    <mkdir dir="bin"/>
+    <mkdir dir="jar"/>
+  </target>
+  <!-- cleaning -->
+  <target name="clean">
+    <delete dir="bin"/>
+    <delete dir="jar"/>
+  </target>
+
+  <!-- build all -->
+  <target name="buildall" depends="buildgdv,buildgenrep,buildsqlite,buildparser"/>
+
+  <!-- compile access -->
+  <target depends="init" name="compileaccess">
+    <echo message="${ant.project.name}: ${ant.file}"/>
+    <javac includeantruntime="true" debug="true" debuglevel="${debuglevel}" destdir="bin" source="${source}" target="${target}">
+      <src path="${access.dir}"/>
+      <classpath refid="all.classpath"/>
+    </javac>
+  </target>
+   <!-- build gdv --> 
+  <target name="buildgdv" depends="clean,compileaccess">
+    <jar destfile="jar/gdvsender.jar"
+	 basedir="bin"
+         includes="ch/epfl/bbcf/access/gdv/**/*.class">
+      <manifest>
+        <attribute name="Main-Class" value="ch.epfl.bbcf.access.gdv.PostToGDV"/>
+        <attribute name="Class-Path" value="${mf.classpath}" />
+      </manifest>
+    </jar>
+  </target>
+
+  <!-- build genrep -->
+  <target name="buildgenrep" depends="clean,compileaccess">
+    <jar destfile="jar/genrepaccess.jar"
+         basedir="bin"
+         includes="ch/epfl/bbcf/access/genrep/**/*.class"
+         />
+  </target>
+  
+  <!-- compile sqlite -->
+  <target depends="init" name="compilesqlite">
+    <echo message="${ant.project.name}: ${ant.file}"/>
+    <javac includeantruntime="true" debug="true" debuglevel="${debuglevel}" destdir="bin" source="${source}" target="${target}">
+      <src path="${sqlite.dir}"/>
+      <classpath refid="all.classpath"/>
+    </javac>
+  </target>
+  <!-- build sqlite -->
+  <target name="buildsqlite" depends="clean,compilesqlite">
+    <jar destfile="jar/bbcf_sqlite.jar"
+         basedir="bin"
+         includes="ch/epfl/bbcf/sqlite/**/*.class"
+         />
+  </target>
+
+
+  <!-- compile parser -->
+  <target depends="init" name="compileparser">
+    <echo message="${ant.project.name}: ${ant.file}"/>
+    <javac includeantruntime="true" debug="true" debuglevel="${debuglevel}" destdir="bin" source="${source}" target="${target}">
+      <src path="${parser.dir}"/>
+      <classpath refid="all.classpath"/>
+    </javac>
+  </target>
+  
+  <!-- build parser -->
+   <target name="buildparser" depends="clean,compileparser">
+     <jar destfile="jar/bbcf_parser.jar"
+          basedir="bin"
+          includes="ch/epfl/bbcf/parser/**/*.class"
+          />
+   </target>
+
+  <!-- compiling -->
+ <!--  <target depends="init" name="compile"> -->
+<!--     <echo message="${ant.project.name}: ${ant.file}"/> -->
+<!--     <javac includeantruntime="true" debug="true" debuglevel="${debuglevel}" destdir="bin" source="${source}" target="${target}"> -->
+<!--       <src path="src"/> -->
+<!--       <classpath refid="all.classpath"/> -->
+<!--     </javac> -->
+<!--   </target> -->
+  
+</project>
