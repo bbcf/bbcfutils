@@ -1,68 +1,104 @@
 package ch.epfl.bbcf.access.genrep;
 
 import java.io.IOException;
-import java.net.URL;
-import java.net.URLConnection;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+import com.sun.tools.example.debug.bdi.MethodNotFoundException;
 
-import ch.epfl.bbcf.access.utility.SelectOption;
+import ch.epfl.bbcf.access.InternetConnection;
+import ch.epfl.bbcf.access.genrep.Constants.FORMAT;
+import ch.epfl.bbcf.access.genrep.Constants.KEY;
+import ch.epfl.bbcf.access.genrep.Constants.METHOD;
+import ch.epfl.bbcf.access.genrep.json.JsonMapper;
+import ch.epfl.bbcf.access.genrep.pojo.Assembly;
+import ch.epfl.bbcf.access.genrep.pojo.Chromosome;
+import ch.epfl.bbcf.access.genrep.pojo.GenrepObject;
+
 
 
 
 /**
  * class which handle the connections and queries 
- * to Genrep. A database wich stores information aubout genomes
+ * to Genrep. A database which stores information about genomes
  * for the BBCF
  * @author Yohan Jarosz
  *
  */
-public class GenRepAccess implements GenRepKeys{
+public class GenRepAccess {
 
-	protected static final JSONObject no_json_result = null;
-	protected static final JSONArray no_json_array_result = null;
 
-	public static boolean testConnection() throws IOException{
-		URL url;
-		URLConnection urlConnection = null;
-		url = new URL(GENEREP+ASSEMBLIES_URL+GET);
-		urlConnection = url.openConnection();
-		return urlConnection!=null;
-	}
-	
-	protected final static String SHOW(final int id){
-		return "/"+id+".json";
-	}
-	
-	public static NR_AssembliesAccess getNR_assemblies() throws JSONException, IOException{
-		return new NR_AssembliesAccess();
-	}
-	public static GenomesAccess getGenomeAccess() throws IOException, JSONException {
-		return new GenomesAccess();
-	}
-	
-	
-	
 	/**
-	 * convenient method to get a SelectOption from a JSONObject
-	 * @param json - the JSONObject
-	 * @param key - the key, it must return an int with the method json.getInt(key) 
-	 * @param value - the value, it must return a String with the method json.getString(value)
-	 * @return a SelectOption (getInt(key),getString(value))
-	 * @throws JSONException
+	 * Launch the query to Genrep and get
+	 * back an GenrepObject
+	 * @param servUrl - the Genrep server URL
+	 * @param method - the methods supported by Genrep
+	 * @param format - the format supported by Genrep
+	 * @param clazz - the class you want to get back (map the deserialization of the JSON)
+	 * @param key - the key to put in the URL (usually the same than the className)
+	 * @param query - the query (e.g : an id,md5,...)
+	 * @return - a GerepObject
+	 * @throws IOException
+	 * @throws MethodNotFoundException
+	 * @throws ClassNotFoundException
 	 */
-	public SelectOption getSelectOption(JSONObject json,String key,String value) throws JSONException{
-		return new SelectOption(json.getInt(key),json.getString(value));
+	public static <T extends GenrepObject> GenrepObject doQuery(String servUrl,METHOD method,FORMAT format,Class<? extends GenrepObject> clazz,KEY key,String query) throws IOException, MethodNotFoundException, ClassNotFoundException{
+
+		String url = Constants.URL+"/"+key;
+		switch(method){
+		case INDEX : url +="."+format+"?"+query; 
+		break;
+		case SHOW : url +="/"+query+"."+format;
+		break;
+		default :
+			throw new MethodNotFoundException(" method must be part of "+METHOD.values());
+		}
+		System.out.println("fetching  "+url);
+		String result = InternetConnection.sendGETConnection(url);
+		GenrepObject genrepObject = JsonMapper.deserializeObject(result, clazz);
+		return genrepObject.getInstance();
+	}
+
+	/**
+	 * Launch the query to Genrep and get
+	 * back an GenrepObject
+	 * @param servUrl - the Genrep server URL
+	 * @param method - the methods supported by Genrep
+	 * @param format - the format supported by Genrep
+	 * @param clazz - the class you want to get back (map the deserialization of the JSON)
+	 * @param key - the key to put in the URL (usually the same than the className)
+	 * @param query - the query (e.g : an id,md5,...)
+	 * @return - a GerepObject
+	 * @throws IOException
+	 * @throws MethodNotFoundException
+	 * @throws ClassNotFoundException
+	 */
+	public static  <T extends GenrepObject> GenrepObject doQuery(String servUrl, METHOD method, FORMAT format,
+			Class<? extends GenrepObject> clazz, KEY key, int query) throws IOException, MethodNotFoundException, ClassNotFoundException {
+		return doQuery(servUrl, method, format, clazz, key, Integer.toString(query));
 	}
 
 	
+	public static <T extends GenrepObject> GenrepObject[] doQueryList(String servUrl, METHOD method, FORMAT format,
+			Class<? extends GenrepObject[]> clazz, KEY key, String query) throws MethodNotFoundException, IOException {
+		String url = Constants.URL+"/"+key;
+		switch(method){
+		case INDEX : url +="."+format+"?"+query; 
+		break;
+		case SHOW : url +="/"+query+"."+format;
+		break;
+		default :
+			throw new MethodNotFoundException(" method must be part of "+METHOD.values());
+		}
+		System.out.println("fetching  "+url);
+		String result = InternetConnection.sendGETConnection(url);
+		GenrepObject[] genrepObjects = JsonMapper.deserializeArray(result, clazz);
+		GenrepObject[] newObjects = new GenrepObject[genrepObjects.length];
+		for(int i=0;i<genrepObjects.length;i++){
+			newObjects[i]=genrepObjects[i].getInstance();
+		}
+		return newObjects;
+	}
 	
 	
-	
-	
-	
-	
-	
+
+
 }

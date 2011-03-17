@@ -1,9 +1,0 @@
-A libraries which regroup methods to access and build a sqlite 
-database, formated for the BBCF (for qualitative and quantitative data)
-
-see javadoc for more information
-
-### BUILD INFO ###
-download project
-cd project_dir
-ant jar
