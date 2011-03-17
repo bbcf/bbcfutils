@@ -9,7 +9,7 @@ import sys
 
 usage = """sql_prepare_deconv.py input_sql input_bed output chrname chrlength cutoff read_len
 
-input_sql input sql files base name (will read input_fwd.sql and inpit_rev.sql)
+input_sql input sql files base name (will read input_fwd.sql and input_rev.sql)
 input_bed input bed file with region to select from
 output    output Rdata file
 chrname   name of chromosome to fetch from sql input
@@ -25,7 +25,7 @@ class Usage(Exception):
 def select_bed_line(c,s,e):
     sql = "select max(start,"+str(s)+"), "
     sql += "min(end,"+str(e)+"), "
-    sql += "score from "+c+" where "
+    sql += "score from '"+c+"' where "
     sql += "end>="+str(s)+" and start<"+str(e)+";"
     return sql
 
