@@ -9,7 +9,7 @@ import sys
 
 usage = """sql_prepare_deconv.py input_sql input_bed output chrname chrlength cutoff read_len
 
-input_sql input sql files base name (will read input_fwd.sql and input_rev.sql)
+input_sql input sql files base name (will read inputfwd.sql and inputrev.sql)
 input_bed input bed file with region to select from
 output    output Rdata file
 chrname   name of chromosome to fetch from sql input
@@ -56,10 +56,10 @@ def main(argv = None):
         read_length = argv[6]
 #        prod_shift = 50
 
-        strands = {'_fwd.sql':'plus','_rev.sql':'minus'}
+        strands = {'fwd.sql':'plus','rev.sql':'minus'}
         for suffix in strands.keys():
             if not(os.path.exists(db+suffix)):
-                raise Usage("Sqlite file %s does not exist." % db+suffix)
+                raise Usage("Sqlite file %s%s does not exist." % (db,suffix))
         if not(os.path.exists(bedfile)):
             raise Usage("Bed file %s does not exist." % bedfile)
         if os.path.exists(output_file):
