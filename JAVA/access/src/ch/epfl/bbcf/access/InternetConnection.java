@@ -52,6 +52,7 @@ public class InternetConnection {
 	 * @param urlConnection
 	 * @return
 	 */
+	@SuppressWarnings("finally")
 	private static DataInputStream getConnectionStream(HttpURLConnection urlConnection){
 		DataInputStream inStream = null;
 		try {

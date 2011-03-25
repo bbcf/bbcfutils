@@ -6,17 +6,13 @@ import java.util.List;
 
 import org.codehaus.jackson.type.TypeReference;
 
-import com.sun.tools.example.debug.bdi.MethodNotFoundException;
 
 import ch.epfl.bbcf.access.InternetConnection;
 import ch.epfl.bbcf.access.genrep.Constants.FORMAT;
 import ch.epfl.bbcf.access.genrep.Constants.KEY;
 import ch.epfl.bbcf.access.genrep.Constants.METHOD;
 import ch.epfl.bbcf.access.genrep.json.JsonMapper;
-import ch.epfl.bbcf.access.genrep.pojo.Assembly;
-import ch.epfl.bbcf.access.genrep.pojo.Chromosome;
 import ch.epfl.bbcf.access.genrep.pojo.GenrepObject;
-import ch.epfl.bbcf.access.genrep.pojo.Organism;
 
 
 

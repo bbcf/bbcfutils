@@ -1,18 +1,12 @@
 package ch.epfl.bbcf.access.genrep;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
-import org.codehaus.jackson.JsonNode;
-import org.codehaus.jackson.map.DeserializationConfig;
-import org.codehaus.jackson.map.DeserializationConfig.Feature;
-import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
 
-import com.sun.tools.example.debug.bdi.MethodNotFoundException;
 
-import ch.epfl.bbcf.access.InternetConnection;
+
 import ch.epfl.bbcf.access.genrep.Constants.FORMAT;
 import ch.epfl.bbcf.access.genrep.Constants.KEY;
 import ch.epfl.bbcf.access.genrep.Constants.METHOD;
@@ -21,7 +15,6 @@ import ch.epfl.bbcf.access.genrep.pojo.Chromosome;
 import ch.epfl.bbcf.access.genrep.pojo.Genome;
 import ch.epfl.bbcf.access.genrep.pojo.GenrepObject;
 import ch.epfl.bbcf.access.genrep.pojo.Organism;
-import ch.epfl.bbcf.access.genrep.pojo.Source;
 
 public class Examples {
 
@@ -92,6 +85,7 @@ public class Examples {
 	 * @throws IOException 
 	 * @throws MethodNotFoundException 
 	 */
+	@SuppressWarnings("unchecked")
 	private static List<Organism> getOrganisms() throws MethodNotFoundException, IOException {
 		return (List<Organism>) GenRepAccess.doQueryList(
 				Constants.URL, METHOD.ALL, FORMAT.json, new TypeReference<List<GenrepObject>>() {},KEY.organisms,null);

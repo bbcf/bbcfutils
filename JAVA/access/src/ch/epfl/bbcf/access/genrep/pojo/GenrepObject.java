@@ -22,32 +22,38 @@ public class GenrepObject {
 		this.instance = instance;
 	}
 
+	@SuppressWarnings("unused")
 	@JsonProperty(Constants.ASSEMBLY)
 	private void setAssembly(Assembly instance){
 		setInstance(instance);
 	}
 
+	@SuppressWarnings("unused")
 	@JsonProperty(Constants.CHROMOSOME)
 	private void setChromosome(Chromosome instance){
 		setInstance(instance);
 	}
 
+	@SuppressWarnings("unused")
 	@JsonProperty(Constants.ORGANISM)
 	private void setOrganism(Organism instance){
 		setInstance(instance);
 	}
 
+	@SuppressWarnings("unused")
 	@JsonProperty(Constants.GENOME)
 	private void setGenome(Genome instance){
 		setInstance(instance);
 	}
 
+	@SuppressWarnings("unused")
 	@JsonProperty(Constants.NR_ASSEMBLY)
 	private void setNrAssembly(NR_Assembly instance){
 		setInstance(instance);
 	}
 
 
+	@SuppressWarnings("unused")
 	@JsonProperty(Constants.SOURCE)
 	private void setSource(Source instance){
 		setInstance(instance);

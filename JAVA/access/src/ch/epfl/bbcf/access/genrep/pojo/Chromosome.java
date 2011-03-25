@@ -1,7 +1,6 @@
 package ch.epfl.bbcf.access.genrep.pojo;
 
 import org.codehaus.jackson.annotate.JsonCreator;
-import org.codehaus.jackson.annotate.JsonProperty;
 
 
 public class Chromosome extends GenrepObject{

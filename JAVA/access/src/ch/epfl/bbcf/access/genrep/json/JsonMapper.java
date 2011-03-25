@@ -3,14 +3,12 @@ package ch.epfl.bbcf.access.genrep.json;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.StringWriter;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.codehaus.jackson.JsonProcessingException;
 import org.codehaus.jackson.annotate.JsonAutoDetect;
 import org.codehaus.jackson.map.DeserializationConfig;
 import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.map.SerializationConfig;
 import org.codehaus.jackson.map.introspect.VisibilityChecker;
 import org.codehaus.jackson.node.TreeTraversingParser;
 import org.codehaus.jackson.type.TypeReference;
