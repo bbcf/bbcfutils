@@ -44,12 +44,12 @@ public class JsonMapper
 		return treeTraversingParser.readValueAs(targetClass);
 	}
 
-	public static <T extends GenrepObject> GenrepObject[] deserializeArray(String source,
-			Class<? extends GenrepObject[]> clazz) throws JsonProcessingException, IOException {
+	public static <T extends GenrepObject> List<? extends GenrepObject> deserializeArray(String source,
+			TypeReference<List<GenrepObject>> typeReference) throws JsonProcessingException, IOException {
 		ByteArrayInputStream stream = new ByteArrayInputStream(source.getBytes());
 		TreeTraversingParser treeTraversingParser = new TreeTraversingParser(mapper.readTree(stream));
 		treeTraversingParser.setCodec(mapper);
-		return treeTraversingParser.readValueAs(clazz);
+		return treeTraversingParser.readValueAs(typeReference);
 	}
 
 

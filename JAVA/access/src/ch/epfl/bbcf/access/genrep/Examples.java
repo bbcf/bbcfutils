@@ -8,6 +8,7 @@ import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.DeserializationConfig;
 import org.codehaus.jackson.map.DeserializationConfig.Feature;
 import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.type.TypeReference;
 
 import com.sun.tools.example.debug.bdi.MethodNotFoundException;
 
@@ -43,6 +44,11 @@ public class Examples {
 			for(Chromosome chromosome : chromosomes){
 				System.out.println("\tchromosome "+chromosome.getName()+" with id "+chromosome.getId());
 			}
+			//get all organisms
+			List<Organism> organisms = getOrganisms();
+			for(Organism o : organisms){
+				System.out.println(o.getSpecies());
+			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		} catch (MethodNotFoundException e) {
@@ -51,6 +57,8 @@ public class Examples {
 			e.printStackTrace();
 		}
 	}
+
+	
 
 	/**
 	 * Get an Assembly from it's id
@@ -78,8 +86,16 @@ public class Examples {
 				Constants.URL, METHOD.SHOW, FORMAT.json, Genome.class,KEY.genomes, id);
 	}
 	
-
-
+	/**
+	 * Get all organisms present in Genrep
+	 * @return A List of Organism
+	 * @throws IOException 
+	 * @throws MethodNotFoundException 
+	 */
+	private static List<Organism> getOrganisms() throws MethodNotFoundException, IOException {
+		return (List<Organism>) GenRepAccess.doQueryList(
+				Constants.URL, METHOD.ALL, FORMAT.json, new TypeReference<List<GenrepObject>>() {},KEY.organisms,null);
+	}
 
 	
 }
