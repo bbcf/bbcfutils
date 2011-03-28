@@ -59,7 +59,7 @@
   <target name="buildgdv" depends="clean,compileaccess">
     <jar destfile="jar/gdvsender.jar"
 	 basedir="bin"
-         includes="ch/epfl/bbcf/access/gdv/**/*.class">
+         includes="ch/epfl/bbcf/access/gdv/**/*.class ch/epfl/bbcf/access/*.class">
       <manifest>
         <attribute name="Main-Class" value="ch.epfl.bbcf.access.gdv.PostToGDV"/>
         <attribute name="Class-Path" value="${mf.classpath}" />

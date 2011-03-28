@@ -1,7 +1,6 @@
 package ch.epfl.bbcf.access.gdv;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 
@@ -48,6 +47,7 @@ public class RequestParameters {
 		Map<String,String[]> map = new HashMap<String,String[]>();
 		String required[] = {MAIL_PARAM,KEY_PARAM,COMMAND_PARAM};
 		String newProject[] = {SEQUENCE_ID_PARAM,NAME_PARAM};
+		@SuppressWarnings("unused")
 		String groupProject[] = {OBFUSCATED_PARAM};
 		String publicProject[] = {PUBLIC_PARAM};
 		String addTrack[] = {URL_PARAM,PROJECT_ID_PARAM};

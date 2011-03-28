@@ -3,14 +3,12 @@ package ch.epfl.bbcf.access.genrep.json;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.StringWriter;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.codehaus.jackson.JsonProcessingException;
 import org.codehaus.jackson.annotate.JsonAutoDetect;
 import org.codehaus.jackson.map.DeserializationConfig;
 import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.map.SerializationConfig;
 import org.codehaus.jackson.map.introspect.VisibilityChecker;
 import org.codehaus.jackson.node.TreeTraversingParser;
 import org.codehaus.jackson.type.TypeReference;
@@ -44,12 +42,12 @@ public class JsonMapper
 		return treeTraversingParser.readValueAs(targetClass);
 	}
 
-	public static <T extends GenrepObject> GenrepObject[] deserializeArray(String source,
-			Class<? extends GenrepObject[]> clazz) throws JsonProcessingException, IOException {
+	public static <T extends GenrepObject> List<? extends GenrepObject> deserializeArray(String source,
+			TypeReference<List<GenrepObject>> typeReference) throws JsonProcessingException, IOException {
 		ByteArrayInputStream stream = new ByteArrayInputStream(source.getBytes());
 		TreeTraversingParser treeTraversingParser = new TreeTraversingParser(mapper.readTree(stream));
 		treeTraversingParser.setCodec(mapper);
-		return treeTraversingParser.readValueAs(clazz);
+		return treeTraversingParser.readValueAs(typeReference);
 	}
 
 

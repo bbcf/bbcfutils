@@ -1,7 +1,6 @@
 package ch.epfl.bbcf.access.genrep;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class Constants {
@@ -29,11 +28,11 @@ public class Constants {
 	/**
 	 * Methods supported by Genrep
 	 */
-	public static enum METHOD {INDEX,SHOW};
+	public static enum METHOD {INDEX,SHOW,ALL};
 	/**
 	 * Formats supported by Genrep 
 	 */
-	public static enum FORMAT {json,html};
+	public static enum FORMAT {json,html,gtf};
 	
 	/**
 	 * List of parameters supported by Genrep
