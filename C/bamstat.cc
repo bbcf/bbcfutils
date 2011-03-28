@@ -19,7 +19,10 @@ static inline int samstats( const samtools::bam1_t *b, void *data )
 {
     size_t i = 0;
     if (read_length == 0) read_length = b->core.l_qseq;
-    if ((b->core.flag & BAM_FUNMAP) == 0) i = samtools::bam_aux2i(bam_aux_get(b,"NH"));
+    if ((b->core.flag & BAM_FUNMAP) == 0) {
+	i = samtools::bam_aux2i(bam_aux_get(b,"NH"));
+	if (i==0) i=1;
+    }
     (*(std::map< int, size_t >*)data)[i]++;
     if ((b->core.flag & BAM_FUNMAP) == 0) i = samtools::bam_aux2i(bam_aux_get(b,"NM"));
     (*(std::map< int, size_t >*)data)[-i-3]++;
