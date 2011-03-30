@@ -71,8 +71,9 @@
   <target name="buildgenrep" depends="clean,compileaccess">
     <jar destfile="jar/genrepaccess.jar"
          basedir="bin"
-         includes="ch/epfl/bbcf/access/genrep/**/*.class"
-         />
+         includes="ch/epfl/bbcf/access/genrep/**/*.class ch/epfl/bbcf/access/InternetConnection.class">
+      <zipgroupfileset dir="lib" includes="*.jar"/>
+    </jar>
   </target>
   
   <!-- compile sqlite -->
