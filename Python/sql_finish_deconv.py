@@ -38,7 +38,7 @@ def main(argv = None):
         connection.executemany('insert into %s (start,end,score) values (?,?,?)'%chr,vals)
         connection.commit()
         connection.close()
-        with open(outfile+'_deconv.bed','w') as fbed:
+        with open(outfile+'_deconv.bed','a') as fbed:
             for p in robjects.r.bed.iter_row():
                 bed_row = [p.rx2('chr')[0],
                            str(int(p.rx2('start')[0])),str(int(p.rx2('end')[0])),
