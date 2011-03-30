@@ -4,6 +4,7 @@ import java.io.IOException;
 
 import ch.epfl.bbcf.access.InternetConnection;
 
+
 /**
  * Remote access on GDV
  * This class is intended to give feedbacks message to GDV
