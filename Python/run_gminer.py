@@ -7,7 +7,8 @@ import gMiner
 
 usage = """run_gminer.py pickle_file
 
-pickle_file a pickle file with a dictionary describing the gMiner job
+pickle_file: a pickle file with a dictionary describing the gMiner job,
+saves the output as an entry 'job_output' in the same dictionary, same file.
 """
 
 class Usage(Exception):
@@ -23,7 +24,7 @@ def main(argv = None):
         pickle_file = argv[0]
         with open(pickle_file,'r') as f:
             job = pickle.load(f)
-        job['output_files'] = gMiner.run(**job)
+        job['job_output'] = gMiner.run(**job)
         with open(pickle_file,'w') as f:
             pickle.dump(job,f)
         sys.exit(0)
