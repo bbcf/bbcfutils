@@ -7,9 +7,10 @@ import getopt
 import os
 import sys
 
-usage = """sql_prepare_deconv.py input_sql input_bed output chrname chrlength cutoff read_len
+usage = """sql_prepare_deconv.py sql_fwd sql_rev input_bed output chrname chrlength cutoff read_len
 
-input_sql input sql files base name (will read inputfwd.sql and inputrev.sql)
+sql_fwd   input sql file for forward strand
+sql_rev   input sql file for reverse strand
 input_bed input bed file with region to select from
 output    output Rdata file
 chrname   name of chromosome to fetch from sql input
@@ -44,22 +45,23 @@ def main(argv = None):
     if argv is None:
         argv = sys.argv[1:]
     try:
-        if len(argv) != 7:
-            raise Usage("sql_prepare_deconv takes exactly 7 arguments.")
+        if len(argv) != 8:
+            raise Usage("sql_prepare_deconv takes exactly 8 arguments.")
 
-        db = argv[0]
-        bedfile = argv[1]
-        output_file = argv[2]
-        chromosome_name = argv[3]
-        chromosome_length = argv[4]
-        size_cutoff = argv[5]
-        read_length = argv[6]
+        dbfwd = argv[0]
+        dbrev = argv[1]
+        bedfile = argv[2]
+        output_file = argv[3]
+        chromosome_name = argv[4]
+        chromosome_length = argv[5]
+        size_cutoff = argv[6]
+        read_length = argv[7]
 #        prod_shift = 50
 
-        strands = {'fwd.sql':'plus','rev.sql':'minus'}
-        for suffix in strands.keys():
-            if not(os.path.exists(db+suffix)):
-                raise Usage("Sqlite file %s%s does not exist." % (db,suffix))
+        strands = {dbfwd:'plus',dbrev:'minus'}
+        for db in strands.keys():
+            if not(os.path.exists(db)):
+                raise Usage("Sqlite file %s does not exist." % db)
         if not(os.path.exists(bedfile)):
             raise Usage("Bed file %s does not exist." % bedfile)
         if os.path.exists(output_file):
@@ -87,8 +89,8 @@ def main(argv = None):
                           'plus': robjects.FloatVector([0 for i in allpos]),
                           'minus': robjects.FloatVector([0 for i in allpos]),
                           'name': robjects.StrVector([reg_name for i in allpos])}
-            for suffix,name in strands.iteritems():
-                connection = sqlite3.connect(db+suffix)
+            for db,name in strands.iteritems():
+                connection = sqlite3.connect(db)
                 cur = connection.cursor()
                 cur.execute(select_bed_line(chr, start, end))
                 connection.commit()

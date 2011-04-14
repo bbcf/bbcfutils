@@ -1,4 +1,3 @@
-.libPaths(new="/archive/epfl/bbcf/lib/R/x86_64")
 args=commandArgs(trailingOnly = TRUE)
 counts.file=args[1]
 pdf.file=args[2]

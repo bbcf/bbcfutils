@@ -1,12 +1,14 @@
-package ch.epfl.bbcf.parser;
+package ch.epfl.bbcf.bbcfutils.parser;
 
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import ch.epfl.bbcf.exception.ParsingException;
-import ch.epfl.bbcf.feature.BEDFeature;
-import ch.epfl.bbcf.feature.Track;
+import ch.epfl.bbcf.bbcfutils.parser.exception.ParsingException;
+import ch.epfl.bbcf.bbcfutils.parser.feature.BEDFeature;
+import ch.epfl.bbcf.bbcfutils.parser.feature.Track;
+
+
 
 
 public class BEDParser extends Parser{
@@ -73,8 +75,8 @@ public class BEDParser extends Parser{
 				start = getInt(chr_start_end_name_score_strand[1]);
 				end = getInt(chr_start_end_name_score_strand[2]);
 				break;
-			default: throw new ParsingException("The entry doesn't have the required number of fields " +
-					"(at least 3: chromosome, start, end separated by spaces or tabs): ", lineNb);
+			default: throw new ParsingException("the entry don't have required number of fields " +
+					"(at least 3 : chromosome,start,end separated by spaces or tabs): ", lineNb);
 			}
 			BEDFeature current = new BEDFeature(chromosome,start,end,name,strand,score,thickStart,thickEnd,itemRgb,blockCount,blockSizes,blockStarts);
 			newFeature(handler, cur_track, current);

@@ -1,4 +1,3 @@
-.libPaths(new="/archive/epfl/bbcf/lib/R/x86_64")
 options(stringsAsFactors=F)
 library(rjson)
 args=commandArgs(trailingOnly = TRUE)
