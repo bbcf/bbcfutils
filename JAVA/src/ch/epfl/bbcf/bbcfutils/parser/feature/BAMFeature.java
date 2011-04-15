@@ -1,13 +1,13 @@
 package ch.epfl.bbcf.bbcfutils.parser.feature;
-public class BAMFeature implements Feature{
+public class BAMFeature extends QualitativeFeature{
 
-	private String refName,readName;
+	private String readName;
 	private int start,stop;
 
 	
 	@Override
 	public String detail() {
-		return "BAMFeature : refName : "+refName+
+		return "BAMFeature : refName : "+chromosome+
 		" readName "+readName+" start "+start+" stop "+stop;
 	}
 
@@ -20,11 +20,11 @@ public class BAMFeature implements Feature{
 	}
 
 	public void setRefName(String refName) {
-		this.refName = refName;
+		this.chromosome = refName;
 	}
 
 	public String getRefName() {
-		return refName;
+		return chromosome;
 	}
 
 	public void setStart(int start) {
@@ -43,16 +43,5 @@ public class BAMFeature implements Feature{
 		return stop;
 	}
 
-	@Override
-	public String getChromosome() {
-		return refName;
-	}
-
-	@Override
-	public void setChromosome(String chromosome) {
-		this.refName = chromosome;
-	}
-
-	
 
 }

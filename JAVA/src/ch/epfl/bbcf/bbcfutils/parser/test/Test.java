@@ -62,7 +62,7 @@ public class Test{
 		MyParsingHandler handler = new Test.MyParsingHandler();
 		try {
 			parser.parse(new File(
-			"/path/to/wiggle/file") ,handler);
+			"/Users/jarosz/Documents/epfl/flat_files/tracks/quan/wig/rap1.wig") ,handler);
 		} catch (IOException e) {
 			e.printStackTrace();
 		} catch (ParsingException e) {
@@ -83,7 +83,7 @@ public class Test{
 		parser = new WIGParser(Processing.TOTAL);
 		try {
 			parser.parse(new File(
-			"/path/to/wiggle/file") ,handler);
+			"/Users/jarosz/Documents/epfl/flat_files/tracks/quan/wig/should_pass/long_header.wig") ,handler);
 		} catch (IOException e) {
 			e.printStackTrace();
 		} catch (ParsingException e) {

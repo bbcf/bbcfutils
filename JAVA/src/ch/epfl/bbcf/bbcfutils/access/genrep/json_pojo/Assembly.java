@@ -1,4 +1,4 @@
-package ch.epfl.bbcf.bbcfutils.access.genrep.pojo;
+package ch.epfl.bbcf.bbcfutils.access.genrep.json_pojo;
 
 import java.io.IOException;
 import java.util.ArrayList;

@@ -10,8 +10,8 @@ import ch.epfl.bbcf.bbcfutils.access.InternetConnection;
 import ch.epfl.bbcf.bbcfutils.access.genrep.Constants.FORMAT;
 import ch.epfl.bbcf.bbcfutils.access.genrep.Constants.KEY;
 import ch.epfl.bbcf.bbcfutils.access.genrep.Constants.METHOD;
-import ch.epfl.bbcf.bbcfutils.access.genrep.json.JsonMapper;
-import ch.epfl.bbcf.bbcfutils.access.genrep.pojo.GenrepObject;
+import ch.epfl.bbcf.bbcfutils.access.genrep.json_pojo.GenrepObject;
+import ch.epfl.bbcf.bbcfutils.json.JsonMapper;
 
 
 

@@ -1,4 +1,4 @@
-package ch.epfl.bbcf.bbcfutils.access.genrep.pojo;
+package ch.epfl.bbcf.bbcfutils.access.genrep.json_pojo;
 
 public class Genome extends GenrepObject{
 
