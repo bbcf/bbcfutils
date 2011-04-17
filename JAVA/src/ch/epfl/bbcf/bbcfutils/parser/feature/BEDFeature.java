@@ -2,18 +2,16 @@ package ch.epfl.bbcf.bbcfutils.parser.feature;
 
 public class BEDFeature extends QualitativeFeature{
 
-	private int thickStart,thickEnd;
+	private Integer thickStart,thickEnd;
 	private String itemRgb,blockCount,blockSize,blockStarts;
 	
-	public BEDFeature(String chromosome2, int start2, int end2, String name2,
-			Integer strand2, Float score2, int thickStart, int thickEnd, 
+	public BEDFeature(String chromosome2, Integer start2, Integer end2, String name2,
+			Integer strand2, Float score2, Integer thickStart, Integer thickEnd, 
 			String itemRgb, String blockCount, String blockSizes, String blockStarts) {
-		this.chromosome = chromosome2;
-		this.start = start2;
-		this.end = end2;
-		this.name = name2;
-		this.strand = strand2;
-		this.score = score2;
+		super(chromosome2, start2, end2, score2, strand2, name2,"");
+		this.attributes = buildAttributesfromBEDFeature(
+				thickEnd, thickEnd, itemRgb, 
+				blockCount, blockSizes, blockStarts);
 		this.thickStart=thickStart;
 		this.thickEnd=thickEnd;
 		this.itemRgb=itemRgb;
@@ -35,19 +33,19 @@ public class BEDFeature extends QualitativeFeature{
 		" blockStarts : "+this.blockStarts;
 	}
 
-	public void setThickStart(int thickStart) {
+	public void setThickStart(Integer thickStart) {
 		this.thickStart = thickStart;
 	}
 
-	public int getThickStart() {
+	public Integer getThickStart() {
 		return thickStart;
 	}
 
-	public void setThickEnd(int thickEnd) {
+	public void setThickEnd(Integer thickEnd) {
 		this.thickEnd = thickEnd;
 	}
 
-	public int getThickEnd() {
+	public Integer getThickEnd() {
 		return thickEnd;
 	}
 

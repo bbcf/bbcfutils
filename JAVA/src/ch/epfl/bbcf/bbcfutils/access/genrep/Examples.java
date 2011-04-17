@@ -3,16 +3,10 @@ package ch.epfl.bbcf.bbcfutils.access.genrep;
 import java.io.IOException;
 import java.util.List;
 
-import org.codehaus.jackson.type.TypeReference;
 
-import ch.epfl.bbcf.bbcfutils.access.genrep.Constants.FORMAT;
-import ch.epfl.bbcf.bbcfutils.access.genrep.Constants.KEY;
-import ch.epfl.bbcf.bbcfutils.access.genrep.Constants.METHOD;
 import ch.epfl.bbcf.bbcfutils.access.genrep.json_pojo.Assembly;
 import ch.epfl.bbcf.bbcfutils.access.genrep.json_pojo.Chromosome;
 import ch.epfl.bbcf.bbcfutils.access.genrep.json_pojo.Genome;
-import ch.epfl.bbcf.bbcfutils.access.genrep.json_pojo.GenrepObject;
-import ch.epfl.bbcf.bbcfutils.access.genrep.json_pojo.NR_Assembly;
 import ch.epfl.bbcf.bbcfutils.access.genrep.json_pojo.Organism;
 
 
@@ -27,7 +21,7 @@ public class Examples {
 
 		try {
 			//fetch the mus musculus nr assembly (mm9)
-			NR_Assembly nrAssembly = GenrepWrapper.getNrAssemblyFromId(70);
+			//NR_Assembly nrAssembly = GenrepWrapper.getNrAssemblyFromId(70);
 			Assembly assembly = GenrepWrapper.getAssemblyFromNrAssemblyId(70);
 			//print different info on the assembly
 			System.out.println("assembly "+assembly.getName()+" from "+assembly.getSource_name());

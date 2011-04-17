@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import ch.epfl.bbcf.bbcfutils.parser.feature.ExtendedQualitativeFeature;
 import ch.epfl.bbcf.bbcfutils.parser.feature.QualitativeFeature;
 
 
@@ -250,7 +251,18 @@ public class SQLiteAccess extends SQLiteParent{
 		feat.setAttributes(r.getString(6));
 		return feat;
 	}
-	
+	public ExtendedQualitativeFeature getNextExtendedQualitativeFeature(ResultSet r) throws SQLException{
+		ExtendedQualitativeFeature feat = new ExtendedQualitativeFeature();
+		feat.setStart(r.getInt(1));
+		feat.setEnd(r.getInt(2));
+		feat.setScore(r.getFloat(3));
+		feat.setName(r.getString(4));
+		feat.setStrand(r.getInt(5));
+		feat.setAttributes(r.getString(6));
+		feat.setType(r.getString(7));
+		feat.setIdentifier(r.getString(8));
+		return feat;
+	}
 
 	
 

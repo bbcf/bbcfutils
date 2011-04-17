@@ -1,4 +1,4 @@
-package ch.epfl.bbcf.bbcfutils.conversion;
+package ch.epfl.bbcf.bbcfutils.conversion.json;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import ch.epfl.bbcf.bbcfutils.Utility;
-import ch.epfl.bbcf.bbcfutils.conversion.json.Constants;
 import ch.epfl.bbcf.bbcfutils.conversion.json.pojo.TrackData;
 import ch.epfl.bbcf.bbcfutils.conversion.json.pojo.TrackData.ArrayParam;
 import ch.epfl.bbcf.bbcfutils.conversion.json.pojo.TrackData.HistStats;

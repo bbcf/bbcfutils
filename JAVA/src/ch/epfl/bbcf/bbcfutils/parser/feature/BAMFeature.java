@@ -1,5 +1,14 @@
 package ch.epfl.bbcf.bbcfutils.parser.feature;
+
+
+//FIXME don't work as expected
 public class BAMFeature extends QualitativeFeature{
+
+	public BAMFeature(String chromosome, int start, int end, float score,
+			int strand, String name, String attributes) {
+		super(chromosome, start, end, score, strand, name, attributes);
+		// TODO Auto-generated constructor stub
+	}
 
 	private String readName;
 	private int start,stop;
@@ -27,15 +36,15 @@ public class BAMFeature extends QualitativeFeature{
 		return chromosome;
 	}
 
-	public void setStart(int start) {
+	public void setStart(Integer start) {
 		this.start = start;
 	}
 
-	public int getStart() {
+	public Integer getStart() {
 		return start;
 	}
 
-	public void setStop(int stop) {
+	public void setStop(Integer stop) {
 		this.stop = stop;
 	}
 

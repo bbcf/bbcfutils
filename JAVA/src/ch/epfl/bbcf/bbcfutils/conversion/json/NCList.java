@@ -17,7 +17,6 @@ import ch.epfl.bbcf.bbcfutils.conversion.json.ConvertToJSON.JSONFeat;
  *
  */
 public class NCList {
-	@SuppressWarnings("unchecked")
 	public static void sort( List<JSONFeat> sortables){
 		Collections.sort(sortables);
 	}

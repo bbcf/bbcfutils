@@ -7,9 +7,9 @@ public class WIGFeature extends Feature{
 	private int format;
 	
 	
-	private int start,end,step,span;
+	private Integer start,end,step,span;
 	
-	private float score;
+	private Float score;
 	
 	
 	public WIGFeature(WIGFeature cur_feature) {

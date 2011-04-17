@@ -16,11 +16,11 @@ import org.json.JSONArray;
 import org.json.JSONException;
 
 import ch.epfl.bbcf.bbcfutils.Utility;
-import ch.epfl.bbcf.bbcfutils.conversion.Histo;
 import ch.epfl.bbcf.bbcfutils.conversion.json.pojo.TrackData;
 import ch.epfl.bbcf.bbcfutils.conversion.json.pojo.TrackData.ClientConfig;
 import ch.epfl.bbcf.bbcfutils.conversion.json.pojo.TrackData.Type;
 import ch.epfl.bbcf.bbcfutils.json.JsonMapper;
+import ch.epfl.bbcf.bbcfutils.parser.feature.ExtendedQualitativeFeature;
 import ch.epfl.bbcf.bbcfutils.parser.feature.JSONFeature;
 import ch.epfl.bbcf.bbcfutils.parser.feature.QualitativeFeature;
 import ch.epfl.bbcf.bbcfutils.sqlite.SQLiteAccess;
@@ -32,7 +32,6 @@ public class ConvertToJSON {
 
 
 	private String inputPath;
-	private Extension extension;
 	SQLiteAccess access;
 
 	private File curOuput;
@@ -40,16 +39,15 @@ public class ConvertToJSON {
 	private int curChunkSize;
 	private int curChunkNumber;
 	private int start;
-	private Type type;
+	private Type processingType;
 
-	public ConvertToJSON(String inputPath,Extension extension,Type type){
+	public ConvertToJSON(String inputPath,Type type){
 		this.setInputPath(inputPath);
-		this.setExtension(extension);
 		this.setType(type);
 	}
 
 
-	public boolean convert(String outputPath,String dbName,String ressourceUrl,List<String> types,String trackName){
+	public boolean convert(String outputPath,String dbName,String ressourceUrl,String trackName){
 		File dir = new File(outputPath+"/"+dbName);
 		if(!dir.mkdir()){
 			System.err.println("Directory creation failed : "+dir.getAbsolutePath());
@@ -96,12 +94,29 @@ public class ConvertToJSON {
 			try {
 				ResultSet r = access.prepareQualitativeFeatures(chromosome);
 				//iterate throught features
-				while(r.next()){
-					QualitativeFeature feature = access.getNextQualitativeFeature(r);
-					JSONFeature jsonFeature = new JSONFeature(feature);
-					jsonChromosome.addFeature(jsonFeature);
+				List<String> types = null;
+				switch(processingType){
+				case BASIC:
+					while(r.next()){
+						QualitativeFeature feature = access.getNextQualitativeFeature(r);
+						JSONFeature jsonFeature = new JSONFeature(feature);
+						jsonChromosome.addFeature(jsonFeature);
+					}
+					break;
+				case EXTENDED:
+					types = new ArrayList<String>();
+					while(r.next()){
+						ExtendedQualitativeFeature feature = access.getNextExtendedQualitativeFeature(r);
+						JSONFeature jsonFeature = new JSONFeature(feature);
+						jsonChromosome.addFeature(jsonFeature);
+						if(!types.contains(feature.getType())){
+							types.add(feature.getType());
+						}
+					}
+					break;
 				}
 				r.close();
+				
 				writeChromosome(jsonChromosome,length,dbName,ressourceUrl,types,trackName);
 
 
@@ -116,7 +131,11 @@ public class ConvertToJSON {
 
 		}
 
-
+		try {
+			access.close();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
 		return true;
 	}
 
@@ -141,11 +160,12 @@ public class ConvertToJSON {
 		NCList.sort(list);
 		try {
 			list = NCList.arrange(list);
+			
 		} catch (JSONException e) {
 			e.printStackTrace();
 		}
 
-		TrackData trackData = new TrackData(type,types);
+		TrackData trackData = new TrackData(processingType,types);
 		curChunkSize=0;
 		curChunkNumber=0;
 		start=-1;
@@ -185,7 +205,7 @@ public class ConvertToJSON {
 		//note : headers already written
 		trackData.setKey(trackName);
 		trackData.setClassName(Constants.CLASSNAME);
-		trackData.setClientConfig(new ClientConfig(type, types));
+		trackData.setClientConfig(new ClientConfig(processingType, types));
 		trackData.setType(Constants.TYPE);
 		trackData.setLabel(trackName);
 		return trackData;
@@ -235,6 +255,7 @@ public class ConvertToJSON {
 		if(start==-1){
 			start=feat.start;
 		}
+		//TODO
 		lazyOutput.add(feat.feature);
 		curChunkSize+=feat.featureCount;
 		if(feat.featureCount==0){
@@ -273,14 +294,7 @@ public class ConvertToJSON {
 	public String getInputPath() {
 		return inputPath;
 	}
-	public void setExtension(Extension extension) {
-		this.extension = extension;
-	}
-	public Extension getExtension() {
-		return extension;
-	}
-
-
+	
 
 
 
@@ -292,12 +306,12 @@ public class ConvertToJSON {
 
 
 	public void setType(Type type) {
-		this.type = type;
+		this.processingType = type;
 	}
 
 
 	public Type getType() {
-		return type;
+		return processingType;
 	}
 
 
@@ -332,7 +346,7 @@ public class ConvertToJSON {
 		 */
 		public void addFeature(JSONFeature feature) throws JSONException{
 			JSONFeat feat = new JSONFeat(
-					feature.getName(),feature.getStart(),feature.getEnd(),feature.getStrand(),feature.getType());
+					feature.getName(),feature.getStart(),feature.getEnd(),feature.getStrand(),feature.getScore(),feature.getType());
 			String key;
 			if(feature.getId()==null || feature.getId().equalsIgnoreCase("")){
 				randomId++;
@@ -359,26 +373,26 @@ public class ConvertToJSON {
 	 * @author Yohan Jarosz
 	 *
 	 */
-	public class JSONFeat implements Comparable{
+	public class JSONFeat implements Comparable<JSONFeat>{
 		private int start,end,strand,featureCount;
 		private String type;
 		private String parentName;
-		private boolean firstSubFeature;
 
 		public JSONArray subfeatures;
 		public JSONArray feature;
 		private String name;
+		private float score;
 
 
-		public JSONFeat(String name, int start2, int end2,int strand,String type) {
+		public JSONFeat(String name, int start2, int end2,int strand,float score,String type) {
 			this.start = start2;
 			this.end = end2;
 			this.strand = strand;
 			this.type = type;
 			this.featureCount=0;
-			this.firstSubFeature = true;
 			subfeatures = new JSONArray();
 			this.name = name;
+			this.score = score;
 		}
 
 		/**
@@ -390,13 +404,14 @@ public class ConvertToJSON {
 		 * @throws JSONException
 		 */
 		public void merge(JSONFeat old) throws JSONException {
+			System.out.println("merge");
 			this.subfeatures = old.subfeatures;
 			this.featureCount = old.featureCount+1;
-			switch(extension){
-			case BAM:
+			switch(processingType){
+			case BASIC:
 				this.subfeatures.put(new JSONArray("["+start+","+end+"]"));
 				break;
-			case GFF :
+			case EXTENDED :
 				this.subfeatures.put(new JSONArray("["+start+","+end+","+strand+",\""+type+"\"]"));
 				break;
 			}
@@ -414,11 +429,11 @@ public class ConvertToJSON {
 		 */
 		public void init() throws JSONException {
 			this.featureCount++;
-			switch(extension){
-			case BAM:
+			switch(processingType){
+			case BASIC:
 				this.subfeatures.put(new JSONArray("["+start+","+end+"]"));
 				break;
-			case GFF :
+			case EXTENDED :
 				this.subfeatures.put(new JSONArray("["+start+","+end+","+strand+",\""+type+"\"]"));
 				break;
 			}
@@ -429,17 +444,27 @@ public class ConvertToJSON {
 
 
 		public void initFeature() throws JSONException{
-			this.feature=new JSONArray("["+start+","+end+",\""+parentName+"\","+strand+"]");
-			if(featureCount>0){
-				this.feature.put(this.subfeatures);
+			switch(processingType){
+			case BASIC:
+				this.feature=new JSONArray("["+start+","+end+","+score+","+Utility.protect(parentName)+","+strand+"]");
+				break;
+			case EXTENDED:
+				this.feature=new JSONArray("["+start+","+end+","+Utility.protect(parentName)+","+strand+"]");
+				if(featureCount>0){
+					this.feature.put(this.subfeatures);
+				}
+				break;
 			}
+			
+			
 		}
 
+		
 		/**
 		 * method to sort the features
 		 */
-		public int compareTo(Object o) {
-			JSONFeat f = (JSONFeat)o;
+		@Override
+		public int compareTo(JSONFeat f) {
 			int res = this.start - f.start;
 			if(res == 0){
 				return f.end - this.end;
@@ -466,8 +491,8 @@ public class ConvertToJSON {
 		 */
 		public void nesting(JSONFeat nextFeat) throws JSONException {
 			JSONArray nested = null;
-			if(this.feature.length()==Constants.SUBLIST_INDEX){
-				nested = (JSONArray) this.feature.get(Constants.SUBLIST_INDEX-1);
+			if(this.feature.length()==Constants.SUBLIST_INDEX+1){
+				nested = this.feature.getJSONArray(Constants.SUBLIST_INDEX-1);
 			}
 			if(null!=nested){
 				nested.put(nextFeat.feature);
@@ -479,6 +504,8 @@ public class ConvertToJSON {
 			//update count
 			this.featureCount+=nextFeat.featureCount;
 		}
+
+		
 
 	}
 
@@ -513,12 +540,13 @@ public class ConvertToJSON {
 	}
 
 	public static void main(String[] args){
-		ConvertToJSON c = new ConvertToJSON("/Users/jarosz/Documents/epfl/flat_files/gff/Mus_musculus.sql",Extension.GFF, Type.EXTENDED);
-		c.convert("/Users/jarosz/Documents/epfl/flat_files/gff/json","Mus_musculus.sql", "../../tracks_dev",null, "THE_TRACK");
+		ConvertToJSON c = new ConvertToJSON("/Users/jarosz/Documents/epfl/flat_files/gff/Mus_musculus.sql", Type.BASIC);
+		c.convert("/Users/jarosz/Documents/epfl/flat_files/gff/json","be757fd10542050d7ed9fd29edcd9200.db", "../../tracks_dev", "THE_TRACK");
 	
 	}
 
 
+	
 
 
 

@@ -6,7 +6,8 @@ package ch.epfl.bbcf.bbcfutils.parser.feature;
 public class JSONFeature {
 
 	private String chromosome,id,name,type;
-	private int start,end,strand;
+	private Integer start,end,strand;
+	private Float score;
 
 
 
@@ -16,6 +17,18 @@ public class JSONFeature {
 		setStart(feature.getStart());
 		setEnd(feature.getEnd());
 		setStrand(feature.getStrand());
+		setScore(feature.getScore());
+	}
+	
+	public JSONFeature(ExtendedQualitativeFeature feature) {
+		setChromosome(feature.getChromosome());
+		setName(feature.getName());
+		setStart(feature.getStart());
+		setEnd(feature.getEnd());
+		setStrand(feature.getStrand());
+		setType(feature.getType());
+		setId(feature.getIdentifier());
+		setScore(feature.getScore());
 	}
 	public void setId(String id) {
 		this.id = id;
@@ -41,23 +54,31 @@ public class JSONFeature {
 	public String getType() {
 		return type;
 	}
-	public void setStart(int start) {
+	public void setStart(Integer start) {
 		this.start = start;
 	}
-	public int getStart() {
+	public Integer getStart() {
 		return start;
 	}
-	public void setEnd(int end) {
+	public void setEnd(Integer end) {
 		this.end = end;
 	}
-	public int getEnd() {
+	public Integer getEnd() {
 		return end;
 	}
-	public void setStrand(int strand) {
+	public void setStrand(Integer strand) {
 		this.strand = strand;
 	}
-	public int getStrand() {
+	public Integer getStrand() {
 		return strand;
+	}
+
+	public void setScore(Float score) {
+		this.score = score;
+	}
+
+	public Float getScore() {
+		return score;
 	}
 
 

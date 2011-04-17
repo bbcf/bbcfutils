@@ -13,7 +13,6 @@ import ch.epfl.bbcf.bbcfutils.access.genrep.GenrepWrapper;
 import ch.epfl.bbcf.bbcfutils.access.genrep.MethodNotFoundException;
 import ch.epfl.bbcf.bbcfutils.access.genrep.json_pojo.Assembly;
 import ch.epfl.bbcf.bbcfutils.access.genrep.json_pojo.Chromosome;
-import ch.epfl.bbcf.bbcfutils.parser.BAMParser;
 import ch.epfl.bbcf.bbcfutils.parser.BEDParser;
 import ch.epfl.bbcf.bbcfutils.parser.GFFParser;
 import ch.epfl.bbcf.bbcfutils.parser.Handler;
@@ -21,15 +20,13 @@ import ch.epfl.bbcf.bbcfutils.parser.Parser;
 import ch.epfl.bbcf.bbcfutils.parser.WIGParser;
 import ch.epfl.bbcf.bbcfutils.parser.Parser.Processing;
 import ch.epfl.bbcf.bbcfutils.parser.exception.ParsingException;
-import ch.epfl.bbcf.bbcfutils.parser.feature.BAMFeature;
-import ch.epfl.bbcf.bbcfutils.parser.feature.BEDFeature;
+import ch.epfl.bbcf.bbcfutils.parser.feature.ExtendedQualitativeFeature;
 import ch.epfl.bbcf.bbcfutils.parser.feature.Feature;
-import ch.epfl.bbcf.bbcfutils.parser.feature.GFFFeature;
+import ch.epfl.bbcf.bbcfutils.parser.feature.QualitativeFeature;
+import ch.epfl.bbcf.bbcfutils.parser.feature.QuantitativeFeature;
 import ch.epfl.bbcf.bbcfutils.parser.feature.Track;
-import ch.epfl.bbcf.bbcfutils.parser.feature.WIGFeature;
 import ch.epfl.bbcf.bbcfutils.sqlite.SQLiteAccess;
 import ch.epfl.bbcf.bbcfutils.sqlite.SQLiteConstruct;
-import ch.epfl.bbcf.bbcfutils.sqlite.SQLiteParent;
 
 public class ConvertToSQLite {
 
@@ -131,9 +128,9 @@ public class ConvertToSQLite {
 		case GFF:
 			p = new GFFParser(Processing.SEQUENCIAL);
 			break;
-		case BAM:
-			p = new BAMParser(Processing.SEQUENCIAL);
-			break;
+//		case BAM:
+//			p = new BAMParser(Processing.SEQUENCIAL);
+//			break;
 		}
 		return p;
 	}
@@ -196,40 +193,38 @@ public class ConvertToSQLite {
 			}
 			try {
 				switch(extension){
-				case WIG:
-					WIGFeature wig_feat = (WIGFeature)feature;
-					if(!construct.isCromosomeCreated(chromosome)){
-						construct.newChromosome_quant(wig_feat.getChromosome());
-					}
-					construct.writeValues_quant(chromosome, wig_feat.getStart(), 
-							wig_feat.getEnd(), wig_feat.getScore());
-					break;
-				case BED:
-					BEDFeature bed_feat = (BEDFeature)feature;
-					if(!construct.isCromosomeCreated(chromosome)){
-						construct.newChromosome_qual(chromosome);
-					}
-					construct.writeValues_qual(
-							chromosome, bed_feat.getStart(), bed_feat.getEnd(), 
-							bed_feat.getScore(), bed_feat.getName(), bed_feat.getStrand(),bed_feat.getAttributes());
-					break;
-				case BAM : 
-					BAMFeature bam_feat = (BAMFeature)feature;
-					if(!construct.isCromosomeCreated(chromosome)){
-						construct.newChromosome_qual(chromosome);
-					}
-					construct.writeValues_qual(
-							chromosome, bam_feat.getStart(), 
-							bam_feat.getStop(),0, bam_feat.getReadName(),0,bam_feat.getAttributes());
-					break;
 				case GFF : 
-					GFFFeature gfff_feat = (GFFFeature)feature;
+					ExtendedQualitativeFeature feat = (ExtendedQualitativeFeature)feature;
+					if(!construct.isCromosomeCreated(chromosome)){
+						construct.newChromosome_qual_extended(chromosome);
+					}
+					construct.writeValues_qual_extended(
+							chromosome, feat.getStart(), 
+							feat.getEnd(),feat.getScore(), 
+							feat.getName(),feat.getStrand(),
+							feat.getAttributes(),
+							feat.getType(),
+							feat.getIdentifier());
+					break;
+				case WIG:
+					QuantitativeFeature feat1 = (QuantitativeFeature)feature;
+					if(!construct.isCromosomeCreated(chromosome)){
+						construct.newChromosome_quant(feat1.getChromosome());
+					}
+					construct.writeValues_quant(chromosome, feat1.getStart(), 
+							feat1.getEnd(), feat1.getScore());
+					break;
+				case BED: case BAM:
+					QualitativeFeature feat2 = (QualitativeFeature)feature;
 					if(!construct.isCromosomeCreated(chromosome)){
 						construct.newChromosome_qual(chromosome);
 					}
 					construct.writeValues_qual(
-							chromosome, gfff_feat.getStart(), 
-							gfff_feat.getEnd(),gfff_feat.getScore(), gfff_feat.getName(),gfff_feat.getStrand(),gfff_feat.getAttributes());
+							chromosome, feat2.getStart(), feat2.getEnd(), 
+							feat2.getScore(),
+							feat2.getName(),
+							feat2.getStrand(),
+							feat2.getAttributes());
 					break;
 				}
 			} catch (SQLException e) {
@@ -237,8 +232,8 @@ public class ConvertToSQLite {
 			}
 		}
 
-		private String guessChromosome(String chromosome, int nrAssemblyId) {
-			if(nrAssemblyId!=-1){
+		private String guessChromosome(String chromosome, Integer nrAssemblyId) {
+			if(nrAssemblyId!=null){
 				if(!chromosome.equalsIgnoreCase(previousUnmapped)){
 					if(!chromosomes.contains(chromosome)){
 						try {
@@ -330,10 +325,10 @@ public class ConvertToSQLite {
 
 
 	public static void main(String[] args){
-		ConvertToSQLite c = new ConvertToSQLite("/Users/jarosz/Documents/epfl/flat_files/gff/Mus_musculus.NCBIM37.61.gtf",
-				Extension.GFF,70);
+		ConvertToSQLite c = new ConvertToSQLite("/Users/jarosz/Documents/epfl/flat_files/lib.bed",
+				Extension.BED,70);
 		try {
-			c.convert("/Users/jarosz/Documents/epfl/flat_files/gff/Mus_musculus.sql2");
+			c.convert("/Users/jarosz/Documents/epfl/flat_files/gff/bed.sql");
 		} catch (IOException e) {
 			e.printStackTrace();
 		} catch (ParsingException e) {

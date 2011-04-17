@@ -85,7 +85,6 @@ public class SQLiteConstruct extends SQLiteParent{
 
 
 	/**
-	 * {CONSTRUCTION}
 	 * create a new table for a chromosome for 
 	 * QUALITATIVE data
 	 * initialize a prepared statement which you can insert values in the table
@@ -100,6 +99,23 @@ public class SQLiteConstruct extends SQLiteParent{
 		this.connection.commit();
 		this.insertStatement.put(
 				chromosome,this.connection.prepareStatement("insert into "+protect(chromosome)+" values (?,?,?,?,?,?);"));
+
+	}
+	/**
+	 * create a new table for a chromosome for 
+	 * QUALITATIVE EXTENDED data
+	 * initialize a prepared statement which you can insert values in the table
+	 * (start,end,score,name,strand,attributes,type,id)
+	 * @param chromosome - the chromosome name
+	 * @throws SQLException
+	 */
+	public void newChromosome_qual_extended(String chromosome) throws SQLException {
+		PreparedStatement stat = this.connection.prepareStatement("create table if not exists " +
+				""+protect(chromosome)+" (start integer,end integer,score real,name text,strand integer,attributes text,type text,id text);");
+		stat.execute();
+		this.connection.commit();
+		this.insertStatement.put(
+				chromosome,this.connection.prepareStatement("insert into "+protect(chromosome)+" values (?,?,?,?,?,?,?,?);"));
 
 	}
 
@@ -140,7 +156,6 @@ public class SQLiteConstruct extends SQLiteParent{
 		return chrNames;
 	}
 	/**
-	 * {CONSTRUCTION}
 	 * look if the chromosome is already created
 	 * @param chromosome - the chromosome name
 	 * @return - true if the chromosome is created
@@ -151,7 +166,6 @@ public class SQLiteConstruct extends SQLiteParent{
 
 
 	/**
-	 * {CONSTRUCTION}
 	 * write values in the insert statement of the qualitative database
 	 * YOU MUST CALL newChromosome_qual(String chromosome) before
 	 * @param chr - the chromosome
@@ -162,9 +176,15 @@ public class SQLiteConstruct extends SQLiteParent{
 	 * @param strand
 	 * @throws SQLException
 	 */
-	public void writeValues_qual(String chr, int start, int end,float score,
-			String name, int strand, String attributes) throws SQLException{
+	public void writeValues_qual(String chr, Integer start, Integer end,Float score,
+			String name, Integer strand,String attributes) throws SQLException{
 		PreparedStatement prep = insertStatement.get(chr);
+		if(null==score){
+			score=0f;
+		}
+		if(null==strand){
+			strand=1;
+		}
 		if(null!=prep){
 			prep.setInt(1,start);
 			prep.setInt(2,end);
@@ -179,6 +199,36 @@ public class SQLiteConstruct extends SQLiteParent{
 					"the prepared statement for the chromosome "+chr+" is null, you must call newChromosome_qual("+chr+") before ");
 		}
 	}
+	/**
+	 * write values in the insert statement of the qualitative database
+	 * YOU MUST CALL newChromosome_qual(String chromosome) before
+	 * @param chr - the chromosome
+	 * @param start
+	 * @param end
+	 * @param score
+	 * @param name - name of the feature
+	 * @param strand
+	 * @throws SQLException
+	 */
+	public void writeValues_qual_extended(String chr, Integer start, Integer end,Float score,
+			String name, Integer strand,String attributes,String type,String id) throws SQLException{
+		PreparedStatement prep = insertStatement.get(chr);
+		if(null!=prep){
+			prep.setInt(1,start);
+			prep.setInt(2,end);
+			prep.setFloat(3,score);
+			prep.setString(4, name);
+			prep.setInt(5, strand);
+			prep.setString(6, attributes);
+			prep.setString(7, type);
+			prep.setString(8, id);
+			prep.execute();
+			verifyNbQueries();
+		} else {
+			System.err.println(
+					"the prepared statement for the chromosome "+chr+" is null, you must call newChromosome_qual_extended("+chr+") before ");
+		}
+	}
 
 	/**
 	 * {CONSTRUCTION}
@@ -190,7 +240,7 @@ public class SQLiteConstruct extends SQLiteParent{
 	 * @param score
 	 * @throws SQLException
 	 */
-	public void writeValues_quant(String chr,int start,int end,float score) throws SQLException{
+	public void writeValues_quant(String chr,Integer start,Integer end,Float score) throws SQLException{
 		PreparedStatement prep = insertStatement.get(chr);	
 		if(null!=prep){
 			prep.setInt(1,start);

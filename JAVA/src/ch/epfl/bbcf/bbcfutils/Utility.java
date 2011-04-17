@@ -9,7 +9,7 @@ public final class Utility {
 
 	protected static final int BUFF_SIZE = 1024;
 	protected static final byte[] buffer = new byte[BUFF_SIZE];
-	
+
 	/**
 	 * convenient method for writing a string to a file
 	 * @param toWrite
@@ -76,4 +76,12 @@ public final class Utility {
 		}
 	}
 
+
+	public static String protect(String str){
+		if(!str.startsWith("\"")){
+			return "\""+str+"\"";
+		} else {
+			return str;
+		}
+	}
 }

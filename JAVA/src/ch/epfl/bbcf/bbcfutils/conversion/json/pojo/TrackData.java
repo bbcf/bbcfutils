@@ -1,18 +1,9 @@
 package ch.epfl.bbcf.bbcfutils.conversion.json.pojo;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.codehaus.jackson.JsonParseException;
-import org.codehaus.jackson.annotate.JsonAutoDetect;
-import org.codehaus.jackson.map.JsonMappingException;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.map.SerializationConfig;
-import org.codehaus.jackson.map.introspect.VisibilityChecker;
 
 import ch.epfl.bbcf.bbcfutils.conversion.json.Constants;
 
@@ -138,7 +129,8 @@ public class TrackData {
 					"(function(feat, fields, div) { " +
 					"if (fields.type){ " +
 					"div.style.backgroundColor=\\\"#3333D7\\\";" +
-					"div.className = \\\"feat[fields.type]\\\"; " +
+					"div.className = \\\"basic\\\"; " +
+					"getFeatureStyle(feat[fields.type],div);" +
 					"}}" +
 					")\"";
 			}

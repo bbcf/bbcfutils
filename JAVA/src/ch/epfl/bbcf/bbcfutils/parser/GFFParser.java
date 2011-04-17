@@ -156,7 +156,6 @@ public class GFFParser extends Parser{
 				break;
 			}
 		}
-
 		return new GFFFeature(seqname,locationStart,locationEnd,
 				displayName,hierarchyId,score, frame, type, attributes);
 
@@ -166,6 +165,7 @@ public class GFFParser extends Parser{
 		Map<String, String> attMap = new HashMap<String, String>();
 		String[]atts = attributes.split(";");
 		for(String att:atts){
+			att = att.trim();
 			String[] keyvalue = att.split("\\s");
 			if(keyvalue.length>1){
 				attMap.put(keyvalue[0],keyvalue[1]);

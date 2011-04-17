@@ -6,8 +6,67 @@ import java.util.Map;
 public class QualitativeFeature extends Feature{
 
 	protected String attributes,name;
-	protected int start,end,strand;
-	protected float score;
+	protected Integer start,end,strand;
+	protected Float score;
+
+
+	public QualitativeFeature(String chromosome,
+			Integer start,Integer end,Float score,Integer strand,
+			String name,String attributes){
+		this.chromosome = chromosome;
+		this.start = start;
+		this.end = end;
+		this.score = score;
+		this.strand = strand;
+		this.name = name;
+		this.attributes = attributes;
+	}
+
+	public QualitativeFeature() {
+	}
+
+	public static String buildAttributesfromBEDFeature(
+			Integer thickStart, Integer thickEnd, 
+			String itemRgb, String blockCount,
+			String blockSizes, String blockStarts){
+		String attributes ="";
+		if(thickStart!=null){
+			attributes+=formatAttribute("thickStart", thickStart);
+		}
+		if(thickEnd!=null){
+			attributes+=formatAttribute("thickEnd", thickEnd);
+		}
+		if(itemRgb!=null){
+			attributes+=formatAttribute("itemRgb", itemRgb);
+		}
+		if(blockCount!=null){
+			attributes+=formatAttribute("blockCount",blockCount);
+		}
+		if(blockSizes!=null){
+			attributes+=formatAttribute("blockSizes",blockSizes);
+		}
+		if(blockStarts!=null){
+			attributes+=formatAttribute("blockStarts",blockStarts);
+		}
+		System.out.println(attributes);
+		return attributes;
+	}
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	private static String formatAttribute(String name,int attribute){
+		return name+" \""+attribute+"\";";
+	}
+	private static String formatAttribute(String name,String attribute){
+		return name+" \""+attribute+"\";";
+	}
 
 	public void setAttributes(String attributes) {
 		this.attributes = attributes;
@@ -16,7 +75,7 @@ public class QualitativeFeature extends Feature{
 	public String getAttributes() {
 		return attributes;
 	}
-	
+
 	public Map<String,String> getMapAttributes(){
 		Map<String, String> attMap = new HashMap<String, String>();
 		String[]atts = attributes.split(";");
@@ -27,7 +86,7 @@ public class QualitativeFeature extends Feature{
 			}
 		}
 		return attMap;
-		
+
 	}
 
 	public void setName(String name) {
@@ -38,35 +97,35 @@ public class QualitativeFeature extends Feature{
 		return name;
 	}
 
-	public void setStart(int start) {
+	public void setStart(Integer start) {
 		this.start = start;
 	}
 
-	public int getStart() {
+	public Integer getStart() {
 		return start;
 	}
 
-	public void setEnd(int end) {
+	public void setEnd(Integer end) {
 		this.end = end;
 	}
 
-	public int getEnd() {
+	public Integer getEnd() {
 		return end;
 	}
 
-	public void setStrand(int strand) {
+	public void setStrand(Integer strand) {
 		this.strand = strand;
 	}
 
-	public int getStrand() {
+	public Integer getStrand() {
 		return strand;
 	}
 
-	public void setScore(float score) {
+	public void setScore(Float score) {
 		this.score = score;
 	}
 
-	public float getScore() {
+	public Float getScore() {
 		return score;
 	}
 
@@ -78,4 +137,11 @@ public class QualitativeFeature extends Feature{
 		" strand : "+this.strand+
 		" attributes : "+this.attributes;
 	}
+
+
+
+
+
+
+
 }
