@@ -290,7 +290,6 @@ public class SQLiteConstruct extends SQLiteParent{
 
 	//FOR THE DAEMON <tranform_to_sqlite>
 	/**
-	 * {CONSTRUCTION}
 	 * convenient method which create a database for the use of 
 	 * the transform_to_sqlite daemon
 	 */

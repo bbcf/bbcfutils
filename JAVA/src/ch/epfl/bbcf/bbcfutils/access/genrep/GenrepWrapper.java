@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.codehaus.jackson.type.TypeReference;
 
+
 import ch.epfl.bbcf.bbcfutils.access.genrep.Constants.FORMAT;
 import ch.epfl.bbcf.bbcfutils.access.genrep.Constants.KEY;
 import ch.epfl.bbcf.bbcfutils.access.genrep.Constants.METHOD;

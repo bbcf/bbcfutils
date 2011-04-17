@@ -23,7 +23,7 @@ import ch.epfl.bbcf.bbcfutils.parser.feature.QualitativeFeature;
  */
 public class SQLiteAccess extends SQLiteParent{
 
-	
+
 
 	protected SQLiteAccess(Connection connection) {
 		super(connection);
@@ -232,7 +232,7 @@ public class SQLiteAccess extends SQLiteParent{
 		return result;
 	}
 
-	
+
 	public ResultSet prepareQualitativeFeatures(String chr) throws SQLException {
 		String query = "SELECT * FROM "+protect(chr)+" order by start asc";
 		Statement prep = connection.createStatement();
@@ -264,6 +264,22 @@ public class SQLiteAccess extends SQLiteParent{
 		return feat;
 	}
 
-	
+	public ExtendedQualitativeFeature getExtendedQualitativeFeature(String chr) throws SQLException{
+		ExtendedQualitativeFeature feat = new ExtendedQualitativeFeature();
+		String query = "SELECT * FROM "+protect(chr)+" limit 1";
+		Statement prep = connection.createStatement();
+		ResultSet r = prep.executeQuery(query);
+		while(r.next()){
+			feat.setStart(r.getInt(1));
+			feat.setEnd(r.getInt(2));
+			feat.setScore(r.getFloat(3));
+			feat.setName(r.getString(4));
+			feat.setStrand(r.getInt(5));
+			feat.setAttributes(r.getString(6));
+			feat.setType(r.getString(7));
+			feat.setIdentifier(r.getString(8));
+		}
+		return feat;
+	}
 
 }

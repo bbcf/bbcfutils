@@ -56,7 +56,7 @@ public class ConvertToSQLite {
 		this.extension=extension;
 		this.nrAssemblyId=-1;
 	}
-	public ConvertToSQLite(String inputPath,Extension extension,int nrAssemblyId){
+	public ConvertToSQLite(String inputPath,Extension extension,int nrAssemblyId) throws MethodNotFoundException, IOException{
 		this.inputPath = inputPath;
 		this.parser = takeParser(extension);
 		this.handler = takeHandler();
@@ -82,23 +82,18 @@ public class ConvertToSQLite {
 	 * fetch the list of chromosomes from Genrep
 	 * @param nrAssemblyId2 the nr assembly identifier
 	 * @return a list of chromosomes names
+	 * @throws IOException 
+	 * @throws MethodNotFoundException 
 	 */
-	private List<String> takeChromosomes(int nrAssemblyId2) {
+	private List<String> takeChromosomes(int nrAssemblyId2) throws MethodNotFoundException, IOException {
 		Assembly assembly;
-		try {
-			assembly = GenrepWrapper.getAssemblyFromNrAssemblyId(nrAssemblyId2);
-			List<Chromosome> chromosomes = assembly.getChromosomes();
-			List<String> chrNames = new ArrayList<String>();
-			for(Chromosome chromosome : chromosomes){
-				chrNames.add(chromosome.getName());
-			}
-			return chrNames;
-		} catch (MethodNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
+		assembly = GenrepWrapper.getAssemblyFromNrAssemblyId(nrAssemblyId2);
+		List<Chromosome> chromosomes = assembly.getChromosomes();
+		List<String> chrNames = new ArrayList<String>();
+		for(Chromosome chromosome : chromosomes){
+			chrNames.add(chromosome.getName());
 		}
-		return null;
+		return chrNames;
 	}
 
 	/**
@@ -128,9 +123,9 @@ public class ConvertToSQLite {
 		case GFF:
 			p = new GFFParser(Processing.SEQUENCIAL);
 			break;
-//		case BAM:
-//			p = new BAMParser(Processing.SEQUENCIAL);
-//			break;
+			//		case BAM:
+			//			p = new BAMParser(Processing.SEQUENCIAL);
+			//			break;
 		}
 		return p;
 	}
@@ -240,7 +235,7 @@ public class ConvertToSQLite {
 							if(altsNames.containsKey(chromosome)){
 								chromosome=altsNames.get(chromosome);
 							} else {
-								
+
 								Chromosome newChr = GenrepWrapper.guessChromosome(chromosome, assembly.getId());
 								if(null==newChr){
 									previousUnmapped=chromosome;
@@ -323,26 +318,6 @@ public class ConvertToSQLite {
 
 	}
 
-
-	public static void main(String[] args){
-		ConvertToSQLite c = new ConvertToSQLite("/Users/jarosz/Documents/epfl/flat_files/lib.bed",
-				Extension.BED,70);
-		try {
-			c.convert("/Users/jarosz/Documents/epfl/flat_files/gff/bed.sql");
-		} catch (IOException e) {
-			e.printStackTrace();
-		} catch (ParsingException e) {
-			e.printStackTrace();
-		} catch (InstantiationException e) {
-			e.printStackTrace();
-		} catch (IllegalAccessException e) {
-			e.printStackTrace();
-		} catch (ClassNotFoundException e) {
-			e.printStackTrace();
-		} catch (SQLException e) {
-			e.printStackTrace();
-		}
-	}
 
 
 	public void setNrAssemblyId(int nrAssemblyId) {
