@@ -2,25 +2,33 @@
 
 
 <project basedir="." default="buildall" name="bbcgutils">
-  <property name="sqlite.dir"     value="sqlite/src"/>
-  <property name="access.dir"     value="access/src"/>
-  <property name="parser.dir"     value="parser/src"/>
   <property environment="env"/>
   <property name="debuglevel" value="source,lines,vars"/>
   <property name="target" value="1.6"/>
   <property name="source" value="1.6"/>
+  <property name="src.dir" location="src"/>
+  <property name="lib.dir" location="lib"/>
+
   <path id="all.classpath">
     <pathelement location="bin"/>
-    <pathelement location="lib/jackson-all-1.7.4.jar"/>
+    <pathelement location="lib/jackson-all-1.7.6.jar"/>
+    <pathelement location="lib/json-1.0.jar"/>
+    <pathelement location="lib/biojava3-genome-3.0.1.jar"/>
   </path>
+
+  
+  <target name="download" depends="init">
+    <get src="http://www.biojava.org/download/maven/org/biojava/biojava3-genome/3.0/biojava3-genome-3.0.jar" dest="${lib.dir}/biojava3-genome-3.0.1.jar"/>
+    <!-- <get src="http://www.xerial.org/maven/repository/artifact/org/xerial/sqlite-jdbc/3.7.2/sqlite-jdbc-3.7.2.jar" dest="${lib.dir}/sqlite-jdbc-3.7.2.jar"/> -->
+    <get src="http://jackson.codehaus.org/1.7.6/jackson-all-1.7.6.jar" dest="${lib.dir}/jackson-all-1.7.6.jar"/>
+    <get src="http://salt.epfl.ch/maven/org/json/json/1.0/json-1.0.jar" dest="${lib.dir}/json-1.0.jar"/>
+
+    
+  </target>
 
   <!-- tasks -->
   <target name="tasks">
-    <echo message="buildall - build all libraries"/>
-    <echo message="buildgdv - build gdv sender"/>
-    <echo message="buildgenrep - build genrep library"/>
-    <echo message="buildsqlite - build sqlite library"/>
-    <echo message="buildparser - build parser library"/>
+    <echo message="buildall - build bbcfutils library"/>
   </target>
   <!-- classpath -->
   <pathconvert property="mf.classpath" pathsep=" ">
@@ -37,86 +45,53 @@
   <target name="init">
     <mkdir dir="bin"/>
     <mkdir dir="jar"/>
+    <mkdir dir="lib"/>
   </target>
   <!-- cleaning -->
   <target name="clean">
     <delete dir="bin"/>
     <delete dir="jar"/>
+    <delete dir="lib"/>
   </target>
 
   <!-- build all -->
-  <target name="buildall" depends="buildgdv,buildgenrep,buildsqlite,buildparser"/>
+  <target name="buildall" depends="build_bbcfutils,buildgdv"/>
 
   <!-- compile access -->
-  <target depends="init" name="compileaccess">
+  <target depends="init,download" name="compileaccess">
     <echo message="${ant.project.name}: ${ant.file}"/>
     <javac includeantruntime="true" debug="true" debuglevel="${debuglevel}" destdir="bin" source="${source}" target="${target}">
-      <src path="${access.dir}"/>
+      <src path="${src.dir}"/>
       <classpath refid="all.classpath"/>
     </javac>
   </target>
    <!-- build gdv --> 
-  <target name="buildgdv" depends="clean,compileaccess">
+  <target name="buildgdv" depends="clean,download,compileaccess">
     <jar destfile="jar/gdvsender.jar"
 	 basedir="bin"
-         includes="ch/epfl/bbcf/access/gdv/**/*.class ch/epfl/bbcf/access/*.class">
+         includes="ch/epfl/bbcf/bbcfutils/access/gdv/**/*.class ch/epfl/bbcf/bbcfutils/access/*.class">
       <manifest>
-        <attribute name="Main-Class" value="ch.epfl.bbcf.access.gdv.PostToGDV"/>
+        <attribute name="Main-Class" value="ch.epfl.bbcf.bbcfutils.access.gdv.PostToGDV"/>
         <attribute name="Class-Path" value="${mf.classpath}" />
       </manifest>
     </jar>
   </target>
 
-  <!-- build genrep -->
-  <target name="buildgenrep" depends="clean,compileaccess">
-    <jar destfile="jar/genrepaccess.jar"
+  <!-- build bbcfutils -->
+  <target name="build_bbcfutils" depends="clean,compileaccess">
+    <jar destfile="jar/bbcfutils.jar"
          basedir="bin"
-         includes="ch/epfl/bbcf/access/genrep/**/*.class ch/epfl/bbcf/access/InternetConnection.class">
+         includes="**/*.class">
       <zipgroupfileset dir="lib" includes="*.jar"/>
     </jar>
   </target>
   
-  <!-- compile sqlite -->
-  <target depends="init" name="compilesqlite">
+  <!-- compile bbcfutils -->
+  <target depends="init" name="compile_bbcfutils">
     <echo message="${ant.project.name}: ${ant.file}"/>
     <javac includeantruntime="true" debug="true" debuglevel="${debuglevel}" destdir="bin" source="${source}" target="${target}">
-      <src path="${sqlite.dir}"/>
+      <src path="${src.dir}"/>
       <classpath refid="all.classpath"/>
     </javac>
   </target>
-  <!-- build sqlite -->
-  <target name="buildsqlite" depends="clean,compilesqlite">
-    <jar destfile="jar/bbcf_sqlite.jar"
-         basedir="bin"
-         includes="ch/epfl/bbcf/sqlite/**/*.class"
-         />
-  </target>
-
-
-  <!-- compile parser -->
-  <target depends="init" name="compileparser">
-    <echo message="${ant.project.name}: ${ant.file}"/>
-    <javac includeantruntime="true" debug="true" debuglevel="${debuglevel}" destdir="bin" source="${source}" target="${target}">
-      <src path="${parser.dir}"/>
-      <classpath refid="all.classpath"/>
-    </javac>
-  </target>
-  
-  <!-- build parser -->
-   <target name="buildparser" depends="clean,compileparser">
-     <jar destfile="jar/bbcf_parser.jar"
-          basedir="bin"
-          includes="ch/epfl/bbcf/parser/**/*.class"
-          />
-   </target>
-
-  <!-- compiling -->
- <!--  <target depends="init" name="compile"> -->
-<!--     <echo message="${ant.project.name}: ${ant.file}"/> -->
-<!--     <javac includeantruntime="true" debug="true" debuglevel="${debuglevel}" destdir="bin" source="${source}" target="${target}"> -->
-<!--       <src path="src"/> -->
-<!--       <classpath refid="all.classpath"/> -->
-<!--     </javac> -->
-<!--   </target> -->
-  
 </project>
