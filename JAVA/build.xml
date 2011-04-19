@@ -7,11 +7,24 @@
   <property name="target" value="1.6"/>
   <property name="source" value="1.6"/>
   <property name="src.dir" location="src"/>
+  <property name="lib.dir" location="lib"/>
 
   <path id="all.classpath">
     <pathelement location="bin"/>
-    <pathelement location="lib/jackson-all-1.7.4.jar"/>
+    <pathelement location="lib/jackson-all-1.7.6.jar"/>
+    <pathelement location="lib/json-1.0.jar"/>
+    <pathelement location="lib/biojava3-genome-3.0.1.jar"/>
   </path>
+
+  
+  <target name="download" depends="init">
+    <get src="http://www.biojava.org/download/maven/org/biojava/biojava3-genome/3.0/biojava3-genome-3.0.jar" dest="${lib.dir}/biojava3-genome-3.0.1.jar"/>
+    <!-- <get src="http://www.xerial.org/maven/repository/artifact/org/xerial/sqlite-jdbc/3.7.2/sqlite-jdbc-3.7.2.jar" dest="${lib.dir}/sqlite-jdbc-3.7.2.jar"/> -->
+    <get src="http://jackson.codehaus.org/1.7.6/jackson-all-1.7.6.jar" dest="${lib.dir}/jackson-all-1.7.6.jar"/>
+    <get src="http://salt.epfl.ch/maven/org/json/json/1.0/json-1.0.jar" dest="${lib.dir}/json-1.0.jar"/>
+
+    
+  </target>
 
   <!-- tasks -->
   <target name="tasks">
@@ -32,18 +45,20 @@
   <target name="init">
     <mkdir dir="bin"/>
     <mkdir dir="jar"/>
+    <mkdir dir="lib"/>
   </target>
   <!-- cleaning -->
   <target name="clean">
     <delete dir="bin"/>
     <delete dir="jar"/>
+    <delete dir="lib"/>
   </target>
 
   <!-- build all -->
   <target name="buildall" depends="build_bbcfutils,buildgdv"/>
 
   <!-- compile access -->
-  <target depends="init" name="compileaccess">
+  <target depends="init,download" name="compileaccess">
     <echo message="${ant.project.name}: ${ant.file}"/>
     <javac includeantruntime="true" debug="true" debuglevel="${debuglevel}" destdir="bin" source="${source}" target="${target}">
       <src path="${src.dir}"/>
@@ -51,7 +66,7 @@
     </javac>
   </target>
    <!-- build gdv --> 
-  <target name="buildgdv" depends="clean,compileaccess">
+  <target name="buildgdv" depends="clean,download,compileaccess">
     <jar destfile="jar/gdvsender.jar"
 	 basedir="bin"
          includes="ch/epfl/bbcf/bbcfutils/access/gdv/**/*.class ch/epfl/bbcf/bbcfutils/access/*.class">

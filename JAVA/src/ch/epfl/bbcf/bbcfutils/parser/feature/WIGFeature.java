@@ -1,16 +1,15 @@
 package ch.epfl.bbcf.bbcfutils.parser.feature;
 
-public class WIGFeature implements Feature{
+public class WIGFeature extends Feature{
 
 	public static final int VARIABLE_STEP = 1;
 	public static final int FIXED_STEP = 2;
 	private int format;
 	
-	private String chromosome;
 	
-	private int start,end,step,span;
+	private Integer start,end,step,span;
 	
-	private float score;
+	private Float score;
 	
 	
 	public WIGFeature(WIGFeature cur_feature) {

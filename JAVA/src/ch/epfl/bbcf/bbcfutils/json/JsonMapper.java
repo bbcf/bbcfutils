@@ -1,4 +1,4 @@
-package ch.epfl.bbcf.bbcfutils.access.genrep.json;
+package ch.epfl.bbcf.bbcfutils.json;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -13,7 +13,7 @@ import org.codehaus.jackson.map.introspect.VisibilityChecker;
 import org.codehaus.jackson.node.TreeTraversingParser;
 import org.codehaus.jackson.type.TypeReference;
 
-import ch.epfl.bbcf.bbcfutils.access.genrep.pojo.GenrepObject;
+import ch.epfl.bbcf.bbcfutils.access.genrep.json_pojo.GenrepObject;
 
 
 public class JsonMapper

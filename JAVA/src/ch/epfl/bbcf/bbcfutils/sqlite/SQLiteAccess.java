@@ -1,6 +1,5 @@
 package ch.epfl.bbcf.bbcfutils.sqlite;
 
-import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -12,57 +11,35 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import ch.epfl.bbcf.bbcfutils.parser.feature.ExtendedQualitativeFeature;
+import ch.epfl.bbcf.bbcfutils.parser.feature.QualitativeFeature;
+
 
 /**
- * A java class which regroup methods to access and build a sqlite 
+ * A java class which regroup methods to access a sqlite 
  * database, formated for the BBCF (for qualitative and quantitative data),
- * separated in two categories {MANIPULATION} & {CONSTRUCTION}
  * @author Yohan Jarosz
  *
  */
-public class SQLiteAccess {
-
-	/**
-	 * a sqlite connection to a database
-	 */
-	private Connection connection;
-	/**
-	 * key = chromosome name,so the table name
-	 * value = a prepared statement
-	 */
-	private Map<String,PreparedStatement> insertStatement;
-
-	/**
-	 * current number of queries
-	 */
-	private int nbQueries;
-
-	/**
-	 * the number limit of queries to reach
-	 * before committing 
-	 */
-	private int limitQueries;
+public class SQLiteAccess extends SQLiteParent{
 
 
-	private SQLiteAccess(Connection connection){
-		this.connection = connection;
-		this.insertStatement = new HashMap<String, PreparedStatement>();
-		this.limitQueries = 100000;
-		this.nbQueries = 0;
+
+	protected SQLiteAccess(Connection connection) {
+		super(connection);
 	}
-	private SQLiteAccess(Connection conn,int limitQueries){
-		this.connection = conn;
-		this.insertStatement = new HashMap<String, PreparedStatement>();
-		this.limitQueries = limitQueries;
-		this.nbQueries=0;
+
+
+	protected SQLiteAccess(Connection conn, int limitQueries) {
+		super(conn, limitQueries);
 	}
 
 	/**
 	 * return a SQLiteAccess object from a sqlite database
-	 * with the connection to the fdatabase built in
+	 * with the connection to the database built in
 	 * DON'T FORGET TO CALL close() METHOD WHEN YOU FINISHED TO USE SQLiteAccess
 	 * @param fullPath - the path oh the database
-	 * @return - SQLiteAccess
+	 * @return - SQLiteConstruct
 	 * @throws InstantiationException
 	 * @throws IllegalAccessException
 	 * @throws ClassNotFoundException
@@ -77,20 +54,20 @@ public class SQLiteAccess {
 	}
 	/**
 	 * return a SQLiteAccess object from a sqlite database
-	 * with the connection to the fdatabase built in
+	 * with the connection to the database built in
 	 * DON'T FORGET TO CALL close() METHOD WHEN YOU FINISHED TO USE SQLiteAccess
 	 * @param fullPath - the path oh the database
 	 * @param limitQueriesSize - the limit of queries to reach 
 	 * before doing an automatic commit
 	 * useful when you build a database and have high number of insert to do -
 	 * set to 100000 by default 
-	 * @return - SQLiteAccess
+	 * @return - SQLiteConstruct
 	 * @throws InstantiationException
 	 * @throws IllegalAccessException
 	 * @throws ClassNotFoundException
 	 * @throws SQLiteAccess
 	 */
-	public static SQLiteAccess getConnectionWithDatabase(String fullPath,int limitQueriesSize)
+	protected static SQLiteAccess getConnectionWithDatabase(String fullPath,int limitQueriesSize)
 	throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException{
 		Class.forName("org.sqlite.JDBC").newInstance();
 		Connection conn = DriverManager.getConnection("jdbc:sqlite:/"+fullPath);
@@ -98,34 +75,6 @@ public class SQLiteAccess {
 		return new SQLiteAccess(conn,limitQueriesSize);
 	}
 
-	/**
-	 * the method to call when you finished to use
-	 * SQLiteAccess
-	 * @throws SQLException
-	 */
-	public void close() throws SQLException{
-		this.connection.close();
-	}
-	/**
-	 * commit
-	 * @throws SQLException
-	 */
-	public void commit() throws SQLException{
-		this.connection.commit();
-	}
-	/**
-	 *  execute the query
-	 * @param statement - the statement
-	 * @param query - the query
-	 * @return a Resultset
-	 * @throws SQLException
-	 */
-	public static ResultSet getResultSet(Statement statement,String query) throws SQLException{
-		return statement.executeQuery(query);
-	}
-
-
-	//MANIPULATION METHODS//
 
 	/**
 	 * {MANIPULATION}
@@ -145,7 +94,6 @@ public class SQLiteAccess {
 		rs.close();
 		return f;
 	}
-
 
 
 
@@ -263,7 +211,6 @@ public class SQLiteAccess {
 	}
 
 	/**
-	 * {MANIPULATION}
 	 * try to find coordinates (start,end) of a gene by it's name
 	 * - EXACT MATCH -
 	 * @param chr - the chromosome
@@ -284,239 +231,55 @@ public class SQLiteAccess {
 		r.close();
 		return result;
 	}
-	
-	
-	
-	
-	
-	
 
-	//CONSTRUCTION METHODS//
-	/**
-	 * {CONSTRUCTION}
-	 * create a new database
-	 * @param type : must be qualitative or quantitative
-	 */
-	public void createNewDatabase(String type) throws SQLException{
-		Statement stat;
-		stat = this.connection.createStatement();
-		stat.executeUpdate("drop table if exists attributes;");
-		stat.executeUpdate("create table attributes (key text, value text);");
-		PreparedStatement prep = this.connection.prepareStatement("insert into attributes values (?,?);");
-		prep.setString(1, "datatype");
-		prep.setString(2,type);
-		prep.executeUpdate();
+
+	public ResultSet prepareQualitativeFeatures(String chr) throws SQLException {
+		String query = "SELECT * FROM "+protect(chr)+" order by start asc";
+		Statement prep = connection.createStatement();
+		ResultSet r = prep.executeQuery(query);
+		return r;
 	}
 
 
-	/**
-	 * {CONSTRUCTION}
-	 * create a new table for a chromosome for 
-	 * QUALITATIVE data
-	 * initialize a prepared statement which you can insert values in the table
-	 * (start,end,score,name,strand,attributes)
-	 * @param chromosome - the chromosome name
-	 * @throws SQLException
-	 */
-	public void newChromosome_qual(String chromosome) throws SQLException {
-		PreparedStatement stat = this.connection.prepareStatement("create table if not exists " +
-				""+protect(chromosome)+" (start integer,end integer,score real,name text,strand integer,attributes text);");
-		stat.execute();
-		this.connection.commit();
-		this.insertStatement.put(
-				chromosome,this.connection.prepareStatement("insert into "+protect(chromosome)+" values (?,?,?,?,?,?);"));
-
+	public QualitativeFeature getNextQualitativeFeature(ResultSet r) throws SQLException{
+		QualitativeFeature feat = new QualitativeFeature();
+		feat.setStart(r.getInt(1));
+		feat.setEnd(r.getInt(2));
+		feat.setScore(r.getFloat(3));
+		feat.setName(r.getString(4));
+		feat.setStrand(r.getInt(5));
+		feat.setAttributes(r.getString(6));
+		return feat;
+	}
+	public ExtendedQualitativeFeature getNextExtendedQualitativeFeature(ResultSet r) throws SQLException{
+		ExtendedQualitativeFeature feat = new ExtendedQualitativeFeature();
+		feat.setStart(r.getInt(1));
+		feat.setEnd(r.getInt(2));
+		feat.setScore(r.getFloat(3));
+		feat.setName(r.getString(4));
+		feat.setStrand(r.getInt(5));
+		feat.setAttributes(r.getString(6));
+		feat.setType(r.getString(7));
+		feat.setIdentifier(r.getString(8));
+		return feat;
 	}
 
-	/**
-	 * {CONSTRUCTION}
-	 * create a new table for a chromosome for 
-	 * QUANTITATIVE data
-	 * initialize prepared statement which you can insert values in the table (start,end,score)
-	 * @param chromosome - the chromosome name
-	 *  
-	 * @throws SQLException
-	 */
-	public void newChromosome_quant(String chromosome) throws SQLException{
-		PreparedStatement stat = this.connection.prepareStatement("create table if not exists "+protect(chromosome)+" (start integer,end integer,score real);");
-		stat.execute();
-		this.connection.commit();
-		this.insertStatement.put(
-				chromosome,this.connection.prepareStatement("insert into "+protect(chromosome)+" values (?,?,?);"));
-	}
-
-
-	/**
-	 * {CONSTRUCTION}
-	 * get the all the chromosomes names in a sqlite database before the table
-	 * chromosome names is created
-	 * @return - a list of chromosome names
-	 * @throws SQLException 
-	 */
-	public List<String> getChromosomesNames() throws SQLException {
-		List<String> chrNames = new ArrayList<String>();
-		Statement stat = connection.createStatement();
-		String query = "SELECT name FROM sqlite_master where type='table'and name!='attributes';";
-		ResultSet rs = getResultSet(stat, query);
-		while (rs.next()) {
-			chrNames.add(rs.getString(1));
+	public ExtendedQualitativeFeature getExtendedQualitativeFeature(String chr) throws SQLException{
+		ExtendedQualitativeFeature feat = new ExtendedQualitativeFeature();
+		String query = "SELECT * FROM "+protect(chr)+" limit 1";
+		Statement prep = connection.createStatement();
+		ResultSet r = prep.executeQuery(query);
+		while(r.next()){
+			feat.setStart(r.getInt(1));
+			feat.setEnd(r.getInt(2));
+			feat.setScore(r.getFloat(3));
+			feat.setName(r.getString(4));
+			feat.setStrand(r.getInt(5));
+			feat.setAttributes(r.getString(6));
+			feat.setType(r.getString(7));
+			feat.setIdentifier(r.getString(8));
 		}
-		rs.close();
-		return chrNames;
-	}
-	/**
-	 * {CONSTRUCTION}
-	 * look if the chromosome is already created
-	 * @param chromosome - the chromosome name
-	 * @return - true if the chromosome is created
-	 */
-	public boolean isCromosomeCreated(String chromosome){
-		return insertStatement.get(chromosome)!=null;
-	}
-	/**
-	 * {CONSTRUCTION}
-	 * write values in the insert statement of the qualitative database
-	 * YOU MUST CALL newChromosome_qual(String hromosome) before
-	 * @param chr - the chromosome
-	 * @param start
-	 * @param end
-	 * @param score
-	 * @param name - name of the feature
-	 * @param strand
-	 * @throws SQLException
-	 */
-	public void writeValues_qual(String chr,int start,int end,float score,String name, int strand) throws SQLException{
-		PreparedStatement prep = insertStatement.get(chr);	
-		if(null!=prep){
-			prep.setInt(1,start);
-			prep.setInt(2,end);
-			prep.setFloat(3,score);
-			prep.setString(4, name);
-			prep.setInt(5, strand);
-			prep.execute();
-			verifyNbQueries();
-		} else {
-			System.err.println(
-					"the prepared statement for the chromosome "+chr+" is null, you must call newChromosome_qual("+chr+") before ");
-		}
-	}
-
-	/**
-	 * {CONSTRUCTION}
-	 * write values in the insert statement of the qualitative database
-	 * YOU MUST CALL newChromosome_quant(String chromosome) before
-	 * @param chr
-	 * @param start
-	 * @param end
-	 * @param score
-	 * @throws SQLException
-	 */
-	public void writeValues_quant(String chr,int start,int end,float score) throws SQLException{
-		PreparedStatement prep = insertStatement.get(chr);	
-		if(null!=prep){
-			prep.setInt(1,start);
-			prep.setInt(2,end);
-			prep.setFloat(3,score);
-			prep.execute();
-			verifyNbQueries();
-		} else {
-			System.err.println(
-					"the prepared statement for the chromosome "+chr+" is null, you must call newChromosome_quant("+chr+") before ");
-		}
-	}
-
-	/**
-	 * {CONSTRUCTION}
-	 * finalize the database with the creation of the
-	 * table chrNames (name,length) and an index
-	 * @param chr_length a Map with key = chromosome name and value = it's length
-	 * @throws SQLException
-	 */
-	public void finalizeDatabase(Map<String,Integer> chr_length) throws SQLException{
-		Statement stat = this.connection.createStatement();
-		stat.executeUpdate("create table chrNames (name text, length integer);");
-		PreparedStatement prep = this.connection.prepareStatement("insert into chrNames values (?,?);");
-		int i=0;
-		for(Map.Entry<String, Integer>entry : chr_length.entrySet()){
-			i++;
-			String chr = entry.getKey();
-			Statement stat2 = this.connection.createStatement();
-			stat2.executeUpdate("create index if not exist ind_name_"+i+" on "+chr+" (name);");
-			int length = entry.getValue();
-			prep.setString(1, chr);
-			prep.setInt(2,length);
-			prep.executeUpdate();
-		}
-		this.connection.commit();
-	}
-
-
-	//OTHERS//
-
-	/**
-	 * convenient method to protect a string for sqlite database
-	 * e.g : if you have a table called 2micron, 
-	 * sqlite will not create the table unless you protect it
-	 * with double quotes
-	 * @param str
-	 * @return
-	 */
-	private static String protect(String str){
-		return "\""+str+"\"";
-	}
-
-	/**
-	 * Overrided method of Object
-	 * in order to properly close the connection
-	 * when garbage collector is called
-	 */
-	public void finalize(){
-		try {
-			close();
-		} catch (SQLException e) {
-			e.printStackTrace();
-		}
-		try {
-			super.finalize();
-		} catch (Throwable e) {
-			e.printStackTrace();
-		}
-	}
-
-	/**
-	 * convenient method to commit if the number of
-	 * queries during the connection
-	 * exceed the limit
-	 * @throws SQLException
-	 */
-	private void verifyNbQueries() throws SQLException{
-		this.nbQueries++;
-		if(nbQueries>limitQueries){
-			this.commit();
-			nbQueries = 0;
-		}
-	}
-
-
-	//FOR THE DAEMON <tranform_to_sqlite>
-	/**
-	 * {CONSTRUCTION}
-	 * convenient method which create a database for the use of 
-	 * the transform_to_sqlite daemon
-	 */
-	public static boolean initJobsDatabase(File jobs) throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException{
-		Class.forName("org.sqlite.JDBC").newInstance();
-		Connection conn = DriverManager.getConnection("jdbc:sqlite:/"+jobs.getAbsolutePath());
-		Statement stat = conn.createStatement();
-		stat.execute("create table jobs " + 
-				"(file text, " +
-				"trackId text," + //the trackId in gdv database
-				"tmpdir text," + //a tmp directory to delete after usage 
-				"extension text," + //extension of the file
-				"mail text," + // the mail to feedback (nomail if no feedback)
-		"nrassemblyid text);");  // the assembly id of the genome in generep
-
-		return true;
+		return feat;
 	}
 
 }
