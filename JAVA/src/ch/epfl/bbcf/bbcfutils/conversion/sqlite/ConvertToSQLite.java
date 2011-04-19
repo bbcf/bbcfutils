@@ -150,10 +150,12 @@ public class ConvertToSQLite {
 	 * @throws ClassNotFoundException
 	 * @throws SQLException
 	 */
-	public boolean convert(String outputPath) throws IOException, ParsingException, InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException{
+	public boolean convert(String outputPath,String type) throws IOException, ParsingException, InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException{
 		this.outputPath = outputPath;
 		File input = new File(inputPath);
 		this.construct = SQLiteConstruct.getConnectionWithDatabase(outputPath);
+		this.construct.createNewDatabase(type);
+		this.construct.commit();
 		if(!input.exists()){
 			throw new FileNotFoundException(inputPath);
 		}
@@ -179,6 +181,7 @@ public class ConvertToSQLite {
 	private class ParsingHandler implements Handler{
 		@Override
 		public void newFeature(Feature feature) {
+			System.out.println("new feature "+feature.detail());
 			String chromosome = feature.getChromosome();
 			//change the chromosome name if a 
 			//nr assembly id is provided
@@ -186,6 +189,7 @@ public class ConvertToSQLite {
 			if(null==chromosome){
 				return;
 			}
+			System.out.println("chr "+chromosome);
 			try {
 				switch(extension){
 				case GFF : 
