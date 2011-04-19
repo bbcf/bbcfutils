@@ -13,6 +13,7 @@ import ch.epfl.bbcf.bbcfutils.access.genrep.GenrepWrapper;
 import ch.epfl.bbcf.bbcfutils.access.genrep.MethodNotFoundException;
 import ch.epfl.bbcf.bbcfutils.access.genrep.json_pojo.Assembly;
 import ch.epfl.bbcf.bbcfutils.access.genrep.json_pojo.Chromosome;
+import ch.epfl.bbcf.bbcfutils.exception.ExtensionNotRecognisedException;
 import ch.epfl.bbcf.bbcfutils.parser.BEDParser;
 import ch.epfl.bbcf.bbcfutils.parser.GFFParser;
 import ch.epfl.bbcf.bbcfutils.parser.Handler;
@@ -49,23 +50,26 @@ public class ConvertToSQLite {
 
 	private String outputPath;
 
-	public ConvertToSQLite(String inputPath,Extension extension){
+	public ConvertToSQLite(String inputPath,Extension extension) throws ExtensionNotRecognisedException{
 		this.inputPath = inputPath;
 		this.parser = takeParser(extension);
 		this.handler = takeHandler();
 		this.extension=extension;
 		this.nrAssemblyId=-1;
 	}
-	public ConvertToSQLite(String inputPath,Extension extension,int nrAssemblyId) throws MethodNotFoundException, IOException{
+	public ConvertToSQLite(String inputPath,Extension extension,int nrAssemblyId) throws MethodNotFoundException, IOException, ExtensionNotRecognisedException{
 		this.inputPath = inputPath;
 		this.parser = takeParser(extension);
 		this.handler = takeHandler();
 		this.extension=extension;
 		this.nrAssemblyId=nrAssemblyId;
+		System.out.println("before t chr ");
 		this.chromosomes = takeChromosomes(nrAssemblyId);
+		System.out.println("chr taken ");
 		this.altsNames=new HashMap<String, String>();
 		this.previousUnmapped="";
 		this.assembly = takeAssembly(nrAssemblyId);
+		System.out.println("end construct");
 	}
 
 	private Assembly takeAssembly(int nrAssemblyId2) {
@@ -110,8 +114,9 @@ public class ConvertToSQLite {
 	 * right extension
 	 * @param extension - the extension
 	 * @return the parser
+	 * @throws ExtensionNotRecognisedException 
 	 */
-	private static Parser takeParser(Extension extension) {
+	private static Parser takeParser(Extension extension) throws ExtensionNotRecognisedException {
 		Parser p = null;
 		switch(extension){
 		case WIG:case BEDGRAPH:
@@ -126,6 +131,8 @@ public class ConvertToSQLite {
 			//		case BAM:
 			//			p = new BAMParser(Processing.SEQUENCIAL);
 			//			break;
+			default :
+				throw new ExtensionNotRecognisedException(extension);
 		}
 		return p;
 	}
@@ -151,14 +158,20 @@ public class ConvertToSQLite {
 	 * @throws SQLException
 	 */
 	public boolean convert(String outputPath,String type) throws IOException, ParsingException, InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException{
+		System.out.println("convert");
 		this.outputPath = outputPath;
+		System.out.println("convert "+outputPath);
 		File input = new File(inputPath);
+		System.out.println("new file :"+inputPath);
 		this.construct = SQLiteConstruct.getConnectionWithDatabase(outputPath);
+		System.out.println("get connection");
 		this.construct.createNewDatabase(type);
+		System.out.println("create db");
 		this.construct.commit();
 		if(!input.exists()){
 			throw new FileNotFoundException(inputPath);
 		}
+		System.out.println("parse");
 		this.parser.parse(input, handler);
 		return true;
 	}
@@ -181,7 +194,6 @@ public class ConvertToSQLite {
 	private class ParsingHandler implements Handler{
 		@Override
 		public void newFeature(Feature feature) {
-			System.out.println("new feature "+feature.detail());
 			String chromosome = feature.getChromosome();
 			//change the chromosome name if a 
 			//nr assembly id is provided
@@ -189,7 +201,6 @@ public class ConvertToSQLite {
 			if(null==chromosome){
 				return;
 			}
-			System.out.println("chr "+chromosome);
 			try {
 				switch(extension){
 				case GFF : 
@@ -339,4 +350,34 @@ public class ConvertToSQLite {
 		return chromosomes;
 	}
 
+	public static void main(String[] args){
+		try {
+			ConvertToSQLite c = new ConvertToSQLite("/Users/jarosz/Documents/epfl/flat_files/gff/Mus_musculus.NCBIM37.61.gtf",Extension.GFF,70);
+			c.convert("/Users/jarosz/Documents/epfl/flat_files/gff/test.db","qualitative");
+		} catch (MethodNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (ParsingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InstantiationException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IllegalAccessException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (ExtensionNotRecognisedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
 }
