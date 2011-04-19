@@ -53,7 +53,7 @@ int main(int argc, char **argv){
     FILE *fin=NULL;
 
     WeightMat *wm=NULL, *bg=NULL, *wmR=NULL;
-    if(argc<4){
+    if(argc<5){
         fprintf(stderr, "usage: S1K wm1 bg cutoff fasta\n");
         exit(0);
     }
