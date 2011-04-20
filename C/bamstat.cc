@@ -1,5 +1,6 @@
 #include <map>
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <cstdlib>
 namespace samtools {
@@ -66,7 +67,7 @@ int main( int argc, char **argv )
     if (argc>2) {
 	samtools::bam_parse_region( _fs->header, argv[2], &chid, &start, &end);
 	if (chid < 0) {
-	    fprintf(stderr, "Invalid region %s\n", argv[2]);
+	    std::cerr << "Invalid region " << argv[2] << "\n";
 	    return 11;
 	}
 	end = std::min( (int)_fs->header->target_len[chid], end );
@@ -104,11 +105,14 @@ int main( int argc, char **argv )
     if ( stats.count(0) ) unmap = stats[0];
     std::cout << "Unmapped " << unmap << "\n";
     std::cout << "Expected coverage " 
+	      << std::setiosflags(std::ios::fixed) 
+	      << std::setprecision(6)
 	      << (double)ntag/(double)(2.0*genome_size)
 	      << "\n";
     double act_cov = 0;
-    if ( stats.count(-1)) act_cov = (double)stats[-1]/(double)(2.0*genome_size);
-    std::cout << "Actual coverage " << act_cov << "\n";
+    if ( stats.count(-1) ) act_cov = (double)stats[-1]/(double)(2.0*genome_size);
+    std::cout << "Actual coverage " << std::setiosflags(std::ios::fixed) 
+	      << std::setprecision(6) << act_cov << "\n";
     std::cout << "Mismatches Reads\n";
     for ( std::map< int, size_t >::const_iterator I = stats.upper_bound(-3); 
 	  I != stats.begin(); ) {
