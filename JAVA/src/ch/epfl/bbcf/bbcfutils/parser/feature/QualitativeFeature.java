@@ -48,7 +48,6 @@ public class QualitativeFeature extends Feature{
 		if(blockStarts!=null){
 			attributes+=formatAttribute("blockStarts",blockStarts);
 		}
-		System.out.println(attributes);
 		return attributes;
 	}
 

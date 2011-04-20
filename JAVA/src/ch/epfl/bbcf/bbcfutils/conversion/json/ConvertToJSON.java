@@ -17,9 +17,11 @@ import org.json.JSONException;
 
 import ch.epfl.bbcf.bbcfutils.Utility;
 import ch.epfl.bbcf.bbcfutils.conversion.json.pojo.TrackData;
+import ch.epfl.bbcf.bbcfutils.conversion.json.pojo.TrackDataQuantitative;
 import ch.epfl.bbcf.bbcfutils.conversion.json.pojo.TrackData.ClientConfig;
 import ch.epfl.bbcf.bbcfutils.conversion.json.pojo.TrackData.Type;
 import ch.epfl.bbcf.bbcfutils.json.JsonMapper;
+import ch.epfl.bbcf.bbcfutils.parser.exception.ParsingException;
 import ch.epfl.bbcf.bbcfutils.parser.feature.ExtendedQualitativeFeature;
 import ch.epfl.bbcf.bbcfutils.parser.feature.JSONFeature;
 import ch.epfl.bbcf.bbcfutils.parser.feature.QualitativeFeature;
@@ -40,81 +42,147 @@ public class ConvertToJSON {
 	private int curChunkNumber;
 	private int start;
 	private Type processingType;
+	private int end;
+	private String type;
 
-	public ConvertToJSON(String inputPath){
+	public ConvertToJSON(String inputPath,String type){
 		this.setInputPath(inputPath);
+		this.type = type;
 	}
 
 
-	public boolean convert(String outputPath,String dbName,String ressourceUrl,String trackName) throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException, JSONException, IOException{
-		File dir = new File(outputPath+"/"+dbName);
-		if(!dir.mkdir()){
-			System.err.println("Directory creation failed : "+dir.getAbsolutePath());
+	public boolean convert(String outputPath,String dbName,String ressourceUrl,String trackName) throws ParsingException{
+		File test = new File(outputPath+"/"+dbName);
+		if(test.exists()){
+			System.err.println("already exist");
+		}
+		boolean success = (new File(outputPath+"/"+dbName)).mkdir();
+		if(!success){
+			System.err.println("Directory creation failed : "+outputPath+"/"+dbName);
 			return false;
 		}
-		this.access = (SQLiteAccess) SQLiteAccess.getConnectionWithDatabase(inputPath);
+		try {
+			this.access = (SQLiteAccess) SQLiteAccess.getConnectionWithDatabase(inputPath);
+		} catch (InstantiationException e) {
+			throw new ParsingException(e);
+		} catch (IllegalAccessException e) {
+			throw new ParsingException(e);
+		} catch (ClassNotFoundException e) {
+			throw new ParsingException(e);
+		} catch (SQLException e) {
+			throw new ParsingException(e);
+		}
 
 
 
 		//get chromosomes
 		Map<String, Integer> chromosomes;
-		chromosomes = access.getChromosomesAndLength();
+		try {
+			chromosomes = access.getChromosomesAndLength();
+		} catch (SQLException e1) {
+			throw new ParsingException(e1);
+		}
 		if(null==chromosomes){
 			System.err.println("no chromosomes found");
 			return false;
 		}
-		//guess type (BASIC or EXTENDED)
-		processingType = Type.EXTENDED;
-		if(!chromosomes.isEmpty()){
-			String firstChromosome = chromosomes.keySet().iterator().next();
+		if(type.equalsIgnoreCase("quantitative")){
 			try{
-				this.access.getExtendedQualitativeFeature(firstChromosome);
-			}catch(SQLException e){
-				processingType = Type.BASIC;
-			}
-		}
-		System.out.println("TYPE : "+processingType);
-
-
-		//iterate throuht chromosomes
-		for(Map.Entry<String, Integer> entry : chromosomes.entrySet()){
-			final String chromosome = entry.getKey();
-			final int length = entry.getValue();
-			//make directory
-			if(!makeDirectory(chromosome,outputPath+"/"+dbName)){
-				System.err.println("cannot create directory : "+outputPath+"/"+dbName+"/"+chromosome);
-				return false;
-			}
-
-			JSONChromosome jsonChromosome = new JSONChromosome(chromosome);
-			ResultSet r = access.prepareQualitativeFeatures(chromosome);
-			//iterate throught features
-			List<String> types = null;
-			switch(processingType){
-			case BASIC:
-				while(r.next()){
-					QualitativeFeature feature = access.getNextQualitativeFeature(r);
-					JSONFeature jsonFeature = new JSONFeature(feature);
-					jsonChromosome.addFeature(jsonFeature);
+				for(Map.Entry<String, Integer> entry : chromosomes.entrySet()){
+					final String chromosome = entry.getKey();
+					makeDirectory(chromosome,outputPath+"/"+dbName);
+					float max;
+					max = access.getMaxScoreForChr(chromosome);
+					float min = access.getMinScoreForChr(chromosome);
+					TrackDataQuantitative tdata = new TrackDataQuantitative(
+							Constants.TILE_WIDTH, Math.round(min), Math.round(max), dbName, chromosome);
+					String json = JsonMapper.serialize(tdata);
+					OutputStream out = new FileOutputStream(curOuput+"/../"+chromosome+".json");
+					Utility.write(json,out);
+					Utility.close(out);
 				}
-				break;
-			case EXTENDED:
-				types = new ArrayList<String>();
-				while(r.next()){
-					ExtendedQualitativeFeature feature = access.getNextExtendedQualitativeFeature(r);
-					JSONFeature jsonFeature = new JSONFeature(feature);
-					jsonChromosome.addFeature(jsonFeature);
-					if(!types.contains(feature.getType())){
-						types.add(feature.getType());
+				access.close();
+			} catch (SQLException e) {
+				throw new ParsingException(e);
+			} catch (IOException e) {
+				throw new ParsingException(e);
+			}
+			return true;
+		} else if(type.equalsIgnoreCase("qualitative")){
+			//guess type (BASIC or EXTENDED)
+			processingType = Type.EXTENDED;
+			if(!chromosomes.isEmpty()){
+				String firstChromosome = chromosomes.keySet().iterator().next();
+				try{
+					this.access.getExtendedQualitativeFeature(firstChromosome);
+				}catch(SQLException e){
+					processingType = Type.BASIC;
+				}
+			}
+			System.out.println("TYPE : "+processingType);
+
+
+			//iterate throuht chromosomes
+			for(Map.Entry<String, Integer> entry : chromosomes.entrySet()){
+				final String chromosome = entry.getKey();
+				final int length = entry.getValue();
+				//make directory
+				if(!makeDirectory(chromosome,outputPath+"/"+dbName)){
+					System.err.println("cannot create directory : "+outputPath+"/"+dbName+"/"+chromosome);
+					return false;
+				}
+				try {
+					JSONChromosome jsonChromosome = new JSONChromosome(chromosome);
+					ResultSet r;
+
+					r = access.prepareQualitativeFeatures(chromosome);
+
+					//iterate throught features
+					List<String> types = null;
+					switch(processingType){
+					case BASIC:
+						while(r.next()){
+							QualitativeFeature feature = access.getNextQualitativeFeature(r);
+							JSONFeature jsonFeature = new JSONFeature(feature);
+							jsonChromosome.addFeature(jsonFeature);
+						}
+						break;
+					case EXTENDED:
+						types = new ArrayList<String>();
+						while(r.next()){
+							ExtendedQualitativeFeature feature = access.getNextExtendedQualitativeFeature(r);
+							JSONFeature jsonFeature = new JSONFeature(feature);
+							jsonChromosome.addFeature(jsonFeature);
+							if(!types.contains(feature.getType())){
+								types.add(feature.getType());
+							}
+						}
+						break;
 					}
+					r.close();
+					writeChromosome(jsonChromosome,length,dbName,ressourceUrl,types,trackName);
+				} catch (SQLException e) {
+					throw new ParsingException(e);
+				} catch (JSONException e) {
+					throw new ParsingException(e);
+				} catch (InstantiationException e) {
+					throw new ParsingException(e);
+				} catch (IllegalAccessException e) {
+					throw new ParsingException(e);
+				} catch (ClassNotFoundException e) {
+					throw new ParsingException(e);
+				} catch (IOException e) {
+					throw new ParsingException(e);
 				}
-				break;
 			}
-			r.close();
-			writeChromosome(jsonChromosome,length,dbName,ressourceUrl,types,trackName);
+			try {
+				access.close();
+			} catch (SQLException e) {
+				throw new ParsingException(e);
+			}
+			return true;
 		}
-		access.close();
-		return true;
+		return false;
 	}
 
 
@@ -137,17 +205,18 @@ public class ConvertToJSON {
 		}
 		NCList.sort(list);
 		list = NCList.arrange(list);
-
 		TrackData trackData = new TrackData(processingType,types);
 		curChunkSize=0;
 		curChunkNumber=0;
 		start=-1;
+		end=-1;
 		trackData.setFeatureNCList(new ArrayList<Object>());
 		//write lazyOutput & NClist
 		LazyOutput lazyOutput = new LazyOutput(curOuput.getAbsolutePath());
 		for(int i=0;i<list.size();i++){
 			trackData = writeLazyFeatures(list.get(i),lazyOutput,trackData);
 		}
+		addToTrackData(trackData);
 		lazyOutput.writeLazyOutputAndClose();
 		trackData.setLazyfeatureUrlTemplate("../"+dbName+"/"+jsonChromosome.chromosome_name+"/lazyfeatures-{chunk}.json");
 		//get feature count
@@ -156,22 +225,23 @@ public class ConvertToJSON {
 		//write histogram meta
 		trackData = writeHistogramMeta(trackData,jsonChromosome.chromosome_name,dbName,ressourceUrl,length,featureCount);
 		//finalize trackData
-		trackData = finalizeTrackData(trackData,trackName,types);
+		trackData = finalizeTrackData(trackData,trackName,types,featureCount);
 		String json = JsonMapper.serialize(trackData);
-		OutputStream out = new FileOutputStream(curOuput+"/"+jsonChromosome.chromosome_name+".json");
+		OutputStream out = new FileOutputStream(curOuput+"/../"+jsonChromosome.chromosome_name+".json");
 		Utility.write(json,out);
 		Utility.close(out);
 		return true;
 
 
 	}
-	private TrackData finalizeTrackData(TrackData trackData,String trackName,List<String> types) {
+	private TrackData finalizeTrackData(TrackData trackData,String trackName,List<String> types,int featureCount) {
 		//note : headers already written
 		trackData.setKey(trackName);
 		trackData.setClassName(Constants.CLASSNAME);
 		trackData.setClientConfig(new ClientConfig(processingType, types));
 		trackData.setType(Constants.TYPE);
 		trackData.setLabel(trackName);
+		trackData.setFeatureCount(featureCount);
 		return trackData;
 	}
 
@@ -203,22 +273,20 @@ public class ConvertToJSON {
 
 	private TrackData writeLazyFeatures(JSONFeat feat, LazyOutput lazyOutput, TrackData trackData) throws FileNotFoundException {
 
-		List<Object> featureNCList = trackData.getFeatureNCList();
 		if(start==-1){
 			start=feat.start;
 		}
-		//TODO
 		lazyOutput.add(feat.feature);
 		curChunkSize+=feat.featureCount;
 		if(feat.featureCount==0){
 			curChunkSize++;
 		}
+		end=feat.end;
 		if(curChunkSize>=Constants.CHUNK_SIZE){
 			//close lazy output
 			lazyOutput.writeLazyOutputAndClose();
 			//write in trackData
-			featureNCList.add(TrackData.getChunk(start,feat.end,Integer.toString(curChunkNumber)));
-			trackData.setFeatureNCList(featureNCList);
+			addToTrackData(trackData);
 			//re init values
 			curChunkSize=0;
 			curChunkNumber++;
@@ -230,10 +298,15 @@ public class ConvertToJSON {
 
 	}
 
-
+	private TrackData addToTrackData(TrackData trackData){
+		List<Object> featureNCList = trackData.getFeatureNCList();
+		featureNCList.add(TrackData.getChunk(start,end,Integer.toString(curChunkNumber)));
+		trackData.setFeatureNCList(featureNCList);
+		return trackData;
+	}
 	private boolean makeDirectory(String chromosome,String outputPath) {
 		curOuput = new File(outputPath+"/"+chromosome);
-		if(!curOuput.mkdir()){
+		if(!curOuput.mkdirs()){
 			return false;
 		}
 		return true;
@@ -488,29 +561,10 @@ public class ConvertToJSON {
 	}
 
 	public static void main(String[] args){
-		ConvertToJSON c = new ConvertToJSON("/Users/jarosz/Documents/epfl/flat_files/gff/bed.sql");
+		ConvertToJSON c = new ConvertToJSON("/Users/jarosz/Documents/epfl/flat_files/Rip140_day0_May_treat_afterfiting_chr14.sql","quantitative");
 		try {
-			c.convert("/Users/jarosz/Documents/epfl/flat_files/gff/json","be757flkjljd10", "../../tracks_dev", "THE_TRACK");
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (InstantiationException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IllegalAccessException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (ClassNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (JSONException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
+			c.convert("/Users/jarosz/Documents/epfl/flat_files/gff/json","14JSONZ", "../../tracks_dev", "THE_TRACK");
+		} catch (ParsingException e) {
 			e.printStackTrace();
 		}
 

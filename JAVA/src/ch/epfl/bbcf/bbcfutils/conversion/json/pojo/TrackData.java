@@ -127,12 +127,10 @@ public class TrackData {
 			case EXTENDED :
 				featureCallback =
 					"(function(feat, fields, div) { " +
-					"if (fields.type){ " +
-					"div.style.backgroundColor=\\\"#3333D7\\\";" +
-					"div.className = \\\"basic\\\"; " +
+					"if (fields.type){" +
 					"getFeatureStyle(feat[fields.type],div);" +
 					"}}" +
-					")\"";
+					")";
 			}
 		}
 		public int getLabelScale() {

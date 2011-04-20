@@ -126,13 +126,17 @@ public class WIGParser extends Parser{
 	 */
 	private void handlerBEDLine(String line, Handler handler) throws ParsingException {
 		String[] chr_start_end_score = line.split("\\s");
+		Integer start,end;
+		Float score;
+		String chr;
 		switch(chr_start_end_score.length){
-		case 4: cur_feature = new WIGFeature();
-		cur_feature.setChromosome(chr_start_end_score[0]);
-		cur_feature.setStart(getInt(chr_start_end_score[1]));
-		cur_feature.setEnd(getInt(chr_start_end_score[2]));
-		cur_feature.setScore(getScore(chr_start_end_score[3]));
-		break;
+		case 4: 
+			chr = chr_start_end_score[0];
+			start = getInt(chr_start_end_score[1]);
+			end = getInt(chr_start_end_score[2]);
+			score = getScore(chr_start_end_score[3]);
+			cur_feature = new WIGFeature(chr,start,end,score);
+			break;
 		default: throw new ParsingException("the entry don't have required number of fields " +
 				"(4 required : chromosome,start,end,score separated by spaces or tabs): ", lineNb);
 		}

@@ -57,19 +57,22 @@ public class ConvertToSQLite {
 		this.extension=extension;
 		this.nrAssemblyId=-1;
 	}
-	public ConvertToSQLite(String inputPath,Extension extension,int nrAssemblyId) throws MethodNotFoundException, IOException, ExtensionNotRecognisedException{
+	public ConvertToSQLite(String inputPath,Extension extension,int nrAssemblyId) throws ExtensionNotRecognisedException, ParsingException{
 		this.inputPath = inputPath;
 		this.parser = takeParser(extension);
 		this.handler = takeHandler();
 		this.extension=extension;
 		this.nrAssemblyId=nrAssemblyId;
-		System.out.println("before t chr ");
-		this.chromosomes = takeChromosomes(nrAssemblyId);
-		System.out.println("chr taken ");
+		try {
+			this.chromosomes = takeChromosomes(nrAssemblyId);
+		} catch (MethodNotFoundException e) {
+			throw new ParsingException(e);
+		} catch (IOException e) {
+			throw new ParsingException(e);
+		}
 		this.altsNames=new HashMap<String, String>();
 		this.previousUnmapped="";
 		this.assembly = takeAssembly(nrAssemblyId);
-		System.out.println("end construct");
 	}
 
 	private Assembly takeAssembly(int nrAssemblyId2) {
@@ -131,8 +134,8 @@ public class ConvertToSQLite {
 			//		case BAM:
 			//			p = new BAMParser(Processing.SEQUENCIAL);
 			//			break;
-			default :
-				throw new ExtensionNotRecognisedException(extension);
+		default :
+			throw new ExtensionNotRecognisedException(extension);
 		}
 		return p;
 	}
@@ -157,21 +160,25 @@ public class ConvertToSQLite {
 	 * @throws ClassNotFoundException
 	 * @throws SQLException
 	 */
-	public boolean convert(String outputPath,String type) throws IOException, ParsingException, InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException{
-		System.out.println("convert");
+	public boolean convert(String outputPath,String type) throws IOException, ParsingException{
 		this.outputPath = outputPath;
-		System.out.println("convert "+outputPath);
 		File input = new File(inputPath);
-		System.out.println("new file :"+inputPath);
-		this.construct = SQLiteConstruct.getConnectionWithDatabase(outputPath);
-		System.out.println("get connection");
-		this.construct.createNewDatabase(type);
-		System.out.println("create db");
-		this.construct.commit();
+		try {
+			this.construct = SQLiteConstruct.getConnectionWithDatabase(outputPath);
+			this.construct.createNewDatabase(type);
+			this.construct.commit();
+		} catch (InstantiationException e) {
+			throw new ParsingException(e);
+		} catch (IllegalAccessException e) {
+			throw new ParsingException(e);
+		} catch (ClassNotFoundException e) {
+			throw new ParsingException(e);
+		} catch (SQLException e) {
+			throw new ParsingException(e);
+		}
 		if(!input.exists()){
 			throw new FileNotFoundException(inputPath);
 		}
-		System.out.println("parse");
 		this.parser.parse(input, handler);
 		return true;
 	}
@@ -193,11 +200,17 @@ public class ConvertToSQLite {
 	 */
 	private class ParsingHandler implements Handler{
 		@Override
-		public void newFeature(Feature feature) {
+		public void newFeature(Feature feature) throws ParsingException {
 			String chromosome = feature.getChromosome();
 			//change the chromosome name if a 
 			//nr assembly id is provided
-			chromosome=guessChromosome(chromosome,nrAssemblyId);
+			try {
+				chromosome=guessChromosome(chromosome,nrAssemblyId);
+			} catch (MethodNotFoundException e1) {
+				throw new ParsingException(e1);
+			} catch (IOException e1) {
+				throw new ParsingException(e1);
+			}
 			if(null==chromosome){
 				return;
 			}
@@ -219,8 +232,9 @@ public class ConvertToSQLite {
 				case WIG:
 					QuantitativeFeature feat1 = (QuantitativeFeature)feature;
 					if(!construct.isCromosomeCreated(chromosome)){
-						construct.newChromosome_quant(feat1.getChromosome());
+						construct.newChromosome_quant(chromosome);
 					}
+
 					construct.writeValues_quant(chromosome, feat1.getStart(), 
 							feat1.getEnd(), feat1.getScore());
 					break;
@@ -238,33 +252,27 @@ public class ConvertToSQLite {
 					break;
 				}
 			} catch (SQLException e) {
-				e.printStackTrace();
+				throw new ParsingException(e);
 			}
 		}
 
-		private String guessChromosome(String chromosome, Integer nrAssemblyId) {
+		private String guessChromosome(String chromosome, Integer nrAssemblyId) throws MethodNotFoundException, IOException {
 			if(nrAssemblyId!=null){
 				if(!chromosome.equalsIgnoreCase(previousUnmapped)){
 					if(!chromosomes.contains(chromosome)){
-						try {
-							if(altsNames.containsKey(chromosome)){
-								chromosome=altsNames.get(chromosome);
-							} else {
+						if(altsNames.containsKey(chromosome)){
+							chromosome=altsNames.get(chromosome);
+						} else {
 
-								Chromosome newChr = GenrepWrapper.guessChromosome(chromosome, assembly.getId());
-								if(null==newChr){
-									previousUnmapped=chromosome;
-									return null;
-								} else {
-									String tmp =newChr.getName();
-									altsNames.put(chromosome, tmp);
-									chromosome=tmp;
-								}
+							Chromosome newChr = GenrepWrapper.guessChromosome(chromosome, assembly.getId());
+							if(null==newChr){
+								previousUnmapped=chromosome;
+								return null;
+							} else {
+								String tmp =newChr.getName();
+								altsNames.put(chromosome, tmp);
+								chromosome=tmp;
 							}
-						} catch (MethodNotFoundException e) {
-							e.printStackTrace();
-						} catch (IOException e) {
-							e.printStackTrace();
 						}
 					}
 				} else {
@@ -280,7 +288,7 @@ public class ConvertToSQLite {
 		}
 
 		@Override
-		public void start() {
+		public void start() throws ParsingException {
 			try {
 				switch(extension){
 				case WIG:
@@ -291,12 +299,12 @@ public class ConvertToSQLite {
 					break;
 				}
 			} catch (SQLException e) {
-				e.printStackTrace();
+				throw new ParsingException(e);
 			}
 		}
 
 		@Override
-		public void end() {
+		public void end() throws ParsingException {
 			try {
 				construct.commit();
 				List<String> chrNames = construct.getChromosomesNames();
@@ -320,13 +328,13 @@ public class ConvertToSQLite {
 				construct.commit();
 				construct.close();
 			} catch (SQLException e) {
-				e.printStackTrace();
+				throw new ParsingException(e);
 			} catch (InstantiationException e) {
-				e.printStackTrace();
+				throw new ParsingException(e);
 			} catch (IllegalAccessException e) {
-				e.printStackTrace();
+				throw new ParsingException(e);
 			} catch (ClassNotFoundException e) {
-				e.printStackTrace();
+				throw new ParsingException(e);
 			}
 
 		}
@@ -352,27 +360,12 @@ public class ConvertToSQLite {
 
 	public static void main(String[] args){
 		try {
-			ConvertToSQLite c = new ConvertToSQLite("/Users/jarosz/Documents/epfl/flat_files/gff/Mus_musculus.NCBIM37.61.gtf",Extension.GFF,70);
-			c.convert("/Users/jarosz/Documents/epfl/flat_files/gff/test.db","qualitative");
-		} catch (MethodNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			ConvertToSQLite c = new ConvertToSQLite("/Users/jarosz/Documents/epfl/flat_files/Rip140_day0_May_treat_afterfiting_chr14.wig",Extension.WIG,70);
+			c.convert("/Users/jarosz/Documents/epfl/flat_files/Rip140_day0_May_treat_afterfiting_chr14.sql","qualitative");
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (ParsingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (InstantiationException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IllegalAccessException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (ClassNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (ExtensionNotRecognisedException e) {

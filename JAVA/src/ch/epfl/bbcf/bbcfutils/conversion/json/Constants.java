@@ -11,7 +11,7 @@ public class Constants {
 	public static final String TYPE = "FeatureTrack";
 	public static final String CLASSNAME = "generic_parent";
 
-
-
+	public static final int TILE_WIDTH = 200;
+	public static final String JSON_HEIGHT = "100";
 
 }

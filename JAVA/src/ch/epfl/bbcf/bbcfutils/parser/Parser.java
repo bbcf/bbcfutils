@@ -82,8 +82,9 @@ public abstract class Parser {
 	/**
 	 * method called when a new feature is parsed
 	 * @param feature
+	 * @throws ParsingException 
 	 */
-	protected void newFeature(Handler handler,Track track,Feature feature){
+	protected void newFeature(Handler handler,Track track,Feature feature) throws ParsingException{
 		switch(processingType){
 		case TOTAL :
 			List<Feature> feats = features.get(track);

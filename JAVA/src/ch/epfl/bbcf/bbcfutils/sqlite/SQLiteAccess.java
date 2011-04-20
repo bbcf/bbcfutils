@@ -77,7 +77,6 @@ public class SQLiteAccess extends SQLiteParent{
 
 
 	/**
-	 * {MANIPULATION}
 	 * get the maximum score for a chromosome
 	 * @param chromosome
 	 * @return a Float
@@ -95,6 +94,23 @@ public class SQLiteAccess extends SQLiteParent{
 		return f;
 	}
 
+	/**
+	 * get the minimum score for a chromosome
+	 * @param chromosome
+	 * @return a Float
+	 * @throws SQLException
+	 */
+	public float getMinScoreForChr(String chromosome) throws SQLException {
+		Statement stat = connection.createStatement();
+		String query = "SELECT min(score) FROM "+protect(chromosome)+";";
+		ResultSet rs = getResultSet(stat, query);
+		Float f = null;
+		while (rs.next()) {
+			f= rs.getFloat(1);
+		}
+		rs.close();
+		return f;
+	}
 
 
 	/**
@@ -281,5 +297,7 @@ public class SQLiteAccess extends SQLiteParent{
 		}
 		return feat;
 	}
+
+
 
 }
