@@ -2,10 +2,17 @@ package ch.epfl.bbcf.bbcfutils.parser.feature;
 
 public class QuantitativeFeature extends Feature{
 
-
 	private Integer start,end;
 	private Float score;
 
+	public QuantitativeFeature(String chromosome,Integer start,Integer end,Float score){
+		this.chromosome=chromosome;
+		this.start=start;
+		this.end=end;
+		this.score=score;
+	}
+	public QuantitativeFeature() {
+	}
 	@Override
 	public String detail() {
 		return this.getClass().getName()+"\n" +
@@ -19,7 +26,7 @@ public class QuantitativeFeature extends Feature{
 		this.start = start;
 	}
 
-	public int getStart() {
+	public Integer getStart() {
 		return start;
 	}
 

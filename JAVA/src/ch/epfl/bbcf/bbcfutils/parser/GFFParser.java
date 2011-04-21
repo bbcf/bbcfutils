@@ -121,12 +121,13 @@ public class GFFParser extends Parser{
 		Location location = Location.fromBio(locationStart, locationEnd, strand);
 		assert (strand == '-') == location.isNegative();
 		int frame;
+		//FIXME 
 		start = end + 1;
 		end = s.indexOf('\t', start);
 		try {
 			frame = Integer.parseInt(s.substring(start, end));
 		} catch (Exception e) {
-			frame = -1;
+			frame = 0;
 		}
 
 		//grab everything until end of line (or # comment)

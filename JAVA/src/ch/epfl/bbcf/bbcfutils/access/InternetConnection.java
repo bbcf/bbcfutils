@@ -132,9 +132,9 @@ public class InternetConnection {
 
 	public static void main(String[] args){
 		System.out.println("TEST");
-		String body = "id=78&data=myData";
+		String body = "id=78&data=myData&toto=tutu";
 		try {
-			System.out.println(InternetConnection.sendPOSTConnection("http://myServer.com/post",body,MIME_TYPE_FORM_APPLICATION));
+			System.out.println(InternetConnection.sendPOSTConnection("http://svitsrv25.epfl.ch/gdv_dev/post?toto=tutu",body,MIME_TYPE_FORM_APPLICATION));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
