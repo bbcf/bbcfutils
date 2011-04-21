@@ -23,6 +23,13 @@ typedef struct {
     posh counts;
     posh *scounts;
 } samdata;
+typedef struct {
+    std::string name;
+    int start;
+    int end;
+} chr_region;
+std::map< int, chr_region > chr_list;
+
 
 static const float pseudo_counts(0.5);
 static const std::string bed_both("track type=bedGraph visibility=2 name=merged color=10,200,10 windowingFunction=maximum\n");
@@ -195,7 +202,8 @@ void createsql( posh &counts, const double cntw=1.0 ) {
 
 // ************* wiggle track: 0-based starts, 4 cols *************
 // *************   bed output: 0-based starts, 6 cols *************
-void printbed( posh &counts, const double cntw=1.0 ) {
+void printbed( posh &counts, const double cntw=1.0, 
+	       std::ios_base::openmode mode = std::ios_base::out ) {
     if (counts.empty()) return;
     poshcit 
 	I0 = counts.lower_bound(-opts.start),
@@ -206,7 +214,7 @@ void printbed( posh &counts, const double cntw=1.0 ) {
     std::ofstream outfile;
     std::ostream* outstr = &std::cout;
     if (opts.ofile.length()) {
-	outfile.open( opts.ofile.c_str() );
+	outfile.open( opts.ofile.c_str(), mode );
 	if (outfile.is_open()) outstr = &outfile;
 	else std::cerr << "Could not open " << opts.ofile 
 		       << ", writing to stdout\n";
@@ -312,7 +320,7 @@ int main( int argc, char **argv )
 	cmd.add( sf ); 
 	TCLAP::ValueArg< std::string > cf( "c", "control", "Control bam file", false, "", "string" );
 	cmd.add( cf ); 
-	TCLAP::ValueArg< std::string > ch( "a", "chromosome", "Chromosome region", true, "", "string" );
+	TCLAP::ValueArg< std::string > ch( "a", "chromosome", "Chromosome region", false, "", "string" );
 	cmd.add( ch ); 
 	TCLAP::ValueArg< std::string > cn( "n", "chrname", "Chromosome name", false, "", "string" );
 	cmd.add( cn ); 
@@ -362,7 +370,6 @@ int main( int argc, char **argv )
 	    cn.getValue()
 	};
 	opts = o;
-	if (opts.chrn.empty()) opts.chrn = opts.chr;
 	if (opts.cfile.size() 
 	    && opts.noratio 
 	    && !opts.regress) {
@@ -382,60 +389,82 @@ int main( int argc, char **argv )
 	std::cerr << "Could not open " << opts.sfile << "\n";
 	return 1;
     }
-    samtools::bam_parse_region( _fs->header, opts.chr.c_str(), 
-				&opts.chid, &opts.start, &opts.end);
-    if (opts.chid < 0) {
-	std::cerr << opts.chr << " not found in " << opts.sfile << "\n";
-	return 12;
+    if (opts.chr.empty()) {
+	for (int chid = 0; chid < _fs->header->n_targets; chid++) {
+	    chr_region cr = { std::string(_fs->header->target_name[chid]),
+			      0, _fs->header->target_len[chid] };
+	    chr_list[chid] = cr;
+	}
+    } else {
+	samtools::bam_parse_region( _fs->header, opts.chr.c_str(), 
+				    &opts.chid, &opts.start, &opts.end);
+	if (opts.chid < 0) {
+	    std::cerr << opts.chr << " not found in " << opts.sfile << "\n";
+	    return 12;
+	}
+	opts.end = std::min( (int)_fs->header->target_len[opts.chid], opts.end );
+	chr_region cr = { opts.chr, opts.start, opts.end };
+	chr_list[opts.chid] = cr;
     }
-    opts.end = std::min( (int)_fs->header->target_len[opts.chid], opts.end );
     samtools::bam_index_t *_in = samtools::bam_index_load( opts.sfile.c_str() );
     if (!_in) {
 	std::cerr << "Building index of " << opts.sfile << "\n";
 	samtools::bam_index_build( opts.sfile.c_str() );
 	_in = samtools::bam_index_load( opts.sfile.c_str() );
     }
-    samdata s_data;
-    s_data.scounts = 0; // just making sure...
-    samdata c_data;
-    c_data.scounts = &s_data.counts;
+    std::ios_base::openmode mode = std::ios_base::out;
+    bool chrn_empty = opts.chrn.empty();
+    for ( std::map< int, chr_region >::const_iterator I = chr_list.begin();
+	  I != chr_list.end();
+	  I++ ) {
+	opts.chid = I->first;
+	opts.chr = I->second.name;
+	if (chrn_empty) opts.chrn = opts.chr;
+	opts.start = I->second.start;
+	opts.end = I->second.end;
+	samdata s_data;
+	s_data.scounts = 0; // just making sure...
+	samdata c_data;
+	c_data.scounts = &s_data.counts;
 
-    samtools::bam_fetch( _fs->x.bam, _in, opts.chid, opts.start, opts.end, 
-			 &s_data, accumulate );
+	samtools::bam_fetch( _fs->x.bam, _in, opts.chid, opts.start, opts.end, 
+			     &s_data, accumulate );
+	
+	double weight = weight_per_tag( s_data.ntags );
+	if ( opts.cfile.size() ) {
+	    _fs = samtools::samopen( opts.cfile.c_str(), "rb", 0 );
+	    if ( !_fs ) {
+		std::cerr << "Could not open " << opts.cfile << "\n";
+		return 2;
+	    }
+	    _in = samtools::bam_index_load( opts.cfile.c_str() );
+	    if (!_in) {
+		std::cerr << "Building index of " << opts.cfile << "\n";
+		samtools::bam_index_build( opts.cfile.c_str() );
+		_in = samtools::bam_index_load( opts.cfile.c_str() );
+	    }
+	    opts.cut = opts.cut_ct;
+	    samtools::bam_fetch( _fs->x.bam, _in, opts.chid, opts.start, opts.end,
+				 &c_data, accumulate );
+	    samtools::bam_index_destroy( _in );
+	    samtools::samclose( _fs );
+	    weight = weight_per_tag( s_data.ntags, c_data.scounts, &c_data.counts );
+	    if (!opts.noratio) {
+		double cntw = weight_per_tag(c_data.ntags)/weight;
+		for ( poshit I = s_data.counts.begin(); I != s_data.counts.end(); I++ )
+		    I->second += pseudo_counts;
+// *********** by construction, keys of control is a subset of keys of counts
+		for ( poshit I = c_data.counts.begin(); I != c_data.counts.end(); I++ )
+		    s_data.counts[I->first] /= (pseudo_counts+I->second)*cntw;
+		weight = 1.0;
+	    }
+	}
+	if (opts.sql) createsql( s_data.counts, weight ); 
+	else          printbed( s_data.counts, weight, mode ); 
+	mode = std::ios_base::app;
+    }
     samtools::bam_index_destroy( _in );
     samtools::samclose( _fs );
-
-    double weight = weight_per_tag( s_data.ntags );
-    if ( opts.cfile.size() ) {
-	_fs = samtools::samopen( opts.cfile.c_str(), "rb", 0 );
-	if ( !_fs ) {
-	    std::cerr << "Could not open " << opts.cfile << "\n";
-	    return 2;
-	}
-	_in = samtools::bam_index_load( opts.cfile.c_str() );
-	if (!_in) {
-	    std::cerr << "Building index of " << opts.cfile << "\n";
-	    samtools::bam_index_build( opts.cfile.c_str() );
-	    _in = samtools::bam_index_load( opts.cfile.c_str() );
-	}
-	opts.cut = opts.cut_ct;
-	samtools::bam_fetch( _fs->x.bam, _in, opts.chid, opts.start, opts.end,
-			     &c_data, accumulate );
-	samtools::bam_index_destroy( _in );
-	samtools::samclose( _fs );
-	weight = weight_per_tag( s_data.ntags, c_data.scounts, &c_data.counts );
-	if (!opts.noratio) {
-	    double cntw = weight_per_tag(c_data.ntags)/weight;
-	    for ( poshit I = s_data.counts.begin(); I != s_data.counts.end(); I++ )
-		I->second += pseudo_counts;
-// *********** by construction, keys of control is a subset of keys of counts
-	    for ( poshit I = c_data.counts.begin(); I != c_data.counts.end(); I++ )
-		s_data.counts[I->first] /= (pseudo_counts+I->second)*cntw;
-	    weight = 1.0;
-	}
-    }
-    if (opts.sql) createsql( s_data.counts, weight ); 
-    else         printbed( s_data.counts, weight ); 
     return 0;
 }
 
