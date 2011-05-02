@@ -7,6 +7,7 @@ import java.util.Map;
 import org.codehaus.jackson.type.TypeReference;
 
 
+import ch.epfl.bbcf.bbcfutils.access.InternetConnection;
 import ch.epfl.bbcf.bbcfutils.access.genrep.Constants.FORMAT;
 import ch.epfl.bbcf.bbcfutils.access.genrep.Constants.KEY;
 import ch.epfl.bbcf.bbcfutils.access.genrep.Constants.METHOD;
@@ -92,8 +93,24 @@ public class GenrepWrapper {
 				Constants.URL, METHOD.ALL, FORMAT.json, new TypeReference<List<GenrepObject>>() {},KEY.organisms,null);
 	}
 
+	/**
+	 * get the link for other databases (UCSC,Ensembl)
+	 * for a gene, within a species
+	 * @param geneName
+	 * @param nrAssemblyId
+	 * @return
+	 * @throws MethodNotFoundException
+	 * @throws IOException
+	 */
 	public static Map<String,String> getLinks(String geneName,int nrAssemblyId) throws MethodNotFoundException, IOException{
 		return GenRepAccess.doSimpleQuery(Constants.URL, METHOD.LINK, null,
 				KEY.nr_assemblies,nrAssemblyId+"/get_links.json?gene_name="+geneName);
 	}
+	public static String getLinksAsString(String geneName,int nrAssemblyId) throws IOException, MethodNotFoundException{
+		String url = GenRepAccess.prepareUrl(Constants.URL, METHOD.LINK, null,
+				KEY.nr_assemblies, nrAssemblyId+"/get_links.json?gene_name="+geneName);
+		System.out.println("fetching  "+url);
+		return InternetConnection.sendGETConnection(url);
+	}
+
 }

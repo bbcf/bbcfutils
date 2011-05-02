@@ -37,7 +37,7 @@ public class GenRepAccess {
 	 * @return the URL
 	 * @throws MethodNotFoundException 
 	 */
-	private static final String prepareUrl(String servUrl,METHOD method,FORMAT format,KEY key,String query) throws MethodNotFoundException{
+	static final String prepareUrl(String servUrl,METHOD method,FORMAT format,KEY key,String query) throws MethodNotFoundException{
 		switch(method){
 		case LINK : servUrl+="/"+key+"/"+query;
 		break;
