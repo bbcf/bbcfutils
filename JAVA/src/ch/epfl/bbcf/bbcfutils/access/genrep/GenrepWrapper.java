@@ -2,6 +2,7 @@ package ch.epfl.bbcf.bbcfutils.access.genrep;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 import org.codehaus.jackson.type.TypeReference;
 
@@ -91,5 +92,8 @@ public class GenrepWrapper {
 				Constants.URL, METHOD.ALL, FORMAT.json, new TypeReference<List<GenrepObject>>() {},KEY.organisms,null);
 	}
 
-
+	public static Map<String,String> getLinks(String geneName,int nrAssemblyId) throws MethodNotFoundException, IOException{
+		return GenRepAccess.doSimpleQuery(Constants.URL, METHOD.LINK, null,
+				KEY.nr_assemblies,nrAssemblyId+"/get_links.json?gene_name="+geneName);
+	}
 }
