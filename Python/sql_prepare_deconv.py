@@ -74,7 +74,7 @@ def main(argv = None):
             chr = bed_row[0]
             start = int(bed_row[1])
             end = int(bed_row[2])
-            if len(bed_row)>2:
+            if len(bed_row)>3:
                 reg_name = bed_row[3]
             else:
                 reg_name = row_count
