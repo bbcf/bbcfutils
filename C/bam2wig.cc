@@ -334,7 +334,7 @@ int main( int argc, char **argv )
 	cmd.add( cut );
 	TCLAP::ValueArg< int > cut_c( "k", "kut", "Control tags (pseudo-)size",  false, -1, "int" );
 	cmd.add( cut_c );
-	TCLAP::ValueArg< int > wtpm( "w", "weight", "Normalise by total tag count (per megabase)",  false, -1, "int" );
+	TCLAP::ValueArg< int > wtpm( "w", "weight", "If 0: normalise by total tag count per megabase, if >0: uses 1e-7*w as factor",  false, -1, "int" );
 	cmd.add( wtpm );
 	TCLAP::SwitchArg reg( "r", "regress", "Normalize count by regression on control",  false, false );
 	cmd.add( reg );
