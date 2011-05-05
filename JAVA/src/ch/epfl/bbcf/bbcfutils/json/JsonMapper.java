@@ -4,6 +4,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.List;
+import java.util.Map;
 
 import org.codehaus.jackson.JsonProcessingException;
 import org.codehaus.jackson.annotate.JsonAutoDetect;
@@ -41,6 +42,12 @@ public class JsonMapper
 		TreeTraversingParser treeTraversingParser = new TreeTraversingParser(mapper.readTree(stream));
 		treeTraversingParser.setCodec(mapper);
 		return treeTraversingParser.readValueAs(targetClass);
+	}
+	public static <K,V> Map<K,V> deserialize(String source, TypeReference<Map<K,V>> target) throws IOException{
+		ByteArrayInputStream stream = new ByteArrayInputStream(source.getBytes());
+		TreeTraversingParser treeTraversingParser = new TreeTraversingParser(mapper.readTree(stream));
+		treeTraversingParser.setCodec(mapper);
+		return treeTraversingParser.readValueAs(target);
 	}
 
 	public static <T extends GenrepObject> List<? extends GenrepObject> deserializeArray(String source,

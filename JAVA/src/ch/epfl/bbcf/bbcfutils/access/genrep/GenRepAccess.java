@@ -3,6 +3,7 @@ package ch.epfl.bbcf.bbcfutils.access.genrep;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.codehaus.jackson.type.TypeReference;
 
@@ -29,15 +30,17 @@ import ch.epfl.bbcf.bbcfutils.json.JsonMapper;
 public class GenRepAccess {
 
 
-	
+
 	/**
 	 * prepare the URL to access to Genrep
 	 * depending of the parameters
 	 * @return the URL
 	 * @throws MethodNotFoundException 
 	 */
-	private static final String prepareUrl(String servUrl,METHOD method,FORMAT format,KEY key,String query) throws MethodNotFoundException{
+	static final String prepareUrl(String servUrl,METHOD method,FORMAT format,KEY key,String query) throws MethodNotFoundException{
 		switch(method){
+		case LINK : servUrl+="/"+key+"/"+query;
+		break;
 		case INDEX : servUrl +="/"+key+"."+format+"?"+query; 
 		break;
 		case SHOW : servUrl +="/"+key+"/"+query+"."+format;
@@ -48,7 +51,7 @@ public class GenRepAccess {
 			throw new MethodNotFoundException(" method must be part of "+METHOD.values());
 		}
 		return servUrl;
-	
+
 	}
 	/**
 	 * Launch the query to Genrep and get
@@ -92,7 +95,6 @@ public class GenRepAccess {
 		return doQuery(servUrl, method, format, clazz, key, Integer.toString(query));
 	}
 
-
 	public static <T extends GenrepObject> List<? extends GenrepObject> doQueryList(String servUrl, METHOD method, FORMAT format,
 			TypeReference<List<GenrepObject>> typeReference, KEY key, String query) throws MethodNotFoundException, IOException {
 		String url = prepareUrl(servUrl, method, format, key, query);
@@ -106,7 +108,14 @@ public class GenRepAccess {
 		return newObjects;
 	}
 
-
+	public static <K,V> Map<K,V> doSimpleQuery(String servUrl, METHOD method, 
+			FORMAT format, KEY key, String query) throws MethodNotFoundException, IOException{
+		String url = prepareUrl(servUrl, method, format, key, query);
+		System.out.println("fetching  "+url);
+		String result = InternetConnection.sendGETConnection(url);
+		Map<K,V> map = JsonMapper.deserialize(result,new TypeReference<Map<K,V>>(){});
+		return map;
+	}
 
 
 }

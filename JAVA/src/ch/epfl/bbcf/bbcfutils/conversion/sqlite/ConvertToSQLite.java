@@ -50,6 +50,9 @@ public class ConvertToSQLite {
 
 	private String outputPath;
 
+	//hash map to fill types attributes for an extended track
+	private List<String> types;
+
 	public ConvertToSQLite(String inputPath,Extension extension) throws ExtensionNotRecognisedException{
 		this.inputPath = inputPath;
 		this.parser = takeParser(extension);
@@ -179,6 +182,11 @@ public class ConvertToSQLite {
 		if(!input.exists()){
 			throw new FileNotFoundException(inputPath);
 		}
+		//initialize the map for extended type
+		switch(extension){
+		case GFF :
+			this.types=new ArrayList<String>();
+		}
 		this.parser.parse(input, handler);
 		return true;
 	}
@@ -221,12 +229,17 @@ public class ConvertToSQLite {
 					if(!construct.isCromosomeCreated(chromosome)){
 						construct.newChromosome_qual_extended(chromosome);
 					}
+					int index = types.indexOf(feat.getType());
+					if(-1==index){
+						types.add(feat.getType());
+						index=types.size();
+					}
 					construct.writeValues_qual_extended(
 							chromosome, feat.getStart(), 
 							feat.getEnd(),feat.getScore(), 
 							feat.getName(),feat.getStrand(),
 							feat.getAttributes(),
-							feat.getType(),
+							index,
 							feat.getIdentifier());
 					break;
 				case WIG:
@@ -321,7 +334,11 @@ public class ConvertToSQLite {
 				case WIG:
 					construct.finalizeDatabase(map, false, false, true);
 					break;
-				case BED:case BAM:case GFF:
+				case BED:case BAM:
+					construct.finalizeDatabase(map, true, false, true);
+					break;
+				case GFF:
+					construct.finalizeExtended_qual(types);
 					construct.finalizeDatabase(map, true, false, true);
 					break;
 				}

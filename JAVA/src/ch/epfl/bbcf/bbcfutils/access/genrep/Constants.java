@@ -28,7 +28,7 @@ public class Constants {
 	/**
 	 * Methods supported by Genrep
 	 */
-	public static enum METHOD {INDEX,SHOW,ALL};
+	public static enum METHOD {INDEX,SHOW,ALL,LINK};
 	/**
 	 * Formats supported by Genrep 
 	 */
