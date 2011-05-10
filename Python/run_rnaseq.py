@@ -1,6 +1,6 @@
 #!/bin/env python
 """
-deseq_workflow.py
+An RNA_seq mapping and DESeq workflow.
 
 [FIXME: Description]
 """
@@ -9,7 +9,7 @@ import sys
 import getopt
 from bbcflib.rnaseq import *
 
-usage = """workflow.py [-h] [-u via] [-w wdir] minilims job_key
+usage = """run_rnaseq.py [-h] [-u via] [-w wdir] minilims job_key
 
 -h           Print this message and exit
 -u via       Run executions using method 'via' (can be "local" or "lsf")
