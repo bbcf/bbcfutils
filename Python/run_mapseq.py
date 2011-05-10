@@ -14,20 +14,20 @@ htss = frontend.Frontend( url=gl["hts_url"] )
 job = htss.job( hts_key )
 g_rep = genrep.GenRep( gl["genrep_url"], gl["bwt_root"] )
 assembly = g_rep.assembly( job.assembly_id )
-dafl = dict((loc,daflims.DAFLIMS( username=gl['lims']['user'],
-                                  password=gl['lims']['passwd'][loc] ))
-            for loc in gl['lims']['passwd'].keys())
+dafl = dict((loc,daflims.DAFLIMS( username=gl['lims']['user'], password=pwd ))
+            for loc,pwd in gl['lims']['passwd'].iteritems())
 job.options['ucsc_bigwig'] = True
 #_ = [M.delete_execution(x) for x in M.search_executions(with_text=hts_key)]
 with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
-    files = map_groups( ex, job, dafl, ex.working_directory, assembly )
-    pdf = add_pdf_stats( ex, files,
+    job = get_fastq_files( job, dafl, ex.working_directory )
+    mapped_files = map_groups( ex, job, ex.working_directory, assembly )
+    pdf = add_pdf_stats( ex, mapped_files,
                          dict((k,v['name']) for k,v in job.groups.iteritems()),
                          gl['script_path'] )
     if job.options['compute_densities']:
         if not(job.options.get('read_extend')>0):
-            job.options['read_extend'] = files.values()[0].values()[0]['stats']['read_length']
-        files = densities_groups( ex, job, files, assembly )
+            job.options['read_extend'] = mapped_files.values()[0].values()[0]['stats']['read_length']
+        density_files = densities_groups( ex, job, mapped_files, assembly )
         gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
                                               job.description, hts_key, 
                                               g_rep_assembly.nr_assembly_id,

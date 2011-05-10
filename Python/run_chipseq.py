@@ -19,18 +19,7 @@ job.options['ucsc_bigwig'] = True
 g_rep = genrep.GenRep( gl["genrep_url"], gl["bwt_root"] )
 #_ = [M.delete_execution(x) for x in M.search_executions(with_text=hts_key)]
 with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
-    # should remove this option
-    if job.options['select_source'] == 'lims':
-        g_rep_assembly = g_rep.assembly( job.assembly_id )
-        dafl = dict((loc,daflims.DAFLIMS( username=gl['lims']['user'],
-                                          password=gl['lims']['passwd'][loc] ))
-                    for loc in gl['lims']['passwd'].keys())
-        job.options['discard_pcr_duplicates'] = True
-        mapseq_files = map_groups( ex, job, dafl, ex.working_directory, g_rep )
-        pdf = add_pdf_stats( ex, mapseq_files,
-                             dict((k,v['name']) for k,v in job.groups.iteritems()), 
-                             gl['script_path'] )
-    elif job.options['select_source'] == 'bam_url':
+    if job.options['select_source'] == 'bam_url':
         ms_files = {}
         for gid, group in job.groups:
             my_files[gid] = {}
@@ -52,7 +41,6 @@ with execution( M, description=hts_key, remote_working_directory=working_dir ) a
                              dict((k,v['name']) for k,v in job.groups.iteritems()), 
                              gl['script_path'] )
         job.options['compute_densities'] = False
-#        raise RuntimeError("bam_url not implemented yet!")
     elif job.options['select_source'] == 'mapseq_key':
         M_ms = MiniLIMS(ms_minilims)
         gl_ms = use_pickle(M_ms, "global variables")
