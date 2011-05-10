@@ -16,7 +16,7 @@ for (sample in sort(names(stats.by.sample))) {
     text(x=p,y=median(df$reads),lab=df$reads,srt=90,adj=c(0,0),cex=1.1)
     df=data.frame(mismatches=rev(names(stats$mismatches)),
       reads=rev(as.numeric(stats$mismatches)))
-    col=heat.colors(6)[c(2,rep(4,length(df$reads)-1))]
+    col=heat.colors(6)[c(rep(4,length(df$reads)-1),2)]
 #    col='darkorange'
     p=barplot(df$reads,names.arg=df$mismatches,horiz=T,border=0,
       col=col,ylab='# mismatches',xlab='# reads',
