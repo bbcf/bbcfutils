@@ -1,3 +1,8 @@
+#!/bin/env python
+"""
+A High-throughput sequencing data mapping workflow.
+
+"""
 from bbcflib import daflims, genrep, frontend, email, gdv, common
 from bbcflib.mapseq import *
 import sys, getopt, os
@@ -25,9 +30,9 @@ with execution( M, description=hts_key, remote_working_directory=working_dir ) a
                          dict((k,v['name']) for k,v in job.groups.iteritems()),
                          gl['script_path'] )
     if job.options['compute_densities']:
-        if not(job.options.get('read_extend')>0):
-            job.options['read_extend'] = mapped_files.values()[0].values()[0]['stats']['read_length']
-        density_files = densities_groups( ex, job, mapped_files, assembly )
+        if not(job.options.get('read_extension')>0):
+            job.options['read_extension'] = mapped_files.values()[0].values()[0]['stats']['read_length']
+        density_files = densities_groups( ex, job, mapped_files, assembly.chromosomes )
         gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
                                               job.description, hts_key, 
                                               g_rep_assembly.nr_assembly_id,

@@ -19,10 +19,11 @@ job.options['ucsc_bigwig'] = True
 g_rep = genrep.GenRep( gl["genrep_url"], gl["bwt_root"] )
 #_ = [M.delete_execution(x) for x in M.search_executions(with_text=hts_key)]
 with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
+#### change to choose for each file if mapseq or bam_url
     if job.options['select_source'] == 'bam_url':
         ms_files = {}
         for gid, group in job.groups:
-            my_files[gid] = {}
+            ms_files[gid] = {}
             group_name = re.sub(r'\s+','_',group['name'])
             for rid,run in group['runs'].iteritems():
                 bamfile = unique_filename_in(ex.working_directory)
