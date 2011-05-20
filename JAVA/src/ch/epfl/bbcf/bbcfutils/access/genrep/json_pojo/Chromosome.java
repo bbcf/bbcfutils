@@ -1,6 +1,17 @@
 package ch.epfl.bbcf.bbcfutils.access.genrep.json_pojo;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.codehaus.jackson.annotate.JsonCreator;
+
+import ch.epfl.bbcf.bbcfutils.access.genrep.Constants;
+import ch.epfl.bbcf.bbcfutils.access.genrep.GenRepAccess;
+import ch.epfl.bbcf.bbcfutils.access.genrep.MethodNotFoundException;
+import ch.epfl.bbcf.bbcfutils.access.genrep.Constants.FORMAT;
+import ch.epfl.bbcf.bbcfutils.access.genrep.Constants.KEY;
+import ch.epfl.bbcf.bbcfutils.access.genrep.Constants.METHOD;
 
 
 public class Chromosome extends GenrepObject{
@@ -9,8 +20,10 @@ public class Chromosome extends GenrepObject{
 	@JsonCreator
 	public Chromosome() {
 	}
-	private String name,updated_at,refseq_locus,synonyms,chr_name,created_at;
+	private String name,updated_at,refseq_locus,synonyms,created_at,chr_name;
 	private int genome_id,chr_type_id,refseq_version,id,num,length,chromosome_id,assembly_id,gi_number;
+	private List<GenrepObject> chr_names;
+	
 	public void setUpdated_at(String updated_at) {
 		this.updated_at = updated_at;
 	}
@@ -29,12 +42,8 @@ public class Chromosome extends GenrepObject{
 	public String getSynonyms() {
 		return synonyms;
 	}
-	public void setChr_name(String chr_name) {
-		this.chr_name = chr_name;
-	}
-	public String getChr_name() {
-		return chr_name;
-	}
+	
+	
 	public void setCreated_at(String created_at) {
 		this.created_at = created_at;
 	}
@@ -104,5 +113,21 @@ public class Chromosome extends GenrepObject{
 	@Override
 	public Chromosome getInstance() {
 		return (Chromosome) this.instance;
+	}
+	public void setChr_names(List<GenrepObject> chr_names) {
+		this.chr_names = chr_names;
+	}
+	public List<ChrName> getChr_names() {
+		List<ChrName> chrNames = new ArrayList<ChrName>();
+		for(GenrepObject o : chr_names){
+			chrNames.add((ChrName) o.getInstance());
+		}
+		return chrNames;
+	}
+	public void setChr_name(String chr_name) {
+		this.chr_name = chr_name;
+	}
+	public String getChr_name() {
+		return chr_name;
 	}
 }

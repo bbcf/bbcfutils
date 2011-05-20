@@ -32,6 +32,7 @@ public class RemoteAccess {
 	//SUCCEED
 	public static void sendTrackSucceed(String url,String trackId, String database,
 			String usermail, String type) throws IOException {
+		System.out.println("post to :"+url);
 		InternetConnection.sendPOSTConnection(
 				url, "id=track_parsing_success&track_id="+trackId+"&db="+database+"&usermail="+usermail+"&type="+type,InternetConnection.MIME_TYPE_FORM_APPLICATION);
 		

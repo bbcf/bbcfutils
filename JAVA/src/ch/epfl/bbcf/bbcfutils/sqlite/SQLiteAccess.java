@@ -275,7 +275,8 @@ public class SQLiteAccess extends SQLiteParent{
 		feat.setName(r.getString(4));
 		feat.setStrand(r.getInt(5));
 		feat.setAttributes(r.getString(6));
-		feat.setType(r.getString(7));
+		feat.setType(getTypeForExtendedQualitativeFeature(
+				r.getInt(7)));
 		feat.setIdentifier(r.getString(8));
 		return feat;
 	}
@@ -292,12 +293,25 @@ public class SQLiteAccess extends SQLiteParent{
 			feat.setName(r.getString(4));
 			feat.setStrand(r.getInt(5));
 			feat.setAttributes(r.getString(6));
-			feat.setType(r.getString(7));
+			feat.setType(
+					getTypeForExtendedQualitativeFeature(r.getInt(7)));
 			feat.setIdentifier(r.getString(8));
 		}
 		return feat;
 	}
 
+	private String getTypeForExtendedQualitativeFeature(int type) throws SQLException{
+		String query = "select type from types where identifier = ? limit 1";
+		PreparedStatement prep = connection.prepareStatement(query);
+		prep.setInt(1, type);
+		ResultSet r = prep.executeQuery();
+		String t="default";
+		if(r.next()){
+			t=r.getString(1);
+		}
+		r.close();
+		return t;
+	}
 
 
 }

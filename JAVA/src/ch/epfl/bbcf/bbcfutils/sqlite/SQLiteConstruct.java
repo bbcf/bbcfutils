@@ -81,6 +81,7 @@ public class SQLiteConstruct extends SQLiteParent{
 		prep.setString(1, "datatype");
 		prep.setString(2,type);
 		prep.executeUpdate();
+		this.connection.commit();
 	}
 
 
@@ -289,7 +290,7 @@ public class SQLiteConstruct extends SQLiteParent{
 		Statement stat = this.connection.createStatement();
 		stat.executeUpdate("create table types (identifier integer, type text);");
 		PreparedStatement prep = this.connection.prepareStatement("insert into types values (?,?);");
-		for(int i=1;i<=types.size();i++){
+		for(int i=0;i<types.size();i++){
 			prep.setInt(1, i);
 			prep.setString(2, types.get(i));
 			prep.execute();

@@ -26,15 +26,15 @@ public class Histo {
 		List<TrackData.HistogramMeta> histogramMeta = new ArrayList<TrackData.HistogramMeta>();
 		int i = (int) Math.ceil(chrLength/threshold); 
 		String url = ressourceUrl+"/"+outputName+"/"+chr+"/hist-"+threshold+"-{chunk}.json";
-		ArrayParam ar = new ArrayParam(i,1000,url);
+		ArrayParam ar = new ArrayParam(i,10000,url);
 		HistogramMeta hm = new HistogramMeta(threshold, ar);
 		histogramMeta.add(hm);
-		int megathreshold = threshold*100;
-		int im = (int) Math.ceil(chrLength/megathreshold); 
-		String urlm = ressourceUrl+"/"+outputName+"/"+chr+"/hist-"+megathreshold+"-{chunk}.json";
-		ArrayParam arm = new ArrayParam(im,1000,urlm);
-		HistogramMeta hmm = new HistogramMeta(threshold, arm);
-		histogramMeta.add(hmm);
+//		int megathreshold = threshold*100;
+//		int im = (int) Math.ceil(chrLength/megathreshold); 
+//		String urlm = ressourceUrl+"/"+outputName+"/"+chr+"/hist-"+megathreshold+"-{chunk}.json";
+//		ArrayParam arm = new ArrayParam(im,10000,urlm);
+//		HistogramMeta hmm = new HistogramMeta(threshold, arm);
+//		histogramMeta.add(hmm);
 		trackData.setHistogramMeta(histogramMeta);
 		return trackData;
 	}
