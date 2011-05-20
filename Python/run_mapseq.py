@@ -35,7 +35,7 @@ with execution( M, description=hts_key, remote_working_directory=working_dir ) a
         density_files = densities_groups( ex, job, mapped_files, assembly.chromosomes )
         gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
                                               job.description, hts_key, 
-                                              g_rep_assembly.nr_assembly_id,
+                                              assembly.nr_assembly_id,
                                               gdv_url=gl['gdv']['url'], public=True )
         add_pickle( ex, gdv_project, description='py:gdv_json' )
 allfiles = common.get_files( ex.id, M )
