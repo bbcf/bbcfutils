@@ -3,6 +3,7 @@ package ch.epfl.bbcf.bbcfutils;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -112,7 +113,29 @@ public final class Utility {
 	}
 
 
-
+	/**
+	 * Get the file digest from a file
+	 * @param filePath - the path to the file
+	 * @param crypto - the crypto to use ('MD5', 'SHA')
+	 * @return the signature in hexa
+	 * @throws NoSuchAlgorithmException
+	 * @throws IOException
+	 */
+	public static String getFileDigest(String filePath,String crypto) throws NoSuchAlgorithmException, IOException{
+		MessageDigest md = null;
+		md = MessageDigest.getInstance(crypto);
+		InputStream is = new FileInputStream(filePath);
+		try {
+			is = new DigestInputStream(is, md);
+			read(is);
+		}
+		finally {
+			is.close();
+		}
+		byte[] digest = md.digest();
+		String signature = new BigInteger(1,digest).toString(16);
+		return signature;
+	}
 
 
 

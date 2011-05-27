@@ -52,9 +52,11 @@ public class ConvertToJSON {
 
 
 	public boolean convert(String outputPath,String dbName,String ressourceUrl,String trackName) throws ParsingException{
+		System.out.println("start conversion");
 		File test = new File(outputPath+"/"+dbName);
 		if(test.exists()){
 			System.err.println("already exist");
+			test.delete();
 		}
 		boolean success = (new File(outputPath+"/"+dbName)).mkdir();
 		if(!success){
@@ -116,6 +118,8 @@ public class ConvertToJSON {
 				try{
 					this.access.getExtendedQualitativeFeature(firstChromosome);
 				}catch(SQLException e){
+					System.err.println("error");
+					e.printStackTrace();
 					processingType = Type.BASIC;
 				}
 			}
@@ -180,6 +184,7 @@ public class ConvertToJSON {
 			} catch (SQLException e) {
 				throw new ParsingException(e);
 			}
+			System.out.println("end conversion");
 			return true;
 		}
 		return false;
@@ -220,8 +225,7 @@ public class ConvertToJSON {
 		lazyOutput.writeLazyOutputAndClose();
 		trackData.setLazyfeatureUrlTemplate("../"+dbName+"/"+jsonChromosome.chromosome_name+"/lazyfeatures-{chunk}.json");
 		//get feature count
-		int featureCount;
-		featureCount = access.getFeatureCountForChromosome(jsonChromosome.chromosome_name);
+		int featureCount = access.getFeatureCountForChromosome(jsonChromosome.chromosome_name);
 		//write histogram meta
 		trackData = writeHistogramMeta(trackData,jsonChromosome.chromosome_name,dbName,ressourceUrl,length,featureCount);
 		//finalize trackData
@@ -561,9 +565,9 @@ public class ConvertToJSON {
 	}
 
 	public static void main(String[] args){
-		ConvertToJSON c = new ConvertToJSON("/Users/jarosz/Documents/epfl/flat_files/Rip140_day0_May_treat_afterfiting_chr14.sql","quantitative");
+		ConvertToJSON c = new ConvertToJSON("/Users/jarosz/Desktop/A4.db","qualitative");
 		try {
-			c.convert("/Users/jarosz/Documents/epfl/flat_files/gff/json","14JSONZ", "../../tracks_dev", "THE_TRACK");
+			c.convert("/Users/jarosz/Desktop/","A10", "../../tracks_dev", "THE_TRACK");
 		} catch (ParsingException e) {
 			e.printStackTrace();
 		}

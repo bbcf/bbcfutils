@@ -59,6 +59,12 @@ public class GenrepObject {
 	private void setSource(Source instance){
 		setInstance(instance);
 	}
+	
+	@SuppressWarnings("unused")
+	@JsonProperty(Constants.CHR_NAME)
+	private void setSource(ChrName instance){
+		setInstance(instance);
+	}
 
 
 	//	public static <T> T getInstance(T object,Class<T> clazz){

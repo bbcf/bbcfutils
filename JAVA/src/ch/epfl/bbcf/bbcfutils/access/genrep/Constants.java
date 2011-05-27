@@ -18,7 +18,8 @@ public class Constants {
 	GENOME = "genome",
 	ORGANISM = "organism",
 	NR_ASSEMBLY = "nr_assembly",
-	SOURCE = "source";
+	SOURCE = "source",
+	CHR_NAME="chr_name";
 
 	/**
 	 * Keys to put in the URL to get

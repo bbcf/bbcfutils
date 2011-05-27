@@ -68,9 +68,7 @@ public class GenRepAccess {
 	 * @throws ClassNotFoundException
 	 */
 	public static <T extends GenrepObject> GenrepObject doQuery(String servUrl,METHOD method,FORMAT format,Class<? extends GenrepObject> clazz,KEY key,String query) throws IOException, MethodNotFoundException, ClassNotFoundException{
-
 		String url = prepareUrl(servUrl, method, format, key, query);
-		System.out.println("fetching  "+url);
 		String result = InternetConnection.sendGETConnection(url);
 		GenrepObject genrepObject = JsonMapper.deserializeObject(result, clazz);
 		return genrepObject.getInstance();

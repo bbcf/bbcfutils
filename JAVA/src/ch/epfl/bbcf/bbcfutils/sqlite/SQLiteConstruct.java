@@ -26,7 +26,7 @@ public class SQLiteConstruct extends SQLiteParent{
 	protected SQLiteConstruct(Connection connection) {
 		super(connection);
 	}
-	
+
 	/**
 	 * return a SQLiteConstruct object from a sqlite database
 	 * with the connection to the database built in
@@ -67,6 +67,7 @@ public class SQLiteConstruct extends SQLiteParent{
 		conn.setAutoCommit(false);
 		return new SQLiteConstruct(conn,limitQueriesSize);
 	}
+
 	/**
 	 * {CONSTRUCTION}
 	 * create a new database
@@ -81,6 +82,7 @@ public class SQLiteConstruct extends SQLiteParent{
 		prep.setString(1, "datatype");
 		prep.setString(2,type);
 		prep.executeUpdate();
+		this.connection.commit();
 	}
 
 
@@ -289,14 +291,14 @@ public class SQLiteConstruct extends SQLiteParent{
 		Statement stat = this.connection.createStatement();
 		stat.executeUpdate("create table types (identifier integer, type text);");
 		PreparedStatement prep = this.connection.prepareStatement("insert into types values (?,?);");
-		for(int i=1;i<=types.size();i++){
+		for(int i=0;i<types.size();i++){
 			prep.setInt(1, i);
 			prep.setString(2, types.get(i));
 			prep.execute();
 		}
-		
+
 	}
-	
+
 
 	//FOR THE DAEMON <tranform_to_sqlite>
 	/**
@@ -318,7 +320,7 @@ public class SQLiteConstruct extends SQLiteParent{
 		return true;
 	}
 
-	
+
 
 
 }

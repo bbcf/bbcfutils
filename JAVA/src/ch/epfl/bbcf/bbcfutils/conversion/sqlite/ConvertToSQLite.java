@@ -101,7 +101,7 @@ public class ConvertToSQLite {
 		List<Chromosome> chromosomes = assembly.getChromosomes();
 		List<String> chrNames = new ArrayList<String>();
 		for(Chromosome chromosome : chromosomes){
-			chrNames.add(chromosome.getName());
+			chrNames.add(chromosome.getChr_name());
 		}
 		return chrNames;
 	}
@@ -276,15 +276,18 @@ public class ConvertToSQLite {
 						if(altsNames.containsKey(chromosome)){
 							chromosome=altsNames.get(chromosome);
 						} else {
-
 							Chromosome newChr = GenrepWrapper.guessChromosome(chromosome, assembly.getId());
 							if(null==newChr){
 								previousUnmapped=chromosome;
 								return null;
 							} else {
 								String tmp =newChr.getName();
-								altsNames.put(chromosome, tmp);
-								chromosome=tmp;
+								if(chromosomes.contains(tmp)){
+									altsNames.put(chromosome, tmp);
+									chromosome=tmp;
+								} else {
+									return null;
+								}
 							}
 						}
 					}
@@ -302,6 +305,7 @@ public class ConvertToSQLite {
 
 		@Override
 		public void start() throws ParsingException {
+			System.out.println("start");
 			try {
 				switch(extension){
 				case WIG:
@@ -318,6 +322,7 @@ public class ConvertToSQLite {
 
 		@Override
 		public void end() throws ParsingException {
+			System.out.println("end");
 			try {
 				construct.commit();
 				List<String> chrNames = construct.getChromosomesNames();
@@ -353,7 +358,7 @@ public class ConvertToSQLite {
 			} catch (ClassNotFoundException e) {
 				throw new ParsingException(e);
 			}
-
+			System.out.println("done");
 		}
 
 	}
@@ -377,8 +382,8 @@ public class ConvertToSQLite {
 
 	public static void main(String[] args){
 		try {
-			ConvertToSQLite c = new ConvertToSQLite("/Users/jarosz/Documents/epfl/flat_files/Rip140_day0_May_treat_afterfiting_chr14.wig",Extension.WIG,70);
-			c.convert("/Users/jarosz/Documents/epfl/flat_files/Rip140_day0_May_treat_afterfiting_chr14.sql","qualitative");
+			ConvertToSQLite c = new ConvertToSQLite("/Users/jarosz/Desktop/toto.gtf",Extension.GFF,70);
+			c.convert("/Users/jarosz/Desktop/A4.db","qualitative");
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
