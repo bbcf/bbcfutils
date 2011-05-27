@@ -26,7 +26,7 @@ public class SQLiteConstruct extends SQLiteParent{
 	protected SQLiteConstruct(Connection connection) {
 		super(connection);
 	}
-	
+
 	/**
 	 * return a SQLiteConstruct object from a sqlite database
 	 * with the connection to the database built in
@@ -67,6 +67,7 @@ public class SQLiteConstruct extends SQLiteParent{
 		conn.setAutoCommit(false);
 		return new SQLiteConstruct(conn,limitQueriesSize);
 	}
+
 	/**
 	 * {CONSTRUCTION}
 	 * create a new database
@@ -295,9 +296,9 @@ public class SQLiteConstruct extends SQLiteParent{
 			prep.setString(2, types.get(i));
 			prep.execute();
 		}
-		
+
 	}
-	
+
 
 	//FOR THE DAEMON <tranform_to_sqlite>
 	/**
@@ -319,7 +320,7 @@ public class SQLiteConstruct extends SQLiteParent{
 		return true;
 	}
 
-	
+
 
 
 }
