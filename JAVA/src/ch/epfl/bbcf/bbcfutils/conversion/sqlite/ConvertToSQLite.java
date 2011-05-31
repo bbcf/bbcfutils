@@ -61,6 +61,7 @@ public class ConvertToSQLite {
 		this.nrAssemblyId=-1;
 	}
 	public ConvertToSQLite(String inputPath,Extension extension,int nrAssemblyId) throws ExtensionNotRecognisedException, ParsingException{
+		System.out.println("cv to SQlite");
 		this.inputPath = inputPath;
 		this.parser = takeParser(extension);
 		this.handler = takeHandler();
@@ -97,10 +98,12 @@ public class ConvertToSQLite {
 	 */
 	private List<String> takeChromosomes(int nrAssemblyId2) throws MethodNotFoundException, IOException {
 		Assembly assembly;
+		System.out.println("take chromosomes");
 		assembly = GenrepWrapper.getAssemblyFromNrAssemblyId(nrAssemblyId2);
 		List<Chromosome> chromosomes = assembly.getChromosomes();
 		List<String> chrNames = new ArrayList<String>();
 		for(Chromosome chromosome : chromosomes){
+			System.out.println("chromosome : "+chromosome.getChr_name());
 			chrNames.add(chromosome.getChr_name());
 		}
 		return chrNames;
@@ -269,35 +272,34 @@ public class ConvertToSQLite {
 			}
 		}
 
-		private String guessChromosome(String chromosome, Integer nrAssemblyId) throws MethodNotFoundException, IOException {
+		private String guessChromosome(String current, Integer nrAssemblyId) throws MethodNotFoundException, IOException {
 			if(nrAssemblyId!=null){
-				if(!chromosome.equalsIgnoreCase(previousUnmapped)){
-					if(!chromosomes.contains(chromosome)){
-						if(altsNames.containsKey(chromosome)){
-							chromosome=altsNames.get(chromosome);
-						} else {
-							Chromosome newChr = GenrepWrapper.guessChromosome(chromosome, assembly.getId());
-							if(null==newChr){
-								previousUnmapped=chromosome;
-								return null;
-							} else {
-								String tmp =newChr.getName();
-								if(chromosomes.contains(tmp)){
-									altsNames.put(chromosome, tmp);
-									chromosome=tmp;
-								} else {
-									return null;
-								}
-							}
-						}
-					}
-				} else {
+				//if current == previous unfinded, return null
+				if(current.equalsIgnoreCase(previousUnmapped)){
 					return null;
 				}
-			}
-			return chromosome;
-		}
+				//if current is already a good one, return it
+				if(chromosomes.contains(current)){
+					return current;
+				}
+				//if mapped alredy found, return the mapped
+				if(altsNames.containsKey(current)){
+					return altsNames.get(current);
+				}
+				//try to find a mapping
+				Chromosome newChr = GenrepWrapper.guessChromosome(current, assembly.getId());
 
+				if(null==newChr){//no mapping found
+					previousUnmapped=current;
+					return null;
+				} else {//mapping founded
+					String mapping =newChr.getChr_name();
+					altsNames.put(current, mapping);
+					return mapping;
+				}
+			}
+			return current;
+		}
 		@Override
 		public void newTrack(Track track) {
 			System.err.println("Operation not supported");
@@ -326,6 +328,9 @@ public class ConvertToSQLite {
 			try {
 				construct.commit();
 				List<String> chrNames = construct.getChromosomesNames();
+				if(chrNames.isEmpty()){
+					throw new ParsingException("no chromosomes found in building the database");
+				}
 				Map<String,Integer> map = new HashMap<String, Integer>();
 				for(String chr : chrNames){
 					SQLiteAccess access = SQLiteAccess.getConnectionWithDatabase(outputPath);
@@ -358,7 +363,7 @@ public class ConvertToSQLite {
 			} catch (ClassNotFoundException e) {
 				throw new ParsingException(e);
 			}
-			System.out.println("done");
+			System.out.println("conversion to SQLite done ");
 		}
 
 	}
@@ -380,19 +385,76 @@ public class ConvertToSQLite {
 		return chromosomes;
 	}
 
-	public static void main(String[] args){
-		try {
-			ConvertToSQLite c = new ConvertToSQLite("/Users/jarosz/Desktop/toto.gtf",Extension.GFF,70);
-			c.convert("/Users/jarosz/Desktop/A4.db","qualitative");
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (ParsingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (ExtensionNotRecognisedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+	public static void main(String[] args) throws MethodNotFoundException, IOException{
+		//		try {
+		//			ConvertToSQLite c = new ConvertToSQLite("/Users/jarosz/Desktop/toto.gtf",Extension.GFF,70);
+		//			c.convert("/Users/jarosz/Desktop/A4.db","qualitative");
+		//		} catch (IOException e) {
+		//			// TODO Auto-generated catch block
+		//			e.printStackTrace();
+		//		} catch (ParsingException e) {
+		//			// TODO Auto-generated catch block
+		//			e.printStackTrace();
+		//		} catch (ExtensionNotRecognisedException e) {
+		//			// TODO Auto-generated catch block
+		//			e.printStackTrace();
+		//		}
+
+
+
+		String previousUnmapped ="";
+		String chromosome = "MT";
+		Integer nrAssemblyId = 70;
+		Map<String, String> altsNames=new HashMap<String, String>();
+		List<String> chromosomes = new ArrayList<String>();
+		Assembly assembly = GenrepWrapper.getAssemblyFromNrAssemblyId(nrAssemblyId);
+		List<Chromosome> chromosomes_ = assembly.getChromosomes();
+		for(Chromosome chr : chromosomes_){
+			chromosomes.add(chr.getChr_name());
 		}
+		System.out.println(chromosomes);
+
+		if(nrAssemblyId!=null){
+			if(!chromosome.equalsIgnoreCase(previousUnmapped)){
+				if(!chromosomes.contains(chromosome)){
+					if(altsNames.containsKey(chromosome)){
+						chromosome=altsNames.get(chromosome);
+					} else {
+						System.out.println("gzess chr");
+						Chromosome newChr = GenrepWrapper.guessChromosome(chromosome, assembly.getId());
+						System.out.println(" "+newChr);
+						if(null==newChr){
+							previousUnmapped=chromosome;
+							System.out.println("NULL1");
+						} else {
+							String tmp =newChr.getChr_name();
+							System.out.println("JšIJšOIJ "+tmp);
+							if(!chromosomes.contains(tmp)){
+								altsNames.put(chromosome, tmp);
+								chromosome=tmp;
+							} else {
+
+								System.out.println("NULL2");
+							}
+						}
+					}
+				}
+			} else {
+				System.out.println("NULL3");
+			}
+		}
+		System.out.println(chromosome);
+
+
+
+
+
+
+
+
+
+
+
+
 	}
 }

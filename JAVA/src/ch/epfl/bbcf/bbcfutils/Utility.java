@@ -140,33 +140,14 @@ public final class Utility {
 
 
 
-	public static String getFileMd5(String filePath) throws IOException{
-		MessageDigest md = null;
-		try {
-			md = MessageDigest.getInstance("MD5");
-		} catch (NoSuchAlgorithmException e) {
-			e.printStackTrace();
-		}
-		InputStream is = new FileInputStream(filePath);
-		try {
-			is = new DigestInputStream(is, md);
-			read(is);
-		}
-		finally {
-			is.close();
-		}
-		byte[] digest = md.digest();
-		String signature = new BigInteger(1,digest).toString(16);
-		return signature;
-	}
-	public static String getFileMd5(File file) throws IOException{
-		return getFileMd5(file.getAbsolutePath());
-	}
 
 	public static void main(String[] args){
 		try {
-			System.out.println(getFileMd5("/Users/jarosz/Desktop/ajax-loader.gif"));
+			System.out.println(getFileDigest("/Users/jarosz/Desktop/Final_NJ_AllZFPHum.pdf","SHA1"));
 		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (NoSuchAlgorithmException e) {
+			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}

@@ -42,8 +42,6 @@ public class GenrepWrapper {
 				}
 			}
 		}
-		System.out.println("done");
-		
 		if(!chromosomes.isEmpty()){
 			return chromosomes.get(0);
 		}

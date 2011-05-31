@@ -96,7 +96,6 @@ public class GenRepAccess {
 	public static <T extends GenrepObject> List<? extends GenrepObject> doQueryList(String servUrl, METHOD method, FORMAT format,
 			TypeReference<List<GenrepObject>> typeReference, KEY key, String query) throws MethodNotFoundException, IOException {
 		String url = prepareUrl(servUrl, method, format, key, query);
-		System.out.println("fetching  "+url);
 		String result = InternetConnection.sendGETConnection(url);
 		List<? extends GenrepObject> genrepObjects = JsonMapper.deserializeArray(result, typeReference);
 		List<GenrepObject> newObjects = new ArrayList<GenrepObject>();
@@ -109,7 +108,6 @@ public class GenRepAccess {
 	public static <K,V> Map<K,V> doSimpleQuery(String servUrl, METHOD method, 
 			FORMAT format, KEY key, String query) throws MethodNotFoundException, IOException{
 		String url = prepareUrl(servUrl, method, format, key, query);
-		System.out.println("fetching  "+url);
 		String result = InternetConnection.sendGETConnection(url);
 		Map<K,V> map = JsonMapper.deserialize(result,new TypeReference<Map<K,V>>(){});
 		return map;
