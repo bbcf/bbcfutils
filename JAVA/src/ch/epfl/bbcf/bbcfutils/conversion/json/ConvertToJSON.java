@@ -81,13 +81,16 @@ public class ConvertToJSON {
 		Map<String, Integer> chromosomes;
 		try {
 			chromosomes = access.getChromosomesAndLength();
+			System.out.println(chromosomes);
 		} catch (SQLException e1) {
 			throw new ParsingException(e1);
 		}
 		if(null==chromosomes){
+			System.out.println(":JLšNJIšJLLL");
 			System.err.println("no chromosomes found");
 			return false;
 		}
+		System.out.println("type : "+type);
 		if(type.equalsIgnoreCase("quantitative")){
 			try{
 				for(Map.Entry<String, Integer> entry : chromosomes.entrySet()){
