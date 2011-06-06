@@ -249,6 +249,20 @@ public class SQLiteAccess extends SQLiteParent{
 	}
 
 
+	
+	public String testIfQualitative() throws SQLException{
+		String q1 = "SELECT * FROM attributes where key = 'datatype' limit 1; ";
+		Statement stat = connection.createStatement();
+		ResultSet r = stat.executeQuery(q1);
+		if(r.next()){
+			String dt = r.getString("value");
+			return dt;
+		}
+		return "";
+	}
+	
+	
+	
 	public ResultSet prepareQualitativeFeatures(String chr) throws SQLException {
 		String query = "SELECT * FROM "+protect(chr)+" order by start asc";
 		Statement prep = connection.createStatement();

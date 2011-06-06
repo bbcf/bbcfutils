@@ -52,7 +52,7 @@ public class ConvertToJSON {
 
 
 	public boolean convert(String outputPath,String dbName,String ressourceUrl,String trackName) throws ParsingException{
-		System.out.println("start conversion");
+		System.out.println("start conversion to JSON");
 		File test = new File(outputPath+"/"+dbName);
 		if(test.exists()){
 			System.err.println("already exist");
@@ -76,23 +76,25 @@ public class ConvertToJSON {
 		}
 
 
-
+		System.out.println("getting chromosomes");
 		//get chromosomes
 		Map<String, Integer> chromosomes;
 		try {
 			chromosomes = access.getChromosomesAndLength();
+			System.out.println(chromosomes);
 		} catch (SQLException e1) {
 			throw new ParsingException(e1);
 		}
 		if(null==chromosomes){
+			System.out.println(":JLšNJIšJLLL");
 			System.err.println("no chromosomes found");
 			return false;
 		}
+		System.out.println("type : "+type);
 		if(type.equalsIgnoreCase("quantitative")){
 			try{
 				for(Map.Entry<String, Integer> entry : chromosomes.entrySet()){
 					final String chromosome = entry.getKey();
-					makeDirectory(chromosome,outputPath+"/"+dbName);
 					float max;
 					max = access.getMaxScoreForChr(chromosome);
 					float min = access.getMinScoreForChr(chromosome);
@@ -125,16 +127,17 @@ public class ConvertToJSON {
 			}
 			System.out.println("TYPE : "+processingType);
 
-
 			//iterate throuht chromosomes
 			for(Map.Entry<String, Integer> entry : chromosomes.entrySet()){
 				final String chromosome = entry.getKey();
 				final int length = entry.getValue();
 				//make directory
+				System.out.println("CHR : "+chromosome);
 				if(!makeDirectory(chromosome,outputPath+"/"+dbName)){
 					System.err.println("cannot create directory : "+outputPath+"/"+dbName+"/"+chromosome);
 					return false;
 				}
+				System.out.println("ok");
 				try {
 					JSONChromosome jsonChromosome = new JSONChromosome(chromosome);
 					ResultSet r;
@@ -165,6 +168,7 @@ public class ConvertToJSON {
 					}
 					r.close();
 					writeChromosome(jsonChromosome,length,dbName,ressourceUrl,types,trackName);
+					System.out.println("chr writed");
 				} catch (SQLException e) {
 					throw new ParsingException(e);
 				} catch (JSONException e) {
@@ -310,6 +314,7 @@ public class ConvertToJSON {
 	}
 	private boolean makeDirectory(String chromosome,String outputPath) {
 		curOuput = new File(outputPath+"/"+chromosome);
+		System.out.println("mkdir : "+curOuput.getAbsolutePath());
 		if(!curOuput.mkdirs()){
 			return false;
 		}

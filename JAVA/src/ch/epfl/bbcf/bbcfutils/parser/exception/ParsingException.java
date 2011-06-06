@@ -19,4 +19,8 @@ public class ParsingException extends Exception {
 		super(message+" at line "+line);
 	}
 
+	public ParsingException(String message) {
+		super(message);
+	}
+
 }
