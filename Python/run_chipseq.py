@@ -1,84 +1,123 @@
+#!/bin/env python
+"""
+A High-throughput ChIP-seq peak analysis workflow.
+
+"""
 from bbcflib import daflims, genrep, frontend, email, gdv, common
 from bbcflib.mapseq import *
 from bbcflib.chipseq import *
 import sys, getopt, os, json
 
-opts = dict(getopt.getopt(sys.argv[1:],"k:d:w:",[])[0])
-hts_key = opts['-k']
-limspath = opts['-d']
-working_dir = opts['-w']
-ms_minilims = "/srv/mapseq/public/data/mapseq_minilims"
-mapseq_url = ''
+usage = """run_mapseq.py [-h] [-u via] [-w wdir] [-k job_key] [-c config_file] -d minilims
 
-os.chdir(working_dir)
-M = MiniLIMS( limspath )
-gl = use_pickle(M, "global variables")
-htss = frontend.Frontend( url=gl["hts_url"] )
-job = htss.job( hts_key )
-job.options['ucsc_bigwig'] = True
-g_rep = genrep.GenRep( gl["genrep_url"], gl["bwt_root"] )
-#_ = [M.delete_execution(x) for x in M.search_executions(with_text=hts_key)]
-with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
-#### change to choose for each file if mapseq or bam_url
-    if job.options['select_source'] == 'bam_url':
-        ms_files = {}
-        for gid, group in job.groups:
-            ms_files[gid] = {}
-            group_name = re.sub(r'\s+','_',group['name'])
-            for rid,run in group['runs'].iteritems():
-                bamfile = unique_filename_in(ex.working_directory)
-                with open(bamfile,"w") as out:
-                    out.write(urllib2.urlopen(run['url']).read())
-                with open(bamfile+".bai","w") as out:
-                    out.write(urllib2.urlopen(run['url']+".bai").read())
-                s = bamstats.nonblocking( ex, bamfile, via='lsf' )
-                ms_files[gid][rid] = {'bam': bamfile, 
-                                      'stats': s, 
-                                      'libname': name+'_'+str(rid)}
-        for gid, group in job.groups:
-            for rid,run in group['runs'].iteritems():
-                ms_files[gid][rid]['stats'] = ms_files[gid][rid]['stats'].wait()
-        pdf = add_pdf_stats( ex, ms_files,
-                             dict((k,v['name']) for k,v in job.groups.iteritems()), 
-                             gl['script_path'] )
-        job.options['compute_densities'] = False
-    elif job.options['select_source'] == 'mapseq_key':
-        M_ms = MiniLIMS(ms_minilims)
-        gl_ms = use_pickle(M_ms, "global variables")
-        mapseq_url = gl_ms['hts_url']
-        (ms_files, ms_job) = import_mapseq_results( str(job.options['mapseq_key']), M_ms, 
-                                                    ex.working_directory, gl_ms["hts_url"] )
-        g_rep_assembly = g_rep.assembly( ms_job.assembly_id )
-        job.groups = ms_job.groups
-        for gid, group in job.groups:
-            job.groups[gid]['name'] = re.sub(r'\s+','_',group['name'])
-        job.options['merge_strand'] = ms.job.options['merge_strand']
-        job.options['compute_densities'] = ms.job.options['compute_densities']
-        if 'read_extend' in ms.job.options and ms.job.options['read_extend']>0:
-            job.options['b2w_args'] = ["-q",str(options['read_extend'])]
-    else:
-        raise RuntimeError("Didn't know you could do that: "+job.options['select_source'])
-    chipseq_files = workflow_groups( ex, job, ms_files, g_rep_assembly.chromosomes, gl['script_path'] )
-allfiles = common.get_files( ex.id, M )
-if job.options['select_source'] == 'mapseq_key':
-    allfiles['url'].update({mapseq_url+"jobs/"+job.options['mapseq_key']+"/get_results":
-                            "Mapseq results"})
-if 'gdv_project' in job.options and 'sql' in allfiles:
-    allfiles['url'] = {job.options['gdv_project']['public_url']: 'GDV view'}
-    download_url = gl['hts_download']
-    _ = [gdv.add_gdv_sqlite( gl['gdv']['key'], gl['gdv']['email'],
-                             job.options['gdv_project']['project_id'],
-                             url=download_url+str(k), 
-                             name = re.sub('\.sql','',str(f)),
-                             gdv_url=gl['gdv']['url'], datatype="quantitative" ) 
-         for k,f in allfiles['sql'].iteritems()]
-print json.dumps(allfiles)
-r = email.EmailReport( sender=gl['email']['sender'],
-                       to=str(job.email),
-                       subject="Chipseq job "+str(job.description),
-                       smtp_server=gl['email']['smtp'] )
-r.appendBody('''
-Your chip-seq job is finished,
-you can retrieve the results at this url:
-'''+gl["hts_url"]+"jobs/"+hts_key+"/get_results")
-r.send()
+-h           Print this message and exit
+-u via       Run executions using method 'via' (can be "local" or "lsf")
+-w wdir      Create execution working directories in wdir
+-d minilims  MiniLIMS where Chipseq executions and files will be stored.
+-m minilims  MiniLIMS where a previous Mapseq execution and files has been stored.
+-k job_key   Alphanumeric key specifying the job
+-c file      Config file 
+"""
+
+class Usage(Exception):
+    def __init__(self,  msg):
+        self.msg = msg
+
+def main(argv = None):
+    via = "lsf"
+    limspath = None
+    ms_limspath = "/srv/mapseq/public/data/mapseq_minilims"
+    hts_key = None
+    working_dir = None
+    config = None
+    if argv is None:
+        argv = sys.argv
+    try:
+        try:
+            opts,args = getopt.getopt(sys.argv[1:],"hu:k:d:w:m:c:",
+                                      ["help","via","key","minilims",
+                                       "mapseq_minilims",
+                                       "working-directory","config"])
+        except getopt.error, msg:
+            raise Usage(msg)
+        for o, a in opts:
+            if o in ("-h", "--help"):
+                print __doc__
+                print usage
+                sys.exit(0)
+            elif o in ("-u", "--via"):
+                if a=="local":
+                    via = "local"
+                elif a=="lsf":
+                    via = "lsf"
+                else:
+                    raise Usage("Via (-u) can only be \"local\" or \"lsf\", got %s." % (a,))
+            elif o in ("-w", "--working-directory"):
+                if os.path.exists(a):
+                    os.chdir(a)
+                    working_dir = a
+                else:
+                    raise Usage("Working directory '%s' does not exist." % a)
+            elif o in ("-d", "--minilims"):
+                limspath = a
+            elif o in ("-m", "--mapseq_minilims"):
+                ms_limspath = a
+            elif o in ("-k", "--key"):
+                hts_key = a
+            elif o in ("-c", "--config"):
+                config_file = a
+            else:
+                raise Usage("Unhandled option: " + o)
+#mapseq_url = ''
+        M = MiniLIMS( limspath )
+        if len(hts_key)>1:
+            gl = use_pickle( M, "global variables" )
+            htss = frontend.Frontend( url=gl['hts_chipseq']['url'] )
+            job = htss.job( hts_key )
+            ###[M.delete_execution(x) for x in M.search_executions(with_description=hts_key)]
+        elif os.path.exists(config_file):
+            (job,gl) = frontend.parseConfig( config_file )
+        else:
+            raise ValueError("Need either a job key (-k) or a configuration file (-c).")
+        job.options['ucsc_bigwig'] = True
+        g_rep = genrep.GenRep( gl["genrep_url"], gl["bwt_root"] )
+        with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
+            (mapped_files, job) = get_bam_wig_files( ex, job, ms_limspath, gl['hts_mapseq']['url'], gl['script_path'], via=via )
+            g_rep = genrep.GenRep( gl['genrep_url'], gl['bwt_root'] )
+            assembly = g_rep.assembly( job.assembly_id )
+            chipseq_files = workflow_groups( ex, job, mapped_files, 
+                                             assembly.chromosomes, 
+                                             gl['script_path'] )
+        allfiles = common.get_files( ex.id, M )
+        if 'gdv_project' in job.options and 'sql' in allfiles:
+            allfiles['url'] = {job.options['gdv_project']['public_url']: 'GDV view'}
+            download_url = gl['hts_chipseq']['download']
+            [gdv.add_gdv_sqlite( gl['gdv']['key'], gl['gdv']['email'],
+                                 job.options['gdv_project']['project_id'],
+                                 url=download_url+str(k), 
+                                 name = re.sub('\.sql','',str(f)),
+                                 gdv_url=gl['gdv']['url'], datatype='quantitative' ) 
+             for k,f in allfiles['sql'].iteritems()]
+        print json.dumps(allfiles)
+        r = email.EmailReport( sender=gl['email']['sender'],
+                               to=str(job.email),
+                               subject="Chipseq job "+str(job.description),
+                               smtp_server=gl['email']['smtp'] )
+        r.appendBody('''
+Your chip-seq job is finished.
+
+The description was: 
+'''+str(job.description)+'''
+and its unique key is '''+hts_key+'''.
+
+You can retrieve the results at this url:
+'''+gl['hts_chipseq']['url']+"jobs/"+hts_key+"/get_results")
+        r.send()
+        sys.exit(0)
+    except Usage, err:
+        print >>sys.stderr, err.msg
+        print >>sys.stderr, usage
+        return 2
+    
+if __name__ == '__main__':
+    sys.exit(main())

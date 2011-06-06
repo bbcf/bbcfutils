@@ -7,14 +7,14 @@ from bbcflib import daflims, genrep, frontend, email, gdv, common
 from bbcflib.mapseq import *
 import sys, getopt, os
 
-usage = """run_mapseq.py [-h] [-u via] [-w wdir] -d minilims -k job_key
+usage = """run_mapseq.py [-h] [-u via] [-w wdir] [-k job_key] [-c config_file] -d minilims
 
 -h           Print this message and exit
 -u via       Run executions using method 'via' (can be "local" or "lsf")
 -w wdir      Create execution working directories in wdir
--d minilims  MiniLIMS where RNASeq executions and files will be stored.
+-d minilims  MiniLIMS where mapseq executions and files will be stored.
 -k job_key   Alphanumeric key specifying the job
--c file      Config file ### TODO
+-c file      Config file
 """
 
 class Usage(Exception):
@@ -26,12 +26,14 @@ def main(argv = None):
     limspath = None
     hts_key = None
     working_dir = None
+    config = None
     if argv is None:
         argv = sys.argv
     try:
         try:
             opts,args = getopt.getopt(sys.argv[1:],"hu:k:d:w:",
-                                      ["help","via","key","minilims","working-directory"])
+                                      ["help","via","key","minilims",
+                                       "working-directory","config"])
         except getopt.error, msg:
             raise Usage(msg)
         for o, a in opts:
@@ -56,20 +58,27 @@ def main(argv = None):
                 limspath = a
             elif o in ("-k", "--key"):
                 hts_key = a
+            elif o in ("-c", "--config"):
+                config_file = a
             else:
                 raise Usage("Unhandled option: " + o)
         M = MiniLIMS( limspath )
-        gl = use_pickle(M, "global variables")
-        htss = frontend.Frontend( url=gl["hts_url"] )
-        job = htss.job( hts_key )
+        if len(hts_key)>1:
+            gl = use_pickle(M, "global variables")
+            htss = frontend.Frontend( url=gl["hts_url"] )
+            job = htss.job( hts_key )
+        ###[M.delete_execution(x) for x in M.search_executions(with_description=hts_key)]
+        elif os.path.exists(config_file):
+            (job,gl) = frontend.parseConfig( config_file )
+        else:
+            raise ValueError("Need either a job key (-k) or a configuration file (-c).")
         g_rep = genrep.GenRep( gl["genrep_url"], gl["bwt_root"] )
         assembly = g_rep.assembly( job.assembly_id )
         dafl = dict((loc,daflims.DAFLIMS( username=gl['lims']['user'], password=pwd ))
                     for loc,pwd in gl['lims']['passwd'].iteritems())
         job.options['ucsc_bigwig'] = True
-        #[M.delete_execution(x) for x in M.search_executions(with_description=hts_key)]
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
-            job = get_fastq_files( job, dafl, ex.working_directory )
+            job = get_fastq_files( job, ex.working_directory, dafl )
             mapped_files = map_groups( ex, job, ex.working_directory, assembly, {'via': via} )
             pdf = add_pdf_stats( ex, mapped_files,
                                  dict((k,v['name']) for k,v in job.groups.iteritems()),
@@ -102,8 +111,8 @@ def main(argv = None):
 Your mapseq job is finished.
 
 The description was: 
-"""+str(job.description)+"""
-and its unique key is """+hts_key+""".
+'''+str(job.description)+'''
+and its unique key is '''+hts_key+'''.
 
 You can now retrieve the results at this url:
 '''+gl["hts_url"]+"jobs/"+hts_key+"/get_results")
