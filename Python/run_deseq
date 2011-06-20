@@ -11,7 +11,7 @@ import rpy2.robjects.numpy2ri
 import rpy2.rlike.container as rlc
 import pudb #pudb.set_trace()
 
-usage = """run_deseq.py cond1_file cond2_file transcript_names_file cond1_label cond2_label method assembly_id output maplot
+usage = """run_deseq cond1_file cond2_file transcript_names_file cond1_label cond2_label method assembly_id output maplot
 
 """
 
@@ -21,7 +21,7 @@ class Usage(Exception):
 
 def main(argv = None):
     """
-    Usage: run_deseq.py cond1_file cond2_file transcript_names_file cond1_label cond2_label method assembly_id output maplot
+    Usage: run_deseq cond1_file cond2_file transcript_names_file cond1_label cond2_label method assembly_id output maplot
     """
     narg = 9
     if argv is None:
