@@ -28,7 +28,7 @@ def main(argv = None):
         argv = sys.argv[1:]
     try:
         if len(argv) != narg:
-            raise Usage("run_deseq.py takes exactly %d argument." % narg)
+            raise Usage("run_deseq takes exactly %d argument." % narg)
         cond1_file = argv[0]
         with open(cond1_file,'rb') as f:
             cond1 = pickle.load(f)
