@@ -69,7 +69,6 @@ public class SQLiteConstruct extends SQLiteParent{
 	}
 
 	/**
-	 * {CONSTRUCTION}
 	 * create a new database
 	 * @param type : must be qualitative or quantitative
 	 */
@@ -85,6 +84,19 @@ public class SQLiteConstruct extends SQLiteParent{
 		this.connection.commit();
 	}
 
+	/**
+	 * create a new database
+	 * @param type : must be qualitative or quantitative
+	 */
+	public void addAtribute(String key,String value) throws SQLException{
+		Statement stat;
+		stat = this.connection.createStatement();
+		PreparedStatement prep = this.connection.prepareStatement("insert into attributes values (?,?);");
+		prep.setString(1,key);
+		prep.setString(2,value);
+		prep.executeUpdate();
+		this.connection.commit();
+	}
 
 	/**
 	 * create a new table for a chromosome for 

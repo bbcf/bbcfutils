@@ -1,3 +1,4 @@
+package ch.epfl.bbcf.bbcfutils.parsing.parser;
 //package ch.epfl.bbcf.bbcfutils.parser;
 //
 //

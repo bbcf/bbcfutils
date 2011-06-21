@@ -1,8 +1,10 @@
-package ch.epfl.bbcf.bbcfutils.parser;
+package ch.epfl.bbcf.bbcfutils.parsing.parser;
 
-import ch.epfl.bbcf.bbcfutils.parser.exception.ParsingException;
-import ch.epfl.bbcf.bbcfutils.parser.feature.Track;
-import ch.epfl.bbcf.bbcfutils.parser.feature.Feature;
+import java.sql.SQLException;
+
+import ch.epfl.bbcf.bbcfutils.exception.ParsingException;
+import ch.epfl.bbcf.bbcfutils.parsing.feature.Feature;
+import ch.epfl.bbcf.bbcfutils.parsing.feature.Track;
 
 
 
@@ -21,8 +23,9 @@ public interface Handler {
 	/**
 	 * called when a new track is encountered in the document
 	 * @param track
+	 * @throws ParsingException 
 	 */
-	public abstract void newTrack(Track track);
+	public abstract void newTrack(Track track) throws ParsingException;
 	
 	/**
 	 * method called at the start of the file

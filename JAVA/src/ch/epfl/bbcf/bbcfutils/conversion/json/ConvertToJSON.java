@@ -20,17 +20,16 @@ import ch.epfl.bbcf.bbcfutils.conversion.json.pojo.TrackData;
 import ch.epfl.bbcf.bbcfutils.conversion.json.pojo.TrackDataQuantitative;
 import ch.epfl.bbcf.bbcfutils.conversion.json.pojo.TrackData.ClientConfig;
 import ch.epfl.bbcf.bbcfutils.conversion.json.pojo.TrackData.Type;
+import ch.epfl.bbcf.bbcfutils.exception.ConvertToJSONException;
 import ch.epfl.bbcf.bbcfutils.json.JsonMapper;
-import ch.epfl.bbcf.bbcfutils.parser.exception.ParsingException;
-import ch.epfl.bbcf.bbcfutils.parser.feature.ExtendedQualitativeFeature;
-import ch.epfl.bbcf.bbcfutils.parser.feature.JSONFeature;
-import ch.epfl.bbcf.bbcfutils.parser.feature.QualitativeFeature;
+import ch.epfl.bbcf.bbcfutils.parsing.feature.BioSQLiteQualitative;
+import ch.epfl.bbcf.bbcfutils.parsing.feature.BioSQLiteQualitativeExt;
+import ch.epfl.bbcf.bbcfutils.parsing.feature.JSONFeature;
 import ch.epfl.bbcf.bbcfutils.sqlite.SQLiteAccess;
 
 
 public class ConvertToJSON {
 
-	public enum Extension {GFF,BED,BAM}
 
 
 	private String inputPath;
@@ -51,113 +50,142 @@ public class ConvertToJSON {
 	}
 
 
-	public boolean convert(String outputPath,String dbName,String ressourceUrl,String trackName) throws ParsingException{
-		System.out.println("start conversion to JSON");
+	/**
+	 * convert a SQLite database to it's JSON representation
+	 * for JBrowse javascript engine
+	 * @param outputPath - the output directory
+	 * @param dbName - the output directory name 
+	 * @param ressourceUrl - an URL that is writed in the JSON
+	 * @param trackName - the name of the track
+	 * @return true if the conversion worked
+	 * @throws ConvertToJSONException if the conversion failed
+	 */
+	public boolean convert(String outputPath,String dbName,String ressourceUrl,String trackName)throws ConvertToJSONException{
+		/* making directory */
 		File test = new File(outputPath+"/"+dbName);
 		if(test.exists()){
-			System.err.println("already exist");
 			test.delete();
 		}
 		boolean success = (new File(outputPath+"/"+dbName)).mkdir();
 		if(!success){
-			System.err.println("Directory creation failed : "+outputPath+"/"+dbName);
-			return false;
+			throw new ConvertToJSONException("Directory creation failed : "+outputPath+"/"+dbName);
 		}
+		/* connection with database */
 		try {
 			this.access = (SQLiteAccess) SQLiteAccess.getConnectionWithDatabase(inputPath);
 		} catch (InstantiationException e) {
-			throw new ParsingException(e);
+			throw new ConvertToJSONException(e);
 		} catch (IllegalAccessException e) {
-			throw new ParsingException(e);
+			throw new ConvertToJSONException(e);
 		} catch (ClassNotFoundException e) {
-			throw new ParsingException(e);
+			throw new ConvertToJSONException(e);
 		} catch (SQLException e) {
-			throw new ParsingException(e);
+			throw new ConvertToJSONException(e);
 		}
 
-
-		System.out.println("getting chromosomes");
-		//get chromosomes
+		/* get chromosomes in the SQLite database */
 		Map<String, Integer> chromosomes;
 		try {
 			chromosomes = access.getChromosomesAndLength();
-			System.out.println(chromosomes);
 		} catch (SQLException e1) {
-			throw new ParsingException(e1);
+			throw new ConvertToJSONException(e1);
 		}
 		if(null==chromosomes){
-			System.out.println(":JLšNJIšJLLL");
-			System.err.println("no chromosomes found");
-			return false;
+			throw new ConvertToJSONException("no chromosomes found");
 		}
-		System.out.println("type : "+type);
+
+		/* separate qualitative & quantitative process */
+
+
 		if(type.equalsIgnoreCase("quantitative")){
 			try{
+				/* loop chromosomes */ 
 				for(Map.Entry<String, Integer> entry : chromosomes.entrySet()){
 					final String chromosome = entry.getKey();
+					if(!makeDirectory(chromosome,outputPath+"/"+dbName)){
+						throw new ConvertToJSONException("cannot create directory : "+outputPath+"/"+dbName+"/"+chromosome);
+					}
 					float max;
 					max = access.getMaxScoreForChr(chromosome);
 					float min = access.getMinScoreForChr(chromosome);
 					TrackDataQuantitative tdata = new TrackDataQuantitative(
 							Constants.TILE_WIDTH, Math.round(min), Math.round(max), dbName, chromosome);
 					String json = JsonMapper.serialize(tdata);
+					/* write json */
 					OutputStream out = new FileOutputStream(curOuput+"/../"+chromosome+".json");
 					Utility.write(json,out);
 					Utility.close(out);
 				}
+
 				access.close();
 			} catch (SQLException e) {
-				throw new ParsingException(e);
+				throw new ConvertToJSONException(e);
 			} catch (IOException e) {
-				throw new ParsingException(e);
+				throw new ConvertToJSONException(e);
 			}
 			return true;
+
+
+
+
+
+
+
 		} else if(type.equalsIgnoreCase("qualitative")){
-			//guess type (BASIC or EXTENDED)
+			/* guess precise type (basic or extended) */
 			processingType = Type.EXTENDED;
 			if(!chromosomes.isEmpty()){
 				String firstChromosome = chromosomes.keySet().iterator().next();
 				try{
 					this.access.getExtendedQualitativeFeature(firstChromosome);
 				}catch(SQLException e){
-					System.err.println("error");
-					e.printStackTrace();
 					processingType = Type.BASIC;
+				} finally {
+					
 				}
 			}
-			System.out.println("TYPE : "+processingType);
+			try {
+				access.close();
+				this.access = (SQLiteAccess) SQLiteAccess.getConnectionWithDatabase(inputPath);
+			} catch (SQLException e1) {
+				throw new ConvertToJSONException(e1);
+			} catch (InstantiationException e) {
+				throw new ConvertToJSONException(e);			
+			} catch (IllegalAccessException e) {
+				throw new ConvertToJSONException(e);
+			} catch (ClassNotFoundException e) {
+				throw new ConvertToJSONException(e);				
+			}
+			
+			
 
-			//iterate throuht chromosomes
+			/* loop chromosomes */
 			for(Map.Entry<String, Integer> entry : chromosomes.entrySet()){
 				final String chromosome = entry.getKey();
 				final int length = entry.getValue();
-				//make directory
-				System.out.println("CHR : "+chromosome);
+				
 				if(!makeDirectory(chromosome,outputPath+"/"+dbName)){
-					System.err.println("cannot create directory : "+outputPath+"/"+dbName+"/"+chromosome);
-					return false;
+					throw new ConvertToJSONException("cannot create directory : "+outputPath+"/"+dbName+"/"+chromosome);
 				}
-				System.out.println("ok");
 				try {
 					JSONChromosome jsonChromosome = new JSONChromosome(chromosome);
 					ResultSet r;
-
-					r = access.prepareQualitativeFeatures(chromosome);
-
-					//iterate throught features
+					r = access.prepareFeatures(chromosome);
 					List<String> types = null;
+					/* iterate throught features */
 					switch(processingType){
 					case BASIC:
 						while(r.next()){
-							QualitativeFeature feature = access.getNextQualitativeFeature(r);
+							BioSQLiteQualitative feature = access.getNextQualitativeFeature(r,chromosome);
 							JSONFeature jsonFeature = new JSONFeature(feature);
 							jsonChromosome.addFeature(jsonFeature);
 						}
+						r.close();
 						break;
 					case EXTENDED:
 						types = new ArrayList<String>();
 						while(r.next()){
-							ExtendedQualitativeFeature feature = access.getNextExtendedQualitativeFeature(r);
+							BioSQLiteQualitativeExt feature = access.getNextExtendedQualitativeFeature(r,chromosome);
 							JSONFeature jsonFeature = new JSONFeature(feature);
 							jsonChromosome.addFeature(jsonFeature);
 							if(!types.contains(feature.getType())){
@@ -168,27 +196,26 @@ public class ConvertToJSON {
 					}
 					r.close();
 					writeChromosome(jsonChromosome,length,dbName,ressourceUrl,types,trackName);
-					System.out.println("chr writed");
+					
 				} catch (SQLException e) {
-					throw new ParsingException(e);
+					throw new ConvertToJSONException(e);
 				} catch (JSONException e) {
-					throw new ParsingException(e);
+					throw new ConvertToJSONException(e);
 				} catch (InstantiationException e) {
-					throw new ParsingException(e);
+					throw new ConvertToJSONException(e);
 				} catch (IllegalAccessException e) {
-					throw new ParsingException(e);
+					throw new ConvertToJSONException(e);
 				} catch (ClassNotFoundException e) {
-					throw new ParsingException(e);
+					throw new ConvertToJSONException(e);
 				} catch (IOException e) {
-					throw new ParsingException(e);
+					throw new ConvertToJSONException(e);
 				}
 			}
 			try {
 				access.close();
 			} catch (SQLException e) {
-				throw new ParsingException(e);
+				throw new ConvertToJSONException(e);
 			}
-			System.out.println("end conversion");
 			return true;
 		}
 		return false;
@@ -200,7 +227,22 @@ public class ConvertToJSON {
 
 
 
-
+	/**
+	 * write the chromosome feature in JSON
+	 * @param jsonChromosome - the chromosome
+	 * @param length - it's length
+	 * @param dbName - the database name
+	 * @param ressourceUrl - the ressource URL
+	 * @param types - all differents types present in the SQLite database
+	 * @param trackName - the name of the track
+	 * @return true if succeed
+	 * @throws JSONException
+	 * @throws SQLException
+	 * @throws InstantiationException
+	 * @throws IllegalAccessException
+	 * @throws ClassNotFoundException
+	 * @throws IOException
+	 */
 	private boolean writeChromosome(JSONChromosome jsonChromosome,int length,String dbName,String ressourceUrl,List<String> types,String trackName) throws JSONException, SQLException, InstantiationException, IllegalAccessException, ClassNotFoundException, IOException {
 		List<JSONFeat> list = new ArrayList<JSONFeat>();
 		for(Map.Entry<String, JSONFeat> entry : jsonChromosome.features.entrySet()){
@@ -573,7 +615,7 @@ public class ConvertToJSON {
 		ConvertToJSON c = new ConvertToJSON("/Users/jarosz/Desktop/A4.db","qualitative");
 		try {
 			c.convert("/Users/jarosz/Desktop/","A10", "../../tracks_dev", "THE_TRACK");
-		} catch (ParsingException e) {
+		} catch (ConvertToJSONException e) {
 			e.printStackTrace();
 		}
 
