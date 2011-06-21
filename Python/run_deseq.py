@@ -4,12 +4,14 @@ import os
 import sys
 import pickle
 import numpy
+from rnaseq import inference
 import rpy2.robjects as robjects
 import rpy2.robjects.packages as rpackages
 import rpy2.robjects.numpy2ri
 import rpy2.rlike.container as rlc
+import pudb #pudb.set_trace()
 
-usage = """run_deseq.py cond1_file cond2_file transcript_names_file cond1_label cond2_label method output
+usage = """run_deseq.py cond1_file cond2_file transcript_names_file cond1_label cond2_label method assembly_id output maplot
 
 """
 
@@ -18,7 +20,10 @@ class Usage(Exception):
         self.msg = msg
 
 def main(argv = None):
-    narg = 7
+    """
+    Usage: run_deseq.py cond1_file cond2_file transcript_names_file cond1_label cond2_label method assembly_id output maplot
+    """
+    narg = 9
     if argv is None:
         argv = sys.argv[1:]
     try:
@@ -36,24 +41,16 @@ def main(argv = None):
         cond1_label = str(argv[3])
         cond2_label = str(argv[4])
         method = str(argv[5])
-        output = argv[6]
+        assembly_id = int(argv[6])
+        output = str(argv[7])
+        maplot = str(argv[8])
 
-        data_frame_contents = rlc.OrdDict([(cond1_label+'-'+str(i), robjects.IntVector(c))
-                                           for i,c in enumerate(cond1)] +
-                                          [(cond2_label+'-'+str(i), robjects.IntVector(c))
-                                           for i,c in enumerate(cond2)])
-        data_frame = robjects.DataFrame(data_frame_contents)
-        data_frame.rownames = transcript_names
+        optargs = {}
+        if assembly_id: optargs['assembly_id'] = assembly_id
+        if not output=="None": optargs['output'] = output
+        if not maplot=="None": optargs['maplot'] = maplot
+        inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method, **optargs)
         
-        conds = robjects.StrVector([cond1_label for x in cond1] + [cond2_label for x in cond2]).factor()
-        
-        # Import the library
-        deseq = rpackages.importr('DESeq')
-        cds = deseq.newCountDataSet(data_frame, conds)
-        cds = deseq.estimateSizeFactors(cds)
-        cds = deseq.estimateVarianceFunctions(cds,method=method)
-        res = deseq.nbinomTest(cds, cond1_label, cond2_label)
-        res.to_csvfile(output)
         sys.exit(0)
     except Usage, err:
         print >>sys.stderr, err.msg
@@ -62,4 +59,5 @@ def main(argv = None):
 
 if __name__ == '__main__':
     sys.exit(main())
+
 
