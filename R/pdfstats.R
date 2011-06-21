@@ -11,9 +11,10 @@ for (sample in sort(names(stats.by.sample))) {
 #    col='darkorange'
     col=heat.colors(6)[c(2,rep(4,length(stats$multi_hits)-1),6)]
     p=barplot(df$reads+.1,names.arg=df$hits,border=0,
-      log='y',col=col,xlab='# hits',ylab='# reads',
+      log='y',col=col,xlab='# hits',ylab='# reads',ylim=c(1,stats$total),
       main='Reads with multiple hits')
     text(x=p,y=median(df$reads),lab=df$reads,srt=90,adj=c(0,0),cex=1.1)
+    text(nrow(df)/2,stats$total,paste("reads total:",stats$total),pos=1)
     df=data.frame(mismatches=rev(names(stats$mismatches)),
       reads=rev(as.numeric(stats$mismatches)))
     col=heat.colors(6)[c(rep(4,length(df$reads)-1),2)]
