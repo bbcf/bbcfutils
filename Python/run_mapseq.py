@@ -26,7 +26,7 @@ def main(argv = None):
     limspath = None
     hts_key = None
     working_dir = None
-    config = None
+    config_file = None
     if argv is None:
         argv = sys.argv
     try:
@@ -62,6 +62,9 @@ def main(argv = None):
                 config_file = a
             else:
                 raise Usage("Unhandled option: " + o)
+        if not(limspath and os.path.exists(limspath) 
+               and (hts_key != None or (config_file and os.path.exists(config_file)))):
+            raise Usage("")
         M = MiniLIMS( limspath )
         if len(hts_key)>1:
             gl = use_pickle(M, "global variables")

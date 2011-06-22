@@ -29,7 +29,7 @@ def main(argv = None):
     ms_limspath = "/srv/mapseq/public/data/mapseq_minilims"
     hts_key = None
     working_dir = None
-    config = None
+    config_file = None
     if argv is None:
         argv = sys.argv
     try:
@@ -68,7 +68,9 @@ def main(argv = None):
                 config_file = a
             else:
                 raise Usage("Unhandled option: " + o)
-#mapseq_url = ''
+        if not(limspath and os.path.exists(limspath) 
+               and (hts_key != None or (config_file and os.path.exists(config_file)))):
+            raise Usage("")
         M = MiniLIMS( limspath )
         if len(hts_key)>1:
             gl = use_pickle( M, "global variables" )
@@ -81,13 +83,10 @@ def main(argv = None):
             raise ValueError("Need either a job key (-k) or a configuration file (-c).")
         job.options['ucsc_bigwig'] = True
         g_rep = genrep.GenRep( gl["genrep_url"], gl.get("bwt_root") )
+        assembly = g_rep.assembly( job.assembly_id )
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
             (mapped_files, job) = get_bam_wig_files( ex, job, ms_limspath, gl['hts_mapseq']['url'], gl['script_path'], via=via )
-            g_rep = genrep.GenRep( gl['genrep_url'], gl['bwt_root'] )
-            assembly = g_rep.assembly( job.assembly_id )
-            chipseq_files = workflow_groups( ex, job, mapped_files, 
-                                             assembly.chromosomes, 
-                                             gl['script_path'] )
+            chipseq_files = workflow_groups( ex, job, mapped_files, assembly.chromosomes, gl['script_path'] )
         allfiles = common.get_files( ex.id, M )
         if 'gdv_project' in job.options and 'sql' in allfiles:
             allfiles['url'] = {job.options['gdv_project']['public_url']: 'GDV view'}
