@@ -80,7 +80,7 @@ def main(argv = None):
         else:
             raise ValueError("Need either a job key (-k) or a configuration file (-c).")
         job.options['ucsc_bigwig'] = True
-        g_rep = genrep.GenRep( gl["genrep_url"], gl["bwt_root"] )
+        g_rep = genrep.GenRep( gl["genrep_url"], gl.get("bwt_root") )
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
             (mapped_files, job) = get_bam_wig_files( ex, job, ms_limspath, gl['hts_mapseq']['url'], gl['script_path'], via=via )
             g_rep = genrep.GenRep( gl['genrep_url'], gl['bwt_root'] )
@@ -99,11 +99,12 @@ def main(argv = None):
                                  gdv_url=gl['gdv']['url'], datatype='quantitative' ) 
              for k,f in allfiles['sql'].iteritems()]
         print json.dumps(allfiles)
-        r = email.EmailReport( sender=gl['email']['sender'],
-                               to=str(job.email),
-                               subject="Chipseq job "+str(job.description),
-                               smtp_server=gl['email']['smtp'] )
-        r.appendBody('''
+        if 'email' in gl:
+            r = email.EmailReport( sender=gl['email']['sender'],
+                                   to=str(job.email),
+                                   subject="Chipseq job "+str(job.description),
+                                   smtp_server=gl['email']['smtp'] )
+            r.appendBody('''
 Your chip-seq job is finished.
 
 The description was: 
@@ -112,7 +113,7 @@ and its unique key is '''+hts_key+'''.
 
 You can retrieve the results at this url:
 '''+gl['hts_chipseq']['url']+"jobs/"+hts_key+"/get_results")
-        r.send()
+            r.send()
         sys.exit(0)
     except Usage, err:
         print >>sys.stderr, err.msg
