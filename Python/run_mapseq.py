@@ -72,7 +72,8 @@ def main(argv = None):
             (job,gl) = frontend.parseConfig( config_file )
         else:
             raise ValueError("Need either a job key (-k) or a configuration file (-c).")
-        g_rep = genrep.GenRep( gl["genrep_url"], gl["bwt_root"] )
+        g_rep = genrep.GenRep( url=gl["genrep_url"], root=gl["bwt_root"], 
+                               intype=job.options.get('input_type') )
         assembly = g_rep.assembly( job.assembly_id )
         dafl = dict((loc,daflims.DAFLIMS( username=gl['lims']['user'], password=pwd ))
                     for loc,pwd in gl['lims']['passwd'].iteritems())
@@ -105,11 +106,12 @@ def main(argv = None):
                                  gdv_url=gl['gdv']['url'], datatype="quantitative" ) 
              for k,f in allfiles['sql'].iteritems()]
         print json.dumps(allfiles)
-        r = email.EmailReport( sender=gl['email']['sender'],
-                               to=str(job.email),
-                               subject="Mapseq job "+str(job.description),
-                               smtp_server=gl['email']['smtp'] )
-        r.appendBody('''
+        if 'email' in gl:
+            r = email.EmailReport( sender=gl['email']['sender'],
+                                   to=str(job.email),
+                                   subject="Mapseq job "+str(job.description),
+                                   smtp_server=gl['email']['smtp'] )
+            r.appendBody('''
 Your mapseq job is finished.
 
 The description was: 
@@ -118,7 +120,7 @@ and its unique key is '''+hts_key+'''.
 
 You can now retrieve the results at this url:
 '''+gl['hts_mapseq']['url']+"jobs/"+hts_key+"/get_results")
-        r.send()
+            r.send()
         sys.exit(0)
     except Usage, err:
         print >>sys.stderr, err.msg
