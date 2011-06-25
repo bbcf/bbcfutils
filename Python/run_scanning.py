@@ -6,8 +6,8 @@ from bbcflib.gdv                import create_gdv_project, add_gdv_track, get_pr
 from bbcflib.frontend           import parseConfig
 from bbcflib.common             import ssh_add, scp, normalize_url
 from bbcflib.track.format_sql   import Track, new
-from os.path                    import basename, expanduser, abspath, normcase, splitext
-from sys                        import argv
+from os.path                    import basename, expanduser, abspath, normcase, splitext, isfile
+import getopt, sys
 
 usage = """%s [-h] [-u via] [-m machine_host][-r remote_path] [-w website] [-p private_key] -f matrix_file -c config_file -d minilims
 -h Print this message and exit
@@ -19,7 +19,7 @@ usage = """%s [-h] [-u via] [-m machine_host][-r remote_path] [-w website] [-p p
 -f dictionary where key is matrix name and value matrix file path (e.g {"Tbf1_snoRNAs":"./Tbf1_snoRNAs.mat"})
 -d minilims MiniLIMS where Scanning executions and files will be stored.
 -c file Config file
-""" %(argv[0])
+""" %(sys.argv[0])
 
 class Usage(Exception):
     def __init__(self, msg):
@@ -29,6 +29,9 @@ def main(argv = None):
     genrep              = None
     assembly            = None
     M                   = None
+    job                 = None
+    config              = None
+    config_file         = None
     background          = ""
     matrix              = ""
     original_bed_data   = ""
@@ -45,15 +48,16 @@ def main(argv = None):
     limspath            = ""
     private_key         = ""
     fdr                 = 0
-
+    if argv is None: argv = sys.argv
     try:
         try:
             opts,args = getopt.getopt   (
-                                            sys.argv[1:],"hu:m:r:w:p:d:c:"  ,
+                                            argv[1:],"hu:m:r:w:p:f:d:c:"  ,
                                             [
                                                 "help","via","machine_host" ,
                                                 "remote_path"               ,
-                                                "website", "private_key"     ,
+                                                "website", "private_key"    ,
+                                                "matrix_file"               ,
                                                 "minilims","config"
                                             ]
                                         )
@@ -63,7 +67,7 @@ def main(argv = None):
             if o in ("-h", "--help"):
                 print __doc__
                 print usage
-                sys.exit(0)
+                sys.sys.exit(0)
             elif o in ("-u", "--via"):
                 if a=="local":
                     via = "local"
@@ -88,12 +92,17 @@ def main(argv = None):
             else:
                 raise Usage("Unhandled option: " + o)
 
+        # read config file
+        if config_file is None or not exists(config_file) or not isfile(config_file):
+            raise Usage("Config file missing")
+        else:
+            job, config = parseConfig(normcase(expanduser(config_file)))
+
         # compute false discovery rate
         with execution(M, description=job.description) as ex:
             # Add user identity
             ssh_add(ex, private_key)
 
-            job, config         = parseConfig(normcase(expanduser(config_file)))
             genrep              = GenRep(config=config)
             assembly            = genrep.assembly(job["assembly_id"])
             background          = genrep.statistics(assembly,output=unique_filename_in)
