@@ -11,7 +11,7 @@
 
   <path id="all.classpath">
     <pathelement location="bin"/>
-    <pathelement location="lib/jackson-all-1.7.6.jar"/>
+    <pathelement location="lib/jackson-all-1.7.4.jar"/>
     <pathelement location="lib/json-1.0.jar"/>
     <pathelement location="lib/biojava3-genome-3.0.1.jar"/>
   </path>
@@ -20,8 +20,8 @@
   <target name="download" depends="init">
     <get src="http://www.biojava.org/download/maven/org/biojava/biojava3-genome/3.0/biojava3-genome-3.0.jar" dest="${lib.dir}/biojava3-genome-3.0.1.jar"/>
     <!-- <get src="http://www.xerial.org/maven/repository/artifact/org/xerial/sqlite-jdbc/3.7.2/sqlite-jdbc-3.7.2.jar" dest="${lib.dir}/sqlite-jdbc-3.7.2.jar"/> -->
-    <get src="http://jackson.codehaus.org/1.7.6/jackson-all-1.7.6.jar" dest="${lib.dir}/jackson-all-1.7.6.jar"/>
-    <get src="http://salt.epfl.ch/maven/org/json/json/1.0/json-1.0.jar" dest="${lib.dir}/json-1.0.jar"/>
+    <get src="http://salt.epfl.ch/java/javalib/jackson-all-1.7.4.jar" dest="${lib.dir}/jackson-all-1.7.4.jar"/>
+    <get src="http://salt.epfl.ch/java/maven/org/json/json/1.0/json-1.0.jar" dest="${lib.dir}/json-1.0.jar"/>
 
     
   </target>

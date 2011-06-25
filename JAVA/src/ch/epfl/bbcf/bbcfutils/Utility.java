@@ -3,6 +3,7 @@ package ch.epfl.bbcf.bbcfutils;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -112,18 +113,17 @@ public final class Utility {
 	}
 
 
-
-
-
-
-
-	public static String getFileMd5(String filePath) throws IOException{
+	/**
+	 * Get the file digest from a file
+	 * @param filePath - the path to the file
+	 * @param crypto - the crypto to use ('MD5', 'SHA')
+	 * @return the signature in hexa
+	 * @throws NoSuchAlgorithmException
+	 * @throws IOException
+	 */
+	public static String getFileDigest(String filePath,String crypto) throws NoSuchAlgorithmException, IOException{
 		MessageDigest md = null;
-		try {
-			md = MessageDigest.getInstance("MD5");
-		} catch (NoSuchAlgorithmException e) {
-			e.printStackTrace();
-		}
+		md = MessageDigest.getInstance(crypto);
 		InputStream is = new FileInputStream(filePath);
 		try {
 			is = new DigestInputStream(is, md);
@@ -136,14 +136,18 @@ public final class Utility {
 		String signature = new BigInteger(1,digest).toString(16);
 		return signature;
 	}
-	public static String getFileMd5(File file) throws IOException{
-		return getFileMd5(file.getAbsolutePath());
-	}
+
+
+
+
 
 	public static void main(String[] args){
 		try {
-			System.out.println(getFileMd5("/Users/jarosz/Desktop/ajax-loader.gif"));
+			System.out.println(getFileDigest("/Users/jarosz/Desktop/Final_NJ_AllZFPHum.pdf","SHA1"));
 		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (NoSuchAlgorithmException e) {
+			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}

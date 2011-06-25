@@ -1,16 +1,16 @@
-package ch.epfl.bbcf.bbcfutils.parser.feature;
+package ch.epfl.bbcf.bbcfutils.parsing.feature;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public class QualitativeFeature extends Feature{
+public class BioSQLiteQualitative extends Feature{
 
-	protected String attributes,name;
+	protected String attributes,name,chromosome;
 	protected Integer start,end,strand;
 	protected Float score;
 
 
-	public QualitativeFeature(String chromosome,
+	public BioSQLiteQualitative(String chromosome,
 			Integer start,Integer end,Float score,Integer strand,
 			String name,String attributes){
 		this.chromosome = chromosome;
@@ -22,7 +22,7 @@ public class QualitativeFeature extends Feature{
 		this.attributes = attributes;
 	}
 
-	public QualitativeFeature() {
+	public BioSQLiteQualitative() {
 	}
 
 	public static String buildAttributesfromBEDFeature(
@@ -48,19 +48,35 @@ public class QualitativeFeature extends Feature{
 		if(blockStarts!=null){
 			attributes+=formatAttribute("blockStarts",blockStarts);
 		}
-		System.out.println(attributes);
 		return attributes;
 	}
 
-	
-	
-	
-	
-	
-	
-	
-	
-	
+
+
+	public BEDFeature toBEDFeature() {
+		Map<String,String> atts = getMapAttributes();
+		Integer ths = null;
+		Integer the = null;
+		
+		
+		
+		try {
+			ths = Integer.parseInt(atts.get("thickStart"));
+		} catch (NumberFormatException e){};
+		try {
+			the = Integer.parseInt(atts.get("thickEnd"));
+		} catch (NumberFormatException e){};
+
+		BEDFeature bed = new BEDFeature(this.chromosome, this.start, this.end, this.name, this.strand, this.score, 
+				ths, the,
+				atts.get("itemRgb"),atts.get("blockCount"), 
+				atts.get("blockSizes"),atts.get("blockStarts"));
+		return bed;
+	}
+
+
+
+
 	private static String formatAttribute(String name,int attribute){
 		return name+" \""+attribute+"\";";
 	}
@@ -82,7 +98,9 @@ public class QualitativeFeature extends Feature{
 		for(String att:atts){
 			String[] keyvalue = att.split("\\s");
 			if(keyvalue.length>1){
-				attMap.put(keyvalue[0],keyvalue[1]);
+				String str = keyvalue[1];
+				str = str.replaceAll("\"", "");
+				attMap.put(keyvalue[0],str);
 			}
 		}
 		return attMap;
@@ -128,18 +146,19 @@ public class QualitativeFeature extends Feature{
 	public Float getScore() {
 		return score;
 	}
-
-	@Override
-	public String detail() {
-		return this.getClass().getName()+" : chr : "+this.chromosome+
-		" start : "+this.start+" end : "+this.end+
-		" name : "+this.name+" score : "+this.score+
-		" strand : "+this.strand+
-		" attributes : "+this.attributes;
+	public String getChromosome(){
+		return this.chromosome;
 	}
-
-
-
+	public void setChromosome(String chr){
+		this.chromosome=chr;
+	}
+	@Override
+	public String display() {
+		return this.chromosome+SEP+this.start+SEP+this.end+
+		SEP+this.name+SEP+this.score+
+		SEP+this.strand+
+		SEP+this.attributes;
+	}
 
 
 

@@ -1,16 +1,19 @@
-package ch.epfl.bbcf.bbcfutils.parser.feature;
+package ch.epfl.bbcf.bbcfutils.parsing.feature;
 
-public class ExtendedQualitativeFeature extends QualitativeFeature{
+public class BioSQLiteQualitativeExt extends BioSQLiteQualitative{
 
 	private String type,identifier;
-	public ExtendedQualitativeFeature(String chromosome, Integer start, Integer end,
+	
+	
+	
+	public BioSQLiteQualitativeExt(String chromosome, Integer start, Integer end,
 			Float score, Integer strand, String name, String attributes,String type,String id) {
 		super(chromosome, start, end, score, strand, name, attributes);
 		this.type=type;
 		this.setIdentifier(id);
-		
+
 	}
-	public ExtendedQualitativeFeature() {
+	public BioSQLiteQualitativeExt() {
 	}
 	public void setType(String type) {
 		this.type = type;
@@ -23,6 +26,13 @@ public class ExtendedQualitativeFeature extends QualitativeFeature{
 	}
 	public String getIdentifier() {
 		return identifier;
+	}
+	public String getChromosome(){
+		return this.chromosome;
+	}
+
+	public GFFFeature toGFFFeature(){
+		return new GFFFeature(chromosome,"GDV", start, end, name, identifier, score, strand, type, attributes);
 	}
 
 }

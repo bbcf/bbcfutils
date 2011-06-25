@@ -1,4 +1,4 @@
-package ch.epfl.bbcf.bbcfutils.parser;
+package ch.epfl.bbcf.bbcfutils.parsing.parser;
 
 
 import java.io.BufferedReader;
@@ -10,9 +10,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import ch.epfl.bbcf.bbcfutils.parser.feature.Track;
-import ch.epfl.bbcf.bbcfutils.parser.exception.ParsingException;
-import ch.epfl.bbcf.bbcfutils.parser.feature.Feature;
+import ch.epfl.bbcf.bbcfutils.exception.ParsingException;
+import ch.epfl.bbcf.bbcfutils.parsing.feature.Feature;
+import ch.epfl.bbcf.bbcfutils.parsing.feature.Track;
 
 
 
@@ -82,8 +82,9 @@ public abstract class Parser {
 	/**
 	 * method called when a new feature is parsed
 	 * @param feature
+	 * @throws ParsingException 
 	 */
-	protected void newFeature(Handler handler,Track track,Feature feature){
+	protected void newFeature(Handler handler,Track track,Feature feature) throws ParsingException{
 		switch(processingType){
 		case TOTAL :
 			List<Feature> feats = features.get(track);
@@ -98,8 +99,9 @@ public abstract class Parser {
 	/**
 	 * method called when a newTrack is parsed
 	 * @param track
+	 * @throws ParsingException 
 	 */
-	protected void newTrack(Handler handler,Track track){
+	protected void newTrack(Handler handler,Track track) throws ParsingException{
 		switch(processingType){
 		case TOTAL:
 			features.put(track, new ArrayList<Feature>());
@@ -109,21 +111,30 @@ public abstract class Parser {
 			break;
 		}
 	}
-	protected int getInt(String str) throws ParsingException {
+	protected Integer getInt(String str) throws ParsingException {
+		if(str.equalsIgnoreCase(".")){
+			return null;
+		}
 		try {
 			return Integer.parseInt(str);
 		} catch(NumberFormatException nfe){
 			throw new ParsingException(nfe,"NumberFormatException",lineNb);
 		}
 	}
-	protected float getScore(String s) throws ParsingException {
+	protected Float getScore(String s) throws ParsingException {
+		if(s.equalsIgnoreCase(".")){
+			return null;
+		}
 		try{
 			return Float.parseFloat(s);
 		} catch (NumberFormatException e){
 			throw new ParsingException(e,"NumberFormatException",lineNb);
 		}
 	}
-	protected int getStrand(String strand) throws ParsingException {
+	protected Integer getStrand(String strand) throws ParsingException {
+		if(strand.equalsIgnoreCase(".")){
+			return null;
+		}
 		if(strand.equalsIgnoreCase("+") || strand.equalsIgnoreCase("1")){
 			return 1;
 		} else if(strand.equalsIgnoreCase("-") || strand.equalsIgnoreCase("-1")){

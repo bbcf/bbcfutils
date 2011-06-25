@@ -1,5 +1,6 @@
 package ch.epfl.bbcf.bbcfutils.sqlite;
 
+import java.io.BufferedReader;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -11,8 +12,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import ch.epfl.bbcf.bbcfutils.parser.feature.ExtendedQualitativeFeature;
-import ch.epfl.bbcf.bbcfutils.parser.feature.QualitativeFeature;
+import ch.epfl.bbcf.bbcfutils.exception.ExtensionNotRecognisedException;
+import ch.epfl.bbcf.bbcfutils.parsing.SQLiteExtension;
+import ch.epfl.bbcf.bbcfutils.parsing.feature.BioSQLiteQualitative;
+import ch.epfl.bbcf.bbcfutils.parsing.feature.BioSQLiteQualitativeExt;
+import ch.epfl.bbcf.bbcfutils.parsing.feature.BioSQLiteQuantitative;
 
 
 /**
@@ -77,7 +81,6 @@ public class SQLiteAccess extends SQLiteParent{
 
 
 	/**
-	 * {MANIPULATION}
 	 * get the maximum score for a chromosome
 	 * @param chromosome
 	 * @return a Float
@@ -95,6 +98,23 @@ public class SQLiteAccess extends SQLiteParent{
 		return f;
 	}
 
+	/**
+	 * get the minimum score for a chromosome
+	 * @param chromosome
+	 * @return a Float
+	 * @throws SQLException
+	 */
+	public float getMinScoreForChr(String chromosome) throws SQLException {
+		Statement stat = connection.createStatement();
+		String query = "SELECT min(score) FROM "+protect(chromosome)+";";
+		ResultSet rs = getResultSet(stat, query);
+		Float f = null;
+		while (rs.next()) {
+			f= rs.getFloat(1);
+		}
+		rs.close();
+		return f;
+	}
 
 
 	/**
@@ -117,7 +137,6 @@ public class SQLiteAccess extends SQLiteParent{
 	}
 
 	/**
-	 * {MANIPULATION}
 	 * get a value from the key you provide
 	 * @param key
 	 * @return a String
@@ -135,7 +154,36 @@ public class SQLiteAccess extends SQLiteParent{
 		rs.close();
 		return result;
 	}
-
+	
+	/**
+	 * get all attributes of the file
+	 * @return a map
+	 * @throws SQLException
+	 */
+	public Map<String,String> getAttributes() throws SQLException {
+		 Map<String,String> atts = new HashMap<String, String>();
+		String query = "select * from attributes;";
+		PreparedStatement prep = connection.prepareStatement(query);
+		ResultSet rs = prep.executeQuery();
+		while (rs.next()) {
+			atts.put(rs.getString(1), rs.getString(2));
+		}
+		rs.close();
+		return atts;
+	}
+	
+	public SQLiteExtension getDatatype() throws SQLException, ExtensionNotRecognisedException{
+		String datatype = getAttribute("datatype");
+		if(datatype.equalsIgnoreCase("qualitative")){
+			return SQLiteExtension.QUALITATIVE;
+		}
+		if(datatype.equalsIgnoreCase("quantitative")){
+			return SQLiteExtension.QUANTITATIVE;
+		}if(datatype.equalsIgnoreCase("qualitative_extended")){
+			return SQLiteExtension.QUALITATIVE_EXTENDED;
+		}
+		throw new ExtensionNotRecognisedException(datatype);
+	}
 
 	/**
 	 * {MANIPULATION}
@@ -233,7 +281,21 @@ public class SQLiteAccess extends SQLiteParent{
 	}
 
 
-	public ResultSet prepareQualitativeFeatures(String chr) throws SQLException {
+	
+	public String testIfQualitative() throws SQLException{
+		String q1 = "SELECT * FROM attributes where key = 'datatype' limit 1; ";
+		Statement stat = connection.createStatement();
+		ResultSet r = stat.executeQuery(q1);
+		if(r.next()){
+			String dt = r.getString("value");
+			return dt;
+		}
+		return "";
+	}
+	
+	
+	
+	public ResultSet prepareFeatures(String chr) throws SQLException {
 		String query = "SELECT * FROM "+protect(chr)+" order by start asc";
 		Statement prep = connection.createStatement();
 		ResultSet r = prep.executeQuery(query);
@@ -241,8 +303,18 @@ public class SQLiteAccess extends SQLiteParent{
 	}
 
 
-	public QualitativeFeature getNextQualitativeFeature(ResultSet r) throws SQLException{
-		QualitativeFeature feat = new QualitativeFeature();
+	public BioSQLiteQuantitative getNextQuantitativeFeature(ResultSet r, String chr) throws SQLException{
+		BioSQLiteQuantitative feat = new BioSQLiteQuantitative();
+		feat.setChromosome(chr);
+		feat.setStart(r.getInt(1));
+		feat.setEnd(r.getInt(2));
+		feat.setScore(r.getFloat(3));
+		return feat;
+	}
+	
+	public BioSQLiteQualitative getNextQualitativeFeature(ResultSet r, String chr) throws SQLException{
+		BioSQLiteQualitative feat = new BioSQLiteQualitative();
+		feat.setChromosome(chr);
 		feat.setStart(r.getInt(1));
 		feat.setEnd(r.getInt(2));
 		feat.setScore(r.getFloat(3));
@@ -251,21 +323,23 @@ public class SQLiteAccess extends SQLiteParent{
 		feat.setAttributes(r.getString(6));
 		return feat;
 	}
-	public ExtendedQualitativeFeature getNextExtendedQualitativeFeature(ResultSet r) throws SQLException{
-		ExtendedQualitativeFeature feat = new ExtendedQualitativeFeature();
+	public BioSQLiteQualitativeExt getNextExtendedQualitativeFeature(ResultSet r,String chr) throws SQLException{
+		BioSQLiteQualitativeExt feat = new BioSQLiteQualitativeExt();
+		feat.setChromosome(chr);
 		feat.setStart(r.getInt(1));
 		feat.setEnd(r.getInt(2));
 		feat.setScore(r.getFloat(3));
 		feat.setName(r.getString(4));
 		feat.setStrand(r.getInt(5));
 		feat.setAttributes(r.getString(6));
-		feat.setType(r.getString(7));
+		feat.setType(getTypeForExtendedQualitativeFeature(
+				r.getInt(7)));
 		feat.setIdentifier(r.getString(8));
 		return feat;
 	}
 
-	public ExtendedQualitativeFeature getExtendedQualitativeFeature(String chr) throws SQLException{
-		ExtendedQualitativeFeature feat = new ExtendedQualitativeFeature();
+	public BioSQLiteQualitativeExt getExtendedQualitativeFeature(String chr) throws SQLException{
+		BioSQLiteQualitativeExt feat = new BioSQLiteQualitativeExt();
 		String query = "SELECT * FROM "+protect(chr)+" limit 1";
 		Statement prep = connection.createStatement();
 		ResultSet r = prep.executeQuery(query);
@@ -276,10 +350,25 @@ public class SQLiteAccess extends SQLiteParent{
 			feat.setName(r.getString(4));
 			feat.setStrand(r.getInt(5));
 			feat.setAttributes(r.getString(6));
-			feat.setType(r.getString(7));
+			feat.setType(
+					getTypeForExtendedQualitativeFeature(r.getInt(7)));
 			feat.setIdentifier(r.getString(8));
 		}
 		return feat;
 	}
+
+	private String getTypeForExtendedQualitativeFeature(int type) throws SQLException{
+		String query = "select type from types where identifier = ? limit 1";
+		PreparedStatement prep = connection.prepareStatement(query);
+		prep.setInt(1, type);
+		ResultSet r = prep.executeQuery();
+		String t="default";
+		if(r.next()){
+			t=r.getString(1);
+		}
+		r.close();
+		return t;
+	}
+
 
 }

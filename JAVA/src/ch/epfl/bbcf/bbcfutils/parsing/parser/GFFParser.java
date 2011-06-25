@@ -1,4 +1,4 @@
-package ch.epfl.bbcf.bbcfutils.parser;
+package ch.epfl.bbcf.bbcfutils.parsing.parser;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -12,10 +12,9 @@ import java.util.Map;
 import org.biojava3.genome.parsers.gff.Location;
 
 
-import ch.epfl.bbcf.bbcfutils.parser.Handler;
-import ch.epfl.bbcf.bbcfutils.parser.Parser;
-import ch.epfl.bbcf.bbcfutils.parser.exception.ParsingException;
-import ch.epfl.bbcf.bbcfutils.parser.feature.GFFFeature;
+import ch.epfl.bbcf.bbcfutils.exception.ParsingException;
+import ch.epfl.bbcf.bbcfutils.parsing.feature.GFFFeature;
+import ch.epfl.bbcf.bbcfutils.parsing.parser.Parser.Processing;
 
 
 /**
@@ -80,7 +79,6 @@ public class GFFParser extends Parser{
 
 		start = end + 1;
 		end = s.indexOf('\t', start);
-		@SuppressWarnings("unused")
 		//TODO use source to put right start & end
 		String source = s.substring(start, end).trim();
 
@@ -121,12 +119,20 @@ public class GFFParser extends Parser{
 		Location location = Location.fromBio(locationStart, locationEnd, strand);
 		assert (strand == '-') == location.isNegative();
 		int frame;
+		//FIXME 
 		start = end + 1;
 		end = s.indexOf('\t', start);
-		try {
-			frame = Integer.parseInt(s.substring(start, end));
-		} catch (Exception e) {
-			frame = -1;
+		String f = s.substring(start, end);
+		if(f.equalsIgnoreCase("-")){
+			frame=-1;
+		} else if(f.equalsIgnoreCase("+")){
+			frame=+1;
+		} else {
+			try {
+				frame = Integer.parseInt(f);
+			} catch (Exception e) {
+				frame = 0;
+			}
 		}
 
 		//grab everything until end of line (or # comment)
@@ -156,7 +162,7 @@ public class GFFParser extends Parser{
 				break;
 			}
 		}
-		return new GFFFeature(seqname,locationStart,locationEnd,
+		return new GFFFeature(seqname,source,locationStart,locationEnd,
 				displayName,hierarchyId,score, frame, type, attributes);
 
 	}

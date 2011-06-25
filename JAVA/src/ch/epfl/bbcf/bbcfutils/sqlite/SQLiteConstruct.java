@@ -26,7 +26,7 @@ public class SQLiteConstruct extends SQLiteParent{
 	protected SQLiteConstruct(Connection connection) {
 		super(connection);
 	}
-	
+
 	/**
 	 * return a SQLiteConstruct object from a sqlite database
 	 * with the connection to the database built in
@@ -67,8 +67,8 @@ public class SQLiteConstruct extends SQLiteParent{
 		conn.setAutoCommit(false);
 		return new SQLiteConstruct(conn,limitQueriesSize);
 	}
+
 	/**
-	 * {CONSTRUCTION}
 	 * create a new database
 	 * @param type : must be qualitative or quantitative
 	 */
@@ -81,8 +81,22 @@ public class SQLiteConstruct extends SQLiteParent{
 		prep.setString(1, "datatype");
 		prep.setString(2,type);
 		prep.executeUpdate();
+		this.connection.commit();
 	}
 
+	/**
+	 * create a new database
+	 * @param type : must be qualitative or quantitative
+	 */
+	public void addAtribute(String key,String value) throws SQLException{
+		Statement stat;
+		stat = this.connection.createStatement();
+		PreparedStatement prep = this.connection.prepareStatement("insert into attributes values (?,?);");
+		prep.setString(1,key);
+		prep.setString(2,value);
+		prep.executeUpdate();
+		this.connection.commit();
+	}
 
 	/**
 	 * create a new table for a chromosome for 
@@ -111,7 +125,7 @@ public class SQLiteConstruct extends SQLiteParent{
 	 */
 	public void newChromosome_qual_extended(String chromosome) throws SQLException {
 		PreparedStatement stat = this.connection.prepareStatement("create table if not exists " +
-				""+protect(chromosome)+" (start integer,end integer,score real,name text,strand integer,attributes text,type text,id text);");
+				""+protect(chromosome)+" (start integer,end integer,score real,name text,strand integer,attributes text,type integer,id text);");
 		stat.execute();
 		this.connection.commit();
 		this.insertStatement.put(
@@ -147,7 +161,7 @@ public class SQLiteConstruct extends SQLiteParent{
 	public List<String> getChromosomesNames() throws SQLException {
 		List<String> chrNames = new ArrayList<String>();
 		Statement stat = connection.createStatement();
-		String query = "SELECT name FROM sqlite_master where type='table'and name!='attributes';";
+		String query = "SELECT name FROM sqlite_master where type='table'and name!='attributes' and name!='types';";
 		ResultSet rs = getResultSet(stat, query);
 		while (rs.next()) {
 			chrNames.add(rs.getString(1));
@@ -211,7 +225,7 @@ public class SQLiteConstruct extends SQLiteParent{
 	 * @throws SQLException
 	 */
 	public void writeValues_qual_extended(String chr, Integer start, Integer end,Float score,
-			String name, Integer strand,String attributes,String type,String id) throws SQLException{
+			String name, Integer strand,String attributes,Integer type,String id) throws SQLException{
 		PreparedStatement prep = insertStatement.get(chr);
 		if(null!=prep){
 			prep.setInt(1,start);
@@ -220,7 +234,7 @@ public class SQLiteConstruct extends SQLiteParent{
 			prep.setString(4, name);
 			prep.setInt(5, strand);
 			prep.setString(6, attributes);
-			prep.setString(7, type);
+			prep.setInt(7, type);
 			prep.setString(8, id);
 			prep.execute();
 			verifyNbQueries();
@@ -285,8 +299,18 @@ public class SQLiteConstruct extends SQLiteParent{
 		this.connection.commit();
 	}
 
+	public void finalizeExtended_qual(List<String> types) throws SQLException {
+		Statement stat = this.connection.createStatement();
+		stat.executeUpdate("create table types (identifier integer, type text);");
+		PreparedStatement prep = this.connection.prepareStatement("insert into types values (?,?);");
+		for(int i=0;i<types.size();i++){
+			prep.setInt(1, i);
+			prep.setString(2, types.get(i));
+			prep.execute();
+		}
 
-	
+	}
+
 
 	//FOR THE DAEMON <tranform_to_sqlite>
 	/**
@@ -307,6 +331,8 @@ public class SQLiteConstruct extends SQLiteParent{
 
 		return true;
 	}
+
+
 
 
 }

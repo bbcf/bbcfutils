@@ -81,7 +81,7 @@ public class InternetConnection {
 		stream.close();
 		return result;
 	}
-	
+
 	public static String sendGETConnection(final String adress) throws IOException{
 		if(testConnection(adress)){
 			HttpURLConnection urlConnection = openConnection(adress,"GET");
@@ -110,7 +110,7 @@ public class InternetConnection {
 		outStream.flush();
 		outStream.close();
 	}
-	
+
 	/**
 	 * Send a POST request
 	 * @param adress - the URI
@@ -132,12 +132,28 @@ public class InternetConnection {
 
 	public static void main(String[] args){
 		System.out.println("TEST");
-		String body = "id=78&data=myData";
-		try {
-			System.out.println(InternetConnection.sendPOSTConnection("http://myServer.com/post",body,MIME_TYPE_FORM_APPLICATION));
-		} catch (IOException e) {
-			e.printStackTrace();
+		//		String body = "output_location=/data/gdv_dev/gFeatMiner/70" +
+		//				"&callback_url=http://svitsrv25.epfl.ch/gdv_dev/post" +
+		//				"&data={'compare_parents':['compare_parents'],'per_chromosome':['per_chromosome']," +
+		//				"ntracks:['/data/gdv_dev/files/d08aa4569c17aa79abc57c3b44da6abab927fa2.db']," +
+		//				"filter:['/data/gdv_dev/files/115d5da7db0c588ae95bb91a5710ba2147be3df0.db']," +
+		//				"operation_type:'desc_stat'" +
+		//				"characteristic:'base_coverage'},'job_id':'70'}";
+		//http://ptbbpc1.epfl.ch/gfeatminer
+		String[] fileNames = {"CtrA_fwd.sql","DnaA_fwd.sql","FlbD_fwd.sql","GcrA_rev.sql",
+				"LexA_rev.sql","MipZ_rev.sql","MucR_rev.sql",
+				"ParA_rev.sql","ParB_rev.sql","RNAPol_rev.sql","StaR_rev.sql","TacA_rev.sql",
+				"CcrM_rev.sql","CtrA_rev.sql","DnaA_rev.sql","FlbD_rev.sql",
+				"GcrA_fwd.sql","LexA_fwd.sql","MipZ_fwd.sql","MucR_fwd.sql",
+				"ParA_fwd.sql","ParB_fwd.sql","RNAPol_fwd.sql","StaR_fwd.sql","TacA_fwd.sql"};
+		System.out.println(fileNames.length);
+		for(String str:fileNames){
+			String body = "mail=yohan.jarosz@epfl.ch&key=5as4mte6p1vvfcqntqds07u11d&id=gdv_post&project_id=8&command=add_track&url=http://ptbbpc1.epfl.ch/BED/Yohan/jsql/"+str;
+			try {
+				System.out.println(InternetConnection.sendPOSTConnection("http://ptbbpc1.epfl.ch/gdv_dev/post",body,MIME_TYPE_FORM_APPLICATION));
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
-
 	}
 }

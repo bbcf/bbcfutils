@@ -18,7 +18,8 @@ public class Constants {
 	GENOME = "genome",
 	ORGANISM = "organism",
 	NR_ASSEMBLY = "nr_assembly",
-	SOURCE = "source";
+	SOURCE = "source",
+	CHR_NAME="chr_name";
 
 	/**
 	 * Keys to put in the URL to get
@@ -28,7 +29,7 @@ public class Constants {
 	/**
 	 * Methods supported by Genrep
 	 */
-	public static enum METHOD {INDEX,SHOW,ALL};
+	public static enum METHOD {INDEX,SHOW,ALL,LINK};
 	/**
 	 * Formats supported by Genrep 
 	 */

@@ -1,18 +1,18 @@
-package ch.epfl.bbcf.bbcfutils.parser.test;
+package ch.epfl.bbcf.bbcfutils.parsing.test;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
-import ch.epfl.bbcf.bbcfutils.parser.exception.ParsingException;
-import ch.epfl.bbcf.bbcfutils.parser.feature.Track;
-import ch.epfl.bbcf.bbcfutils.parser.Handler;
-import ch.epfl.bbcf.bbcfutils.parser.Parser;
-import ch.epfl.bbcf.bbcfutils.parser.Parser.Processing;
-import ch.epfl.bbcf.bbcfutils.parser.WIGParser;
-import ch.epfl.bbcf.bbcfutils.parser.feature.Feature;
-import ch.epfl.bbcf.bbcfutils.parser.feature.WIGFeature;
+import ch.epfl.bbcf.bbcfutils.exception.ParsingException;
+import ch.epfl.bbcf.bbcfutils.parsing.feature.Feature;
+import ch.epfl.bbcf.bbcfutils.parsing.feature.Track;
+import ch.epfl.bbcf.bbcfutils.parsing.feature.WIGFeature;
+import ch.epfl.bbcf.bbcfutils.parsing.parser.Handler;
+import ch.epfl.bbcf.bbcfutils.parsing.parser.Parser;
+import ch.epfl.bbcf.bbcfutils.parsing.parser.WIGParser;
+import ch.epfl.bbcf.bbcfutils.parsing.parser.Parser.Processing;
 
 public class Test{
 
@@ -35,7 +35,7 @@ public class Test{
 		public void newFeature(Feature feature) {
 			System.out.println("new feature");
 			WIGFeature wigFeat = (WIGFeature) feature;
-			System.out.println(wigFeat.detail());
+			System.out.println(wigFeat.display());
 		}
 		@Override
 		public void newTrack(Track track) {
@@ -99,7 +99,7 @@ public class Test{
 			System.out.println(entry.getKey().detail());
 			for(Feature feat : entry.getValue()){
 				WIGFeature wigFeat = (WIGFeature) feat;
-				System.out.println(wigFeat.detail());
+				System.out.println(wigFeat.display());
 			}
 			System.out.println();
 		}

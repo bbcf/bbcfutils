@@ -1,4 +1,4 @@
-package ch.epfl.bbcf.bbcfutils.parser.feature;
+package ch.epfl.bbcf.bbcfutils.parsing.feature;
 
 
 
@@ -11,7 +11,7 @@ public class JSONFeature {
 
 
 
-	public JSONFeature(QualitativeFeature feature) {
+	public JSONFeature(BioSQLiteQualitative feature) {
 		setChromosome(feature.getChromosome());
 		setName(feature.getName());
 		setStart(feature.getStart());
@@ -20,7 +20,7 @@ public class JSONFeature {
 		setScore(feature.getScore());
 	}
 	
-	public JSONFeature(ExtendedQualitativeFeature feature) {
+	public JSONFeature(BioSQLiteQualitativeExt feature) {
 		setChromosome(feature.getChromosome());
 		setName(feature.getName());
 		setStart(feature.getStart());

@@ -1,12 +1,13 @@
-package ch.epfl.bbcf.bbcfutils.parser;
+package ch.epfl.bbcf.bbcfutils.parsing.parser;
 
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import ch.epfl.bbcf.bbcfutils.parser.exception.ParsingException;
-import ch.epfl.bbcf.bbcfutils.parser.feature.BEDFeature;
-import ch.epfl.bbcf.bbcfutils.parser.feature.Track;
+import ch.epfl.bbcf.bbcfutils.exception.ParsingException;
+import ch.epfl.bbcf.bbcfutils.parsing.feature.BEDFeature;
+import ch.epfl.bbcf.bbcfutils.parsing.feature.Track;
+import ch.epfl.bbcf.bbcfutils.parsing.parser.Parser.Processing;
 
 
 
