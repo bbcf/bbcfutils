@@ -1,21 +1,24 @@
 #!/bin/env python
 """
-An RNA_seq mapping and DESeq workflow.
+run_rnaseq.py
 
-[FIXME: Description]
+[FIXME: Description aaaaaaaaaa]
 """
 import os
 import sys
 import getopt
 from bbcflib.rnaseq import *
+from bbcflib import frontend
 
-usage = """run_rnaseq.py [-h] [-u via] [-w wdir] minilims job_key
+usage = """run_rnaseq.py [-h] [-u via] [-w wdir] [-k job_key] [-c config_file] [-d-m minilims]
 
 -h           Print this message and exit
 -u via       Run executions using method 'via' (can be "local" or "lsf")
 -w wdir      Create execution working directories in wdir
-minilims     MiniLIMS where RNASeq executions and files will be stored.
-job_key      Alphanumeric key specifying the job
+-d minilims  MiniLIMS where Chipseq executions and files will be stored.
+-m minilims  MiniLIMS where a previous Mapseq execution and files has been stored.
+-k job_key   Alphanumeric key specifying the job
+-c file      Config file 
 """
 
 class Usage(Exception):
@@ -24,16 +27,18 @@ class Usage(Exception):
 
 def main(argv=None):
     via = "local"
-    minilims_path = None
-    job_key = None
+    limspath = None
+    hts_key = None
+    working_dir = os.getcwd()
 
     if argv is None:
         argv = sys.argv
     try:
         try:
-            opts, args = getopt.getopt(sys.argv[1:], "hu:w:d:k:", ["help","via",
-                                                                   "working-directory",
-                                                                   "minilims","key"])
+            opts,args = getopt.getopt(sys.argv[1:],"hu:k:d:w:m:c:",
+                                      ["help","via","key","minilims",
+                                       "mapseq_minilims",
+                                       "working-directory","config"])
         except getopt.error, msg:
             raise Usage(msg)
         for o, a in opts:
@@ -51,32 +56,39 @@ def main(argv=None):
             elif o in ("-w", "--working-directory"):
                 if os.path.exists(a):
                     os.chdir(a)
+                    working_dir = a
                 else:
                     raise Usage("Working directory '%s' does not exist." % a)
             elif o in ("-d", "--minilims"):
-                minilims_path = a
+                limspath = a
+            elif o in ("-m", "--mapseq_minilims"):
+                ms_limspath = a
             elif o in ("-k", "--key"):
-                job_key = a
+                hts_key = a
+            elif o in ("-c", "--config"):
+                config_file = a
             else:
                 raise Usage("Unhandled option: " + o)
 
         if len(args) != 0:
-            raise Usage("workflow.py takes no arguments without specifiers.")
-
-        if job_key == None:
-            raise Usage("Must specify a job key with -k")
-        if minilims_path == None:
+            raise Usage("workflow.py takes no arguments without specifiers [-x arg].")
+        if limspath == None:
             raise Usage("Must specify a MiniLIMS to attach to")
 
-        frontend = Frontend('http://htsstation.vital-it.ch/rnaseq/')
-        try:
-            job = frontend.job(job_key)
-        except TypeError, t:
-            raise Usage("No such job with key %s at frontend %s" % \
-                            (job_key, 'http://htsstation.vital-it.ch/rnaseq/'))
+        M = MiniLIMS( limspath )
+        if len(hts_key)>1:
+            gl = use_pickle( M, "global variables" )
+            htss = frontend.Frontend( url=gl['hts_rnaseq']['url'] )
+            job = htss.job( hts_key )
+        elif os.path.exists(config_file):
+            (job,gl) = frontend.parseConfig( config_file )
+        else:
+            raise ValueError("Need either a job key (-k) or a configuration file (-c).")
+        job.options['ucsc_bigwig'] = True
+        
+        #htss = frontend.Frontend('http://htsstation.vital-it.ch/rnaseq/')
 
-        json = rnaseq_workflow(job, minilims_path, via=via)
-        print >>sys.stdout, json
+        json = rnaseq_workflow(job, limspath, via=via)
 
         sys.exit(0)
     except Usage, err:
