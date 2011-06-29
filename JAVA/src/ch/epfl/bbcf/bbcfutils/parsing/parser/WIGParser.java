@@ -1,12 +1,12 @@
-package ch.epfl.bbcf.bbcfutils.parser;
+package ch.epfl.bbcf.bbcfutils.parsing.parser;
 
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import ch.epfl.bbcf.bbcfutils.parser.exception.ParsingException;
-import ch.epfl.bbcf.bbcfutils.parser.feature.WIGFeature;
-import ch.epfl.bbcf.bbcfutils.parser.feature.WIGTrack;
+import ch.epfl.bbcf.bbcfutils.exception.ParsingException;
+import ch.epfl.bbcf.bbcfutils.parsing.feature.WIGFeature;
+import ch.epfl.bbcf.bbcfutils.parsing.feature.WIGTrack;
 
 
 
@@ -208,6 +208,9 @@ public class WIGParser extends Parser{
 					throw new ParsingException("NumberFormatException - the start must be an integer - ",lineNb);
 				}
 			}
+		}
+		if(null==cur_feature.getSpan()){
+			cur_feature.setSpan(1);
 		}
 	}
 

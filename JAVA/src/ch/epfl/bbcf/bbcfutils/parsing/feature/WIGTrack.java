@@ -1,4 +1,4 @@
-package ch.epfl.bbcf.bbcfutils.parser.feature;
+package ch.epfl.bbcf.bbcfutils.parsing.feature;
 
 
 
