@@ -2,7 +2,7 @@
 """
 run_rnaseq.py
 
-[FIXME: Description aaaaaaaaaa]
+[FIXME: Description ]
 """
 import os
 import sys
@@ -10,15 +10,15 @@ import getopt
 from bbcflib.rnaseq import *
 from bbcflib import frontend
 
-usage = """run_rnaseq.py [-h] [-u via] [-w wdir] [-k job_key] [-c config_file] [-d-m minilims]
+usage = """run_rnaseq.py [-h] [-u via] [-w wdir] [-k job_key] [-c config_file] [-d minilims] [-m minilims]
 
 -h           Print this message and exit
 -u via       Run executions using method 'via' (can be "local" or "lsf")
 -w wdir      Create execution working directories in wdir
--d minilims  MiniLIMS where Chipseq executions and files will be stored.
+-d minilims  MiniLIMS where RNAseq executions and files will be stored.
 -m minilims  MiniLIMS where a previous Mapseq execution and files has been stored.
 -k job_key   Alphanumeric key specifying the job
--c file      Config file 
+-c file      Config file
 """
 
 class Usage(Exception):
@@ -26,8 +26,8 @@ class Usage(Exception):
         self.msg = msg
 
 def main(argv=None):
-    via = "local"
-    limspath = None
+    via = "lsf"
+    limspath = "rnaseq"
     hts_key = None
     working_dir = os.getcwd()
 
@@ -75,8 +75,8 @@ def main(argv=None):
         if limspath == None:
             raise Usage("Must specify a MiniLIMS to attach to")
 
-        M = MiniLIMS( limspath )
-        if len(hts_key)>1:
+        M = MiniLIMS(limspath)
+        if hts_key:
             gl = use_pickle( M, "global variables" )
             htss = frontend.Frontend( url=gl['hts_rnaseq']['url'] )
             job = htss.job( hts_key )
@@ -85,17 +85,19 @@ def main(argv=None):
         else:
             raise ValueError("Need either a job key (-k) or a configuration file (-c).")
         job.options['ucsc_bigwig'] = True
-        
-        #htss = frontend.Frontend('http://htsstation.vital-it.ch/rnaseq/')
 
-        json = rnaseq_workflow(job, limspath, via=via)
+        g_rep = genrep.GenRep( gl['genrep_url'], gl['bwt_root'] )
+        assembly = g_rep.assembly( assembly_id )
+
+        with execution(M) as ex:
+            json = rnaseq_workflow(ex, job, assembly, via=via)
 
         sys.exit(0)
     except Usage, err:
         print >>sys.stderr, err.msg
         print >>sys.stderr, usage
         return 2
-    
+
 
 if __name__ == '__main__':
     sys.exit(main())
