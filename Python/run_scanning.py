@@ -4,21 +4,22 @@ from bein                       import MiniLIMS, unique_filename_in, ProgramOutp
 from bbcflib.genrep             import GenRep
 from bbcflib.gdv                import create_gdv_project, add_gdv_track, get_project_id
 from bbcflib.frontend           import parseConfig
-from bbcflib.common             import ssh_add, scp, normalize_url
-from bbcflib.track.format_sql   import Track, new
-from os.path                    import basename, expanduser, abspath, normcase, splitext, isfile
+from bbcflib.common             import scp, normalize_url
+from bbcflib.track.format_sql   import Track, new, random_track
+from os.path                    import basename, expanduser, abspath, normcase, splitext, isfile, exists
 import getopt, sys
 
-usage = """%s [-h] [-u via] [-m machine_host][-r remote_path] [-w website] [-p private_key] -f matrix_file -c config_file -d minilims
+usage = """%s [-h] [options] --matrix "/path/to/matrix.mat" -c config_file -d minilims
 -h Print this message and exit
--u via Run executions using method 'via' (can be "local" or "lsf")
--m submit track file to selected host machine (e.g sugar)
--r path where put track in host machine
--w website were result will be taken for GDV (e.g http://sugar.epfl.ch)
--p path to private_key for connect to remote host (e.g ~/.ssh/user.pub)
--f dictionary where key is matrix name and value matrix file path (e.g {"Tbf1_snoRNAs":"./Tbf1_snoRNAs.mat"})
--d minilims MiniLIMS where Scanning executions and files will be stored.
--c file Config file
+-c --config file Config file
+--host submit track file to selected host machine (e.g sugar)
+--matrix file path to matrix
+--minilims MiniLIMS where Scanning executions and files will be stored.
+--project GDV project name
+--remote_path path where put track in host machine
+--via via Run executions using method 'via' (can be "local" or "lsf")
+--username ssh username for login to host
+--website website were result will be taken for GDV (e.g http://sugar.epfl.ch)
 """ %(sys.argv[0])
 
 class Usage(Exception):
@@ -40,25 +41,26 @@ def main(argv = None):
     random_sql_data     = ""
     track_filtered      = ""
     track_scanned       = ""
+    project             = ""
+    username            = ""
     host                = ""
     website             = ""
-    track_remote        = ""
+    remote_path         = ""
     track_web_path      = ""
     via                 = ""
     limspath            = ""
-    private_key         = ""
     fdr                 = 0
     if argv is None: argv = sys.argv
     try:
         try:
             opts,args = getopt.getopt   (
-                                            argv[1:],"hu:m:r:w:p:f:d:c:"  ,
+                                            argv[1:],"hu:c:"  ,
                                             [
-                                                "help","via","machine_host" ,
-                                                "remote_path"               ,
-                                                "website", "private_key"    ,
-                                                "matrix_file"               ,
-                                                "minilims","config"
+                                                "help", "via=", "host="     ,
+                                                "remote_path=" , "website=" ,
+                                                "minilims=","config="       ,
+                                                "matrix=", "username="      ,
+                                                "project="
                                             ]
                                         )
         except getopt.error, msg:
@@ -68,25 +70,27 @@ def main(argv = None):
                 print __doc__
                 print usage
                 sys.sys.exit(0)
-            elif o in ("-u", "--via"):
+            elif o == "--via":
                 if a=="local":
                     via = "local"
                 elif a=="lsf":
                     via = "lsf"
                 else:
                     raise Usage("Via (-u) can only be \"local\" or \"lsf\", got %s." % (a,))
-            elif o in ("-w", "--website"):
+            elif o == "--website":
                 website = normalize_url(a)
-            elif o in ("-d", "--minilims"):
+            elif o == "--minilims":
                 limspath = normcase(expanduser(a))
-            elif o in ("-m", "--machine_host"):
+            elif o == "--host":
                 host = a
-            elif o in ("-r", "--remote_path"):
-                track_remote = normcase(expanduser(a))
-            elif o in ("-p", "--private_key"):
-                private_key = normcase(expanduser(a))
-            elif o in ("-f", "--matrix_file"):
-                matrix = a
+            elif o == "--remote_path":
+                remote_path = normcase(expanduser(a))
+            elif o == "--matrix":
+                matrix = {basename(a):normcase(expanduser(a))}
+            elif o == "--username":
+                username = a
+            elif o == "--project":
+                project = a
             elif o in ("-c", "--config"):
                 config_file = normcase(expanduser(a))
             else:
@@ -98,19 +102,18 @@ def main(argv = None):
         else:
             job, config = parseConfig(normcase(expanduser(config_file)))
 
+        genrep              = GenRep(config=config)
+        assembly            = genrep.assembly(job.assembly_id)
+        M                   = MiniLIMS(limspath)
+
         # compute false discovery rate
         with execution(M, description=job.description) as ex:
-            # Add user identity
-            ssh_add(ex, private_key)
-
-            genrep              = GenRep(config=config)
-            assembly            = genrep.assembly(job["assembly_id"])
-            background          = genrep.statistics(assembly,output=unique_filename_in)
-            M                   = MiniLIMS(limspath)
+            background = genrep.statistics(assembly,output=unique_filename_in())
+            ex.add(background,  description="background:"+background)
             if len(job.groups) >2:
                 raise ValueError("They are more than 2 group in config file")
             for group in job.groups:
-                url = job.groups[group]["url"]
+                url = job.groups[group]["runs"][group]["url"]
                 uri = ""
                 if url.startswith("http") or url.startswith("www."):
                     url = normalize_url(url)
@@ -120,21 +123,24 @@ def main(argv = None):
                     with open(original_bed_data, "w") as f:
                         f.write(data.read())
                 else:
-                   uri = normcase(expanduser(uri))
+                   uri = normcase(expanduser(url))
                 if job.groups[group]["control"] is True:
                     original_bed_data = uri
                 else:
                     random_bed_data = uri
 
-            original_sql_data   = splitext(original_bed_data)[0]+".db"
-            random_sql_data     = splitext(random_bed_data)[0]+".db"
-            track_filtered      = splitext(original_bed_data)[0]+"_filtered.db"
+            original_sql_data   = unique_filename_in()
+            random_sql_data     = unique_filename_in()
+            track_filtered      = unique_filename_in()
 
+            ex.add(original_bed_data,   "bed:"+original_bed_data)
             # convert to sql
             with Track(original_bed_data, chrmeta=assembly.chromosomes) as track:
                 track.convert(original_sql_data, format='sql')
-            with Track(random_bed_data, chrmeta=assembly.chromosomes) as track:
-                track.convert(random_sql_data, format='sql')
+            ex.add(original_sql_data,   "sql:"+original_sql_data)
+            # create random track
+            random_track(original_sql_data, random_sql_data, chrmeta=assembly.chromosomes, repeat_number=5)
+            ex.add(random_sql_data,     "sql:"+random_sql_data)
 
             track_scanned,fdr = sqlite_to_false_discovery_rate(
                                                                 ex,
@@ -163,25 +169,26 @@ def main(argv = None):
                         if len(data_list) > 0:
                             track_out.write(chromosome, data_list)
                     #track_out.meta_chr = list(chomosomes_used)
+            ex.add(track_filtered,      "sql:"+track_filtered)
 
-            # TODO if [-m machine_host][-r remote_path] [-w website] [-p private_key]
             # send new track to remote
-            scp(ex, track_filtered, track_remote, "jmercier", host)
+            if host != "" and remote_path != "" and username != "":
+                scp(ex, track_filtered, remote_path, username, host)
 
-            # create gdv project
-            json        = create_gdv_project(
-                                                config["gdv"]["key"], config["gdv"]["email"],
-                                                "jonathan", None,
-                                                assembly.nr_assembly_id,
-                                                config["gdv"]["url"],
-                                                public = True
-                                            )
-            project_id  = get_project_id( json )
-            add_gdv_track  (
-                                config["gdv"]["key"], config["gdv"]["email"],
-                                project_id, track_web_path,
-                                gdv_url=config["gdv"]["url"]
-                            )
+        # create gdv project
+        json        = create_gdv_project(
+                                            config["gdv"]["key"], config["gdv"]["email"],
+                                            project, None,
+                                            assembly.nr_assembly_id,
+                                            config["gdv"]["url"],
+                                            public = True
+                                        )
+        project_id  = get_project_id( json )
+        add_gdv_track  (
+                            config["gdv"]["key"], config["gdv"]["email"],
+                            project_id, track_web_path,
+                            gdv_url=config["gdv"]["url"]
+                        )
     except Usage, err:
         print >>sys.stderr, err.msg
         print >>sys.stderr, usage
