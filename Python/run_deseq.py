@@ -4,14 +4,13 @@ import os
 import sys
 import pickle
 import numpy
-from rnaseq import inference
+from bbcflib.rnaseq import inference
 import rpy2.robjects as robjects
 import rpy2.robjects.packages as rpackages
 import rpy2.robjects.numpy2ri
 import rpy2.rlike.container as rlc
-import pudb #pudb.set_trace()
 
-usage = """run_deseq.py cond1_file cond2_file transcript_names_file cond1_label cond2_label method assembly_id output maplot
+usage = """run_deseq.py cond1_file cond2_file transcript_names_file cond1_label cond2_label method assembly_id output maplot translate
 
 """
 
@@ -27,8 +26,8 @@ def main(argv = None):
     if argv is None:
         argv = sys.argv[1:]
     try:
-        if len(argv) != narg:
-            raise Usage("run_deseq.py takes exactly %d argument." % narg)
+        if len(argv) <= 6:
+            raise Usage("run_deseq.py takes at least %d argument." % 6)
         cond1_file = argv[0]
         with open(cond1_file,'rb') as f:
             cond1 = pickle.load(f)
@@ -46,10 +45,11 @@ def main(argv = None):
         maplot = str(argv[8])
 
         optargs = {}
-        if assembly_id: optargs['assembly_id'] = assembly_id
+        if not assembly_id==None: optargs['assembly_id'] = assembly_id
         if not output=="None": optargs['output'] = output
         if not maplot=="None": optargs['maplot'] = maplot
-        inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method, **optargs)
+        
+        result_filename = inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method, **optargs)
         
         sys.exit(0)
     except Usage, err:
