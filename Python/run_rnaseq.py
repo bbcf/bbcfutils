@@ -9,8 +9,10 @@ import sys
 import getopt
 from bbcflib.rnaseq import *
 from bbcflib import frontend
+from bbcflib.mapseq import get_fastq_files
 
 usage = """run_rnaseq.py [-h] [-u via] [-w wdir] [-k job_key] [-c config_file] [-d minilims] [-m minilims]
+>>> python run_rnaseq.py -u lsf -c jobtest.txt -d rnaseq
 
 -h           Print this message and exit
 -u via       Run executions using method 'via' (can be "local" or "lsf")
@@ -36,9 +38,7 @@ def main(argv=None):
     try:
         try:
             opts,args = getopt.getopt(sys.argv[1:],"hu:k:d:w:m:c:",
-                                      ["help","via","key","minilims",
-                                       "mapseq_minilims",
-                                       "working-directory","config"])
+                ["help","via","key","minilims","mapseq_minilims","working-directory","config"])
         except getopt.error, msg:
             raise Usage(msg)
         for o, a in opts:
@@ -47,18 +47,14 @@ def main(argv=None):
                 print usage
                 sys.exit(0)
             elif o in ("-u", "--via"):
-                if a=="local":
-                    via = "local"
-                elif a=="lsf":
-                    via = "lsf"
-                else:
-                    raise Usage("Via (-u) can only be \"local\" or \"lsf\", got %s." % (a,))
+                if a=="local": via = "local"
+                elif a=="lsf": via = "lsf"
+                else: raise Usage("Via (-u) can only be \"local\" or \"lsf\", got %s." % (a,))
             elif o in ("-w", "--working-directory"):
                 if os.path.exists(a):
                     os.chdir(a)
                     working_dir = a
-                else:
-                    raise Usage("Working directory '%s' does not exist." % a)
+                else: raise Usage("Working directory '%s' does not exist." % a)
             elif o in ("-d", "--minilims"):
                 limspath = a
             elif o in ("-m", "--mapseq_minilims"):
@@ -67,8 +63,7 @@ def main(argv=None):
                 hts_key = a
             elif o in ("-c", "--config"):
                 config_file = a
-            else:
-                raise Usage("Unhandled option: " + o)
+            else: raise Usage("Unhandled option: " + o)
 
         if len(args) != 0:
             raise Usage("workflow.py takes no arguments without specifiers [-x arg].")
@@ -82,14 +77,17 @@ def main(argv=None):
             job = htss.job( hts_key )
         elif os.path.exists(config_file):
             (job,gl) = frontend.parseConfig( config_file )
-        else:
-            raise ValueError("Need either a job key (-k) or a configuration file (-c).")
-        job.options['ucsc_bigwig'] = True
+        else: raise ValueError("Need either a job key (-k) or a configuration file (-c).")
+        assembly_id = job.assembly_id
 
-        g_rep = genrep.GenRep( gl['genrep_url'], gl['bwt_root'] )
-        assembly = g_rep.assembly( assembly_id )
+        g_rep = GenRep( gl['genrep_url'], gl['bwt_root'], intype=1 )
+        assembly = g_rep.assembly(assembly_id)
+        job.options['ucsc_bigwig'] = job.options.get('ucsc_bigwig') or True
+        job.options['gdv_project'] = job.options.get('gdv_project') or False
 
         with execution(M) as ex:
+            job = get_fastq_files( job, ex.working_directory)
+            print "Start workflow"
             json = rnaseq_workflow(ex, job, assembly, via=via)
 
         sys.exit(0)
