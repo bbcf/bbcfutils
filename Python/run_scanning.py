@@ -5,7 +5,8 @@ from bbcflib.genrep             import GenRep
 from bbcflib.gdv                import create_gdv_project, add_gdv_track, get_project_id
 from bbcflib.frontend           import parseConfig
 from bbcflib.common             import scp, normalize_url
-from bbcflib.track.format_sql   import Track, new, random_track
+from bbcflib.track.format_sql   import Track, new
+from bbcflib.track.track_util   import shuffle_track
 from os.path                    import basename, expanduser, abspath, normcase, splitext, isfile, exists
 import getopt, sys
 
@@ -13,6 +14,7 @@ usage = """%s [-h] [options] --matrix "/path/to/matrix.mat" -c config_file -d mi
 -h Print this message and exit
 -c --config file Config file
 --host submit track file to selected host machine (e.g sugar)
+--identity_file public ssh identity file (e.g ~/.ssh/id.rsa)
 --matrix file path to matrix
 --minilims MiniLIMS where Scanning executions and files will be stored.
 --project GDV project name
@@ -43,6 +45,7 @@ def main(argv = None):
     track_scanned       = ""
     project             = ""
     username            = ""
+    identity_file       = ""
     host                = ""
     website             = ""
     remote_path         = ""
@@ -60,7 +63,7 @@ def main(argv = None):
                                                 "remote_path=" , "website=" ,
                                                 "minilims=","config="       ,
                                                 "matrix=", "username="      ,
-                                                "project="
+                                                "identity_file=", "project="
                                             ]
                                         )
         except getopt.error, msg:
@@ -83,6 +86,8 @@ def main(argv = None):
                 limspath = normcase(expanduser(a))
             elif o == "--host":
                 host = a
+            elif o == "--identity_file":
+                identity_file = a
             elif o == "--remote_path":
                 remote_path = normcase(expanduser(a))
             elif o == "--matrix":
@@ -113,21 +118,24 @@ def main(argv = None):
             if len(job.groups) >2:
                 raise ValueError("They are more than 2 group in config file")
             for group in job.groups:
-                url = job.groups[group]["runs"][group]["url"]
-                uri = ""
-                if url.startswith("http") or url.startswith("www."):
-                    url = normalize_url(url)
-                    # download data
-                    data    = urllib2.urlopen(url)
-                    uri     = unique_filename_in()
-                    with open(original_bed_data, "w") as f:
-                        f.write(data.read())
+                if "url" in job.groups[group]["runs"][group]:
+                    url = job.groups[group]["runs"][group]["url"]
+                    uri = ""
+                    if url.startswith("http") or url.startswith("www."):
+                        url = normalize_url(url)
+                        # download data
+                        data    = urllib2.urlopen(url)
+                        uri     = unique_filename_in()
+                        with open(original_bed_data, "w") as f:
+                            f.write(data.read())
+                    else:
+                       uri = normcase(expanduser(url))
+                    if job.groups[group]["control"] is True:
+                        original_bed_data = uri
+                    else:
+                        random_bed_data = uri
                 else:
-                   uri = normcase(expanduser(url))
-                if job.groups[group]["control"] is True:
-                    original_bed_data = uri
-                else:
-                    random_bed_data = uri
+                    random_bed_data = ""
 
             original_sql_data   = unique_filename_in()
             random_sql_data     = unique_filename_in()
@@ -139,7 +147,7 @@ def main(argv = None):
                 track.convert(original_sql_data, format='sql')
             ex.add(original_sql_data,   "sql:"+original_sql_data)
             # create random track
-            random_track(original_sql_data, random_sql_data, chrmeta=assembly.chromosomes, repeat_number=5)
+            shuffle_track(original_sql_data, random_sql_data, repeat_number=5)
             ex.add(random_sql_data,     "sql:"+random_sql_data)
 
             track_scanned,fdr = sqlite_to_false_discovery_rate(
@@ -173,7 +181,12 @@ def main(argv = None):
 
             # send new track to remote
             if host != "" and remote_path != "" and username != "":
-                scp(ex, track_filtered, remote_path, username, host)
+                args = []
+                if identity_file != "":
+                    args = ["-i " + abspath(expanduser(identity_file)) ]
+                source      = abspath(expanduser(track_filtered))
+                destination = "%s@%s:%s" %(username, host, remote_path)
+                scp(ex, source, destination, args=args)
 
         # create gdv project
         json        = create_gdv_project(
