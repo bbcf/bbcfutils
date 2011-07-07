@@ -10,7 +10,7 @@ import rpy2.robjects.packages as rpackages
 import rpy2.robjects.numpy2ri
 import rpy2.rlike.container as rlc
 
-usage = """run_deseq.py cond1_file cond2_file transcript_names_file cond1_label cond2_label method assembly_id [output] [maplot]
+usage = """run_deseq.py cond1_file cond2_file transcript_names_file cond1_label cond2_label method assembly_id [output]
 
 """
 
@@ -20,7 +20,7 @@ class Usage(Exception):
 
 def main(argv = None):
     """
-    Usage: run_deseq.py cond1_file cond2_file transcript_names_file cond1_label cond2_label method assembly_id [output] [maplot]
+    Usage: run_deseq.py cond1_file cond2_file transcript_names_file cond1_label cond2_label method assembly_id [output]
     """
     narg = 9
     if argv is None:
@@ -42,13 +42,12 @@ def main(argv = None):
         method = str(argv[5])
         assembly_id = argv[6]
         output = str(argv[7])
-        maplot = str(argv[8])
 
         optargs = {}
         if not output=="None": optargs['output'] = output
-        if not maplot=="None": optargs['maplot'] = maplot
         
-        result_filename = inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method, assembly_id, **optargs)
+        result_filename = inference(cond1_label, cond1, cond2_label, cond2, transcript_names,
+                                    method, assembly_id, **optargs)
         
         sys.exit(0)
     except Usage, err:
