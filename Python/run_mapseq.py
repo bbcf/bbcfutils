@@ -24,14 +24,14 @@ class Usage(Exception):
 def main(argv = None):
     via = "lsf"
     limspath = None
-    hts_key = None
+    hts_key = ''
     working_dir = None
     config_file = None
     if argv is None:
         argv = sys.argv
     try:
         try:
-            opts,args = getopt.getopt(sys.argv[1:],"hu:k:d:w:",
+            opts,args = getopt.getopt(sys.argv[1:],"hu:k:d:w:c:",
                                       ["help","via","key","minilims",
                                        "working-directory","config"])
         except getopt.error, msg:
@@ -70,7 +70,7 @@ def main(argv = None):
             gl = use_pickle(M, "global variables")
             htss = frontend.Frontend( url=gl['hts_mapseq']['url'] )
             job = htss.job( hts_key )
-        ###[M.delete_execution(x) for x in M.search_executions(with_description=hts_key)]
+            [M.delete_execution(x) for x in M.search_executions(with_description=hts_key)]
         elif os.path.exists(config_file):
             (job,gl) = frontend.parseConfig( config_file )
         else:
@@ -78,8 +78,11 @@ def main(argv = None):
         g_rep = genrep.GenRep( url=gl["genrep_url"], root=gl["bwt_root"], 
                                intype=job.options.get('input_type') )
         assembly = g_rep.assembly( job.assembly_id )
-        dafl = dict((loc,daflims.DAFLIMS( username=gl['lims']['user'], password=pwd ))
-                    for loc,pwd in gl['lims']['passwd'].iteritems())
+        if 'lims' in gl:
+            dafl = dict((loc,daflims.DAFLIMS( username=gl['lims']['user'], password=pwd ))
+                        for loc,pwd in gl['lims']['passwd'].iteritems())
+        else:
+            dafl = None
         job.options['ucsc_bigwig'] = job.options.get('ucsc_bigwig') or True
         job.options['gdv_project'] = job.options.get('gdv_project') or False
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:

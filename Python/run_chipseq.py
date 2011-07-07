@@ -3,12 +3,12 @@
 A High-throughput ChIP-seq peak analysis workflow.
 
 """
-from bbcflib import daflims, genrep, frontend, email, gdv, common
+from bbcflib import genrep, frontend, email, gdv, common
 from bbcflib.mapseq import *
 from bbcflib.chipseq import *
 import sys, getopt, os, json
 
-usage = """run_chipseq.py [-h] [-u via] [-w wdir] [-k job_key] [-c config_file] [-d-m minilims]
+usage = """run_chipseq.py [-h] [-u via] [-w wdir] [-k job_key] [-c config_file] -d minilims
 
 -h           Print this message and exit
 -u via       Run executions using method 'via' (can be "local" or "lsf")
@@ -27,7 +27,7 @@ def main(argv = None):
     via = "lsf"
     limspath = None
     ms_limspath = "/srv/mapseq/public/data/mapseq_minilims"
-    hts_key = None
+    hts_key = ''
     working_dir = None
     config_file = None
     if argv is None:
@@ -76,7 +76,7 @@ def main(argv = None):
             gl = use_pickle( M, "global variables" )
             htss = frontend.Frontend( url=gl['hts_chipseq']['url'] )
             job = htss.job( hts_key )
-            ###[M.delete_execution(x) for x in M.search_executions(with_description=hts_key)]
+            [M.delete_execution(x) for x in M.search_executions(with_description=hts_key)]
         elif os.path.exists(config_file):
             (job,gl) = frontend.parseConfig( config_file )
         else:
