@@ -4,14 +4,13 @@ import os
 import sys
 import pickle
 import numpy
-from rnaseq import inference
+from bbcflib.rnaseq import inference
 import rpy2.robjects as robjects
 import rpy2.robjects.packages as rpackages
 import rpy2.robjects.numpy2ri
 import rpy2.rlike.container as rlc
-import pudb #pudb.set_trace()
 
-usage = """run_deseq.py cond1_file cond2_file transcript_names_file cond1_label cond2_label method assembly_id output maplot
+usage = """run_deseq.py cond1_file cond2_file transcript_names_file cond1_label cond2_label method assembly_id [output]
 
 """
 
@@ -21,14 +20,14 @@ class Usage(Exception):
 
 def main(argv = None):
     """
-    Usage: run_deseq.py cond1_file cond2_file transcript_names_file cond1_label cond2_label method assembly_id output maplot
+    Usage: run_deseq.py cond1_file cond2_file transcript_names_file cond1_label cond2_label method assembly_id [output]
     """
     narg = 9
     if argv is None:
         argv = sys.argv[1:]
     try:
-        if len(argv) != narg:
-            raise Usage("run_deseq.py takes exactly %d argument." % narg)
+        if len(argv) < 7:
+            raise Usage("run_deseq.py takes at least %d argument." % 7)
         cond1_file = argv[0]
         with open(cond1_file,'rb') as f:
             cond1 = pickle.load(f)
@@ -41,15 +40,14 @@ def main(argv = None):
         cond1_label = str(argv[3])
         cond2_label = str(argv[4])
         method = str(argv[5])
-        assembly_id = int(argv[6])
+        assembly_id = argv[6]
         output = str(argv[7])
-        maplot = str(argv[8])
 
         optargs = {}
-        if assembly_id: optargs['assembly_id'] = assembly_id
         if not output=="None": optargs['output'] = output
-        if not maplot=="None": optargs['maplot'] = maplot
-        inference(cond1_label, cond1, cond2_label, cond2, transcript_names, method, **optargs)
+        
+        result_filename = inference(cond1_label, cond1, cond2_label, cond2, transcript_names,
+                                    method, assembly_id, **optargs)
         
         sys.exit(0)
     except Usage, err:
