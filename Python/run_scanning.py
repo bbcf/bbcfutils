@@ -5,12 +5,11 @@ from bbcflib.genrep             import GenRep
 from bbcflib.gdv                import create_gdv_project, add_gdv_track, get_project_id
 from bbcflib.frontend           import parseConfig
 from bbcflib.common             import scp, normalize_url
-from bbcflib.track.format_sql   import Track, new
-from bbcflib.track.track_util   import shuffle_track
+from bbcflib.track              import Track, new
 from os.path                    import basename, expanduser, abspath, normcase, splitext, isfile, exists
 import getopt, sys
 
-usage = """%s [-h] [options] --matrix "/path/to/matrix.mat" -c config_file -d minilims
+usage = """%s [-h] [options] --matrix=/path/to/matrix.mat -c config_file --minilims=minilims_name
 -h Print this message and exit
 -c --config file Config file
 --host submit track file to selected host machine (e.g sugar)
@@ -145,11 +144,10 @@ def main(argv = None):
             # convert to sql
             with Track(original_bed_data, chrmeta=assembly.chromosomes) as track:
                 track.convert(original_sql_data, format='sql')
+                # create random track
+                track.shuffle_track(random_sql_data, repeat_number=5)
             ex.add(original_sql_data,   "sql:"+original_sql_data)
-            # create random track
-            shuffle_track(original_sql_data, random_sql_data, repeat_number=5)
             ex.add(random_sql_data,     "sql:"+random_sql_data)
-
             track_scanned,fdr = sqlite_to_false_discovery_rate(
                                                                 ex,
                                                                 matrix,
