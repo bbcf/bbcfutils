@@ -6,7 +6,7 @@ A High-throughput ChIP-seq peak analysis workflow.
 from bbcflib import genrep, frontend, email, gdv, common
 from bbcflib.mapseq import *
 from bbcflib.chipseq import *
-import sys, getopt, os, json
+import sys, getopt, os, json, re
 
 usage = """run_chipseq.py [-h] [-u via] [-w wdir] [-k job_key] [-c config_file] -d minilims
 
@@ -26,7 +26,7 @@ class Usage(Exception):
 def main(argv = None):
     via = "lsf"
     limspath = None
-    ms_limspath = "/srv/mapseq/public/data/mapseq_minilims"
+    ms_limspath = "/data/htsstation/mapseq/mapseq_minilims"
     hts_key = ''
     working_dir = None
     config_file = None
@@ -91,11 +91,11 @@ def main(argv = None):
         if 'gdv_project' in job.options and 'sql' in allfiles:
             allfiles['url'] = {job.options['gdv_project']['public_url']: 'GDV view'}
             download_url = gl['hts_chipseq']['download']
-            [gdv.add_gdv_sqlite( gl['gdv']['key'], gl['gdv']['email'],
-                                 job.options['gdv_project']['project_id'],
-                                 url=download_url+str(k), 
-                                 name = re.sub('\.sql','',str(f)),
-                                 gdv_url=gl['gdv']['url'], datatype='quantitative' ) 
+            [gdv.add_gdv_track( gl['gdv']['key'], gl['gdv']['email'],
+                                job.options['gdv_project']['project_id'],
+                                url=download_url+str(k), 
+                                name = re.sub('\.sql','',str(f)),
+                                gdv_url=gl['gdv']['url'] ) 
              for k,f in allfiles['sql'].iteritems()]
         print json.dumps(allfiles)
         if 'email' in gl:
