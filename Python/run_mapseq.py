@@ -5,7 +5,7 @@ A High-throughput sequencing data mapping workflow.
 """
 from bbcflib import daflims, genrep, frontend, email, gdv, common
 from bbcflib.mapseq import *
-import sys, getopt, os
+import sys, getopt, os, re
 
 usage = """run_mapseq.py [-h] [-u via] [-w wdir] [-k job_key] [-c config_file] -d minilims
 
@@ -24,14 +24,14 @@ class Usage(Exception):
 def main(argv = None):
     via = "lsf"
     limspath = None
-    hts_key = None
+    hts_key = ''
     working_dir = None
-    config = None
+    config_file = None
     if argv is None:
         argv = sys.argv
     try:
         try:
-            opts,args = getopt.getopt(sys.argv[1:],"hu:k:d:w:",
+            opts,args = getopt.getopt(sys.argv[1:],"hu:k:d:w:c:",
                                       ["help","via","key","minilims",
                                        "working-directory","config"])
         except getopt.error, msg:
@@ -62,20 +62,28 @@ def main(argv = None):
                 config_file = a
             else:
                 raise Usage("Unhandled option: " + o)
+        if not(limspath and os.path.exists(limspath) 
+               and (hts_key != None or (config_file and os.path.exists(config_file)))):
+            raise Usage("")
         M = MiniLIMS( limspath )
         if len(hts_key)>1:
             gl = use_pickle(M, "global variables")
             htss = frontend.Frontend( url=gl['hts_mapseq']['url'] )
             job = htss.job( hts_key )
-        ###[M.delete_execution(x) for x in M.search_executions(with_description=hts_key)]
+            [M.delete_execution(x) for x in M.search_executions(with_description=hts_key)]
         elif os.path.exists(config_file):
             (job,gl) = frontend.parseConfig( config_file )
         else:
             raise ValueError("Need either a job key (-k) or a configuration file (-c).")
-        g_rep = genrep.GenRep( gl["genrep_url"], gl["bwt_root"] )
+        g_rep = genrep.GenRep( url=gl["genrep_url"], root=gl["bwt_root"], 
+                               intype=job.options.get('input_type') or 0 )
         assembly = g_rep.assembly( job.assembly_id )
-        dafl = dict((loc,daflims.DAFLIMS( username=gl['lims']['user'], password=pwd ))
-                    for loc,pwd in gl['lims']['passwd'].iteritems())
+        if 'lims' in gl:
+            dafl = dict((loc,daflims.DAFLIMS( username=gl['lims']['user'], password=pwd ))
+                        for loc,pwd in gl['lims']['passwd'].iteritems())
+        else:
+            dafl = None
+        job.options['compute_densities'] = job.options.get('compute_densities') or True
         job.options['ucsc_bigwig'] = job.options.get('ucsc_bigwig') or True
         job.options['gdv_project'] = job.options.get('gdv_project') or False
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
@@ -90,7 +98,7 @@ def main(argv = None):
                 density_files = densities_groups( ex, job, mapped_files, assembly.chromosomes, via=via )
                 if job.options['gdv_project']:
                     gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
-                                                          job.description, hts_key, 
+                                                          job.description,  
                                                           assembly.nr_assembly_id,
                                                           gdv_url=gl['gdv']['url'], public=True )
                     add_pickle( ex, gdv_project, description='py:gdv_json' )
@@ -98,18 +106,19 @@ def main(argv = None):
         if 'py:gdv_json' in allfiles:
             allfiles['url'] = {gdv_project['public_url']: 'GDV view'}
             download_url = gl['hts_mapseq']['download']
-            [gdv.add_gdv_sqlite( gl['gdv']['key'], gl['gdv']['email'],
-                                 gdv_project['project_id'],
-                                 url=download_url+str(k), 
-                                 name = re.sub('\.sql','',str(f)),
-                                 gdv_url=gl['gdv']['url'], datatype="quantitative" ) 
+            [gdv.add_gdv_track( gl['gdv']['key'], gl['gdv']['email'],
+                                gdv_project['project_id'],
+                                url=download_url+str(k), 
+                                name = re.sub('\.sql','',str(f)),
+                                gdv_url=gl['gdv']['url'] ) 
              for k,f in allfiles['sql'].iteritems()]
         print json.dumps(allfiles)
-        r = email.EmailReport( sender=gl['email']['sender'],
-                               to=str(job.email),
-                               subject="Mapseq job "+str(job.description),
-                               smtp_server=gl['email']['smtp'] )
-        r.appendBody('''
+        if 'email' in gl:
+            r = email.EmailReport( sender=gl['email']['sender'],
+                                   to=str(job.email),
+                                   subject="Mapseq job "+str(job.description),
+                                   smtp_server=gl['email']['smtp'] )
+            r.appendBody('''
 Your mapseq job is finished.
 
 The description was: 
@@ -118,7 +127,7 @@ and its unique key is '''+hts_key+'''.
 
 You can now retrieve the results at this url:
 '''+gl['hts_mapseq']['url']+"jobs/"+hts_key+"/get_results")
-        r.send()
+            r.send()
         sys.exit(0)
     except Usage, err:
         print >>sys.stderr, err.msg
