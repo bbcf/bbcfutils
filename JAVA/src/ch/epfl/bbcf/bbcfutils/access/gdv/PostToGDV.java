@@ -5,6 +5,9 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Map;
 
+import ch.epfl.bbcf.bbcfutils.access.gdv.RequestParameters.CMD;
+import ch.epfl.bbcf.bbcfutils.access.gdv.RequestParameters.PARAM;
+
 
 /**
  * 
@@ -13,8 +16,8 @@ import java.util.Map;
  */
 public class PostToGDV {
 
-	public static final String GDV_ADRESS = "http://svitsrv25.epfl.ch/gdv/post";
-	private static final String GDV_POST = "gdv_post";
+	public static final String DEFAULT_GDV_ADRESS = "http://salt.epfl.ch/gdv/post";
+	public static final String DEFAULT_GDV_ID = "gdv_post";
 
 	/**
 	 * Main entry of the program
@@ -37,11 +40,11 @@ public class PostToGDV {
 	 * @return
 	 */
 	private static boolean parseArgs(String[] args) {
-		String id = GDV_POST;
+		/* help section */
 		if(args.length>0){
 			if(args[0].equalsIgnoreCase("h")||args[0].equalsIgnoreCase("help")){
 				System.out.println(README);	
-				return false;
+				return true;
 			} else if(args[0].equalsIgnoreCase("gendoc")){
 				File file = new File("README");
 				try {
@@ -54,18 +57,33 @@ public class PostToGDV {
 				return true;
 			}
 		}
+
+		/* get all parameters */
 		RequestParameters params = buildRequestParameters(args);
-		System.out.println("parsing args .... ");
+		/* check default values */
+		if(null==params.getGdv_url()){
+			params.setGdv_url(DEFAULT_GDV_ADRESS);
+		}
+		if(null==params.getId()){
+			params.setId(DEFAULT_GDV_ID);
+		}
 		if(null!=params){
-			if(checkParams(params.getMail(),params.getKey(),params.getCommand())){
-				Command control = Command.getControl(params.getCommand(), params.getMail(), params.getKey());
-				if(null!=control){
-					return control.doRequest(id,params);
-				}
+			boolean ok = true;
+			ok = Command.checkParam(PARAM.mail,params.getMail());
+			ok = Command.checkParam(PARAM.key,params.getKey());
+			ok = Command.checkCommand(params.getCommand());
+			if(ok){
+				return Command.doRequest(params.getGdv_url(),params);
 			}
 		}
+
+		/* display usage */
 		return false;
 	}
+
+
+
+
 
 	/**
 	 * build an RequestParamters object with all args provided 
@@ -79,40 +97,51 @@ public class PostToGDV {
 			if(i+1<args.length){
 				if(args[i].startsWith("--")){
 					String cmd = args[i].substring(2, args[i].length());
-					if(cmd.equalsIgnoreCase(RequestParameters.PROJECT_ID_PARAM)){
-						params.setProjectId(args[i+1]);
-					} else if(cmd.equalsIgnoreCase(RequestParameters.URL_PARAM)){
+					PARAM p = PARAM.valueOf(cmd);
+					switch(p){
+					case project_id :
+						params.setProjectId(args[i+1]); 
+						break;
+					case url : 
 						params.setUrl(args[i+1]);
-					} else if(cmd.equalsIgnoreCase(RequestParameters.COMMAND_PARAM)){
+						break;
+					case command :
 						params.setCommand(args[i+1]);
-					} else if(cmd.equalsIgnoreCase(RequestParameters.KEY_PARAM)){
+						break;
+					case key :
 						params.setKey(args[i+1]);
-					} else if(cmd.equalsIgnoreCase(RequestParameters.MAIL_PARAM)){
+						break;
+					case mail :
 						params.setMail(args[i+1]);
-					} else if(cmd.equalsIgnoreCase(RequestParameters.DATATYPE_PARAM)){
-						params.setDatatype(args[i+1]);
-					} else if(cmd.equalsIgnoreCase(RequestParameters.TYPE_PARAM)){
-						params.setType(args[i+1]);
-					} else if(cmd.equalsIgnoreCase(RequestParameters.OBFUSCATED_PARAM)){
-						params.setObfuscated(args[i+1]);
-					} else if(cmd.equalsIgnoreCase(RequestParameters.SEQUENCE_ID_PARAM)){
+						break;
+					case seq_id :
 						params.setSequenceId(args[i+1]);
-					} else if(cmd.equalsIgnoreCase(RequestParameters.NAME_PARAM)){
+						break;
+					case name :
 						params.setName(args[i+1]);
-					} else if(cmd.equalsIgnoreCase(RequestParameters.PUBLIC_PARAM)){
+						break;
+					case Public :
 						params.setIsPublic(args[i+1]);
-					} else {
-						System.err.println("the parameter "+args[i]+" is not a parameter.");
+						break;
+					case assemblies:
+						params.setAssemblies(args[i+1]);
+						break;
+					case id:
+						params.setId(args[i+1]);
+						break;
+					case job_id:
+						params.setJob_id(args[i+1]);
+						break;
+					case gdv_url :
+						params.setGdv_url(args[i+1]);
+						break;
 					}
 				} else {
-					System.err.println(args[i]+" is not a parameter. Perhaps you didn't add --.");
+					System.err.println("the parameter "+args[i]+" is not a parameter.");
 				}
-			} else {
-				System.err.println("the parameters "+args[i]+" is not defined");
-				return null;
 			}
 			i++;
-		}
+		} 
 		return params;
 	}
 
@@ -137,6 +166,8 @@ public class PostToGDV {
 		return true;
 	}
 
+
+
 	/**
 	 * convenient method to write a table to the output
 	 * @param values
@@ -155,80 +186,51 @@ public class PostToGDV {
 	 * print help to the console output
 	 */
 	private static void usage() {
-		String str = 
-			"\n-----------" +
-			"\n-----------" +
-			"\n--SUMMARY--" +
-			"\n-----------" +
-			"\n-----------" +
-			"\nthe args are given like;\n" +
-			"\t --<arg> <value> (without <>) " +
-			"e.g: --name Bob";
-		System.out.println(str);
-		System.out.println();
-		System.out.println("--REQUESTED PARAMETERS : ");
-		for(Map.Entry<String,String[]> entry : RequestParameters.getMapcommands().entrySet()){
-			System.out.println(entry.getKey()+" : ");
-			System.out.println("\t "+writeList(entry.getValue()));
-		}
-		System.out.println("-----------\n-----------");
+		System.out.println(README);
 	}
 
+	private static final String eol = System.getProperty("line.separator");
 	private static final String README =
-		"\n################" +
-		"\n#### README ####" +
-		"\n################" +
-		"\n"+
-		"\n#BUILD" +
-		"\ndownload project, cd project directory and run the comment \"ant jar\"" +
-		"\n"+
-		"\n#INTRO" +
-		"\nFirst you need a mail and an user key." +
-		"\nLogin in GDV and go to 'preferences' page you will have your personal user key." +
-		"\nNow there is two way : you can use the jar file provided or send by yourself" +
-		"\na POST connection to \"http://svitsrv25.epfl.ch/gdv/post\". Note that if you send a POST" +
-		"\nby yourself you will have to add the parameter \"id=gdv_post\" in your request." +
-		"\n"+
-		"\n#DEFINITION OF THE PARAMETERS" +
-		"\n"+
-		"\nREQUESTED :" +
-		"\n\t- mail : login in tequila" +
-		"\n\t- key  : user key" +
-		"\n\t- command : one of [new_project, add_track,add_sqlite]" +
-		"\n"+
-		"\nREQUESTED BY COMMAND :" +
-		"\n->'new_project' :" +
-		"\n\t- seq_id : the nr_assembly id of the species in Genrep" +
-		"\n\t- name : name of the project" +
-		"\n\t- public (OPTIONNAL default=false): true to make the project public" +
-		"\n\tRESPONSE : a JSON String : {\"project_id\":<anID>,\"public_url\":<anURL>}" +
-		"\n"+
-		"\n->'add_track' :" +
-		"\n\t- url : url to fetch" +
-		"\n\t- project_id : the project id in GDV" +
-		"\n\t- name (OPTIONNAL default=name of the file): the name you want to give to the track" +
-		"\n"+
-		"\n->'add_sqlite' :" +
-		"\n\t- url : url to fetch" +
-		"\n\t- project_id : the project id in GDV" +
-		"\n\t- datatype : one of [qualitative,quantitative] N.B :QUALITATIVE does not work yet" +
-		"\n\t- name (OPTIONNAL default=name of the file): the name you want to give to the track" +
-		"\n"+
-		"\n#REQUESTS EXAMPLES" +
-		"\n1) Want to create a public project in your profile for yeast?" +
-		"\n\t$java -jar --mail <your mail> -key <your user key> --command new_project --seq_id 98 --name TestProject --public true" +
-		"\n\t\t- or -"+
-		"\n\tPOST at http://svitsrv25.epfl.ch/gdv_dev/post" +
-		"\n\twith body = \"id=gdv_post&mail=<your mail>&key=<your user key>&command=new_projectseq_id=98&name=TestProject&public=true " +
-		"\n\tIt will give you back an ID and an URL if you made it public. This is the project id in GDV and	the URL	you can	give to	" +
-		"\n\tsomeone	else (e.g. {\"project_id\":5622,\"public_url\":\"http://svitsrv25.epfl.ch/gdv/browser?id=5622&ukey=ol9iio7k11&pkey=sg67v1ceqo83\"}" +
-		"\n"+
-		"\n2) Want to add a track to a project ?" +
-		"\n\t$java -jar  --mail <your mail> -key <your user key> --command add_track --url <http://salt/BED/myfile.wig> --project_id <project id>" +
-		"\n\tfor POST, see (1).  (don't forget to add id=gdv_post to the request's body)" +
-		"\n"+
-		"\n3) Want to add a track in sqlite format ?" +
-		"\n\t$java -jar  --mail <your mail> -key <your user key> --command add_sqlite --url <http://salt/BED/myfile.db> --project_id <project id> --datatype quantitative" +
-		"\n	(qualitative not working for the moment)";
+		eol+"################" +
+		eol+"#### README ####" +
+		eol+"################" +
+		eol+"" +
+		eol+"This utility will help send jobs to GDV" +
+		eol+"" +
+		eol+"First you need a mail and an user key." +
+		eol+"Login in GDV and go to 'preferences' page you will have your personal user key." +
+		eol+"" +
+		eol+"### COMMANDS ###" +
+		eol+"" +
+		eol+"You can launch several commands : " +
+		eol+"- new_project : create a new project on GDV " +
+		eol+"    return {project_id:<>,public_url:<>}" +
+		eol+"- new_track : add a track to a GDV project" +
+		eol+"    return {job_id:<>}" +
+		eol+"- assemblies : fetch all assemblies (and id) created on GDV" +
+		eol+"    return [{id:<>,species:<>,assembly:<>},...]" +
+		eol+"- status : get the status of a job" +
+		eol+"    return {job_id:<>,status:<'running','error' or 'success'>}" +
+		eol+"" +
+		eol+"### PARAMETERS ###" +
+		eol+""+
+		eol+"## requested for all queries:" +
+		eol+"\t- mail : login in tequila" +
+		eol+"\t- key  : user key" +
+		eol+"\t- command : one of [new_project, add_track,add_sqlite]" +
+		eol+""+
+		eol+"## command 'new_project'" +
+		eol+"\t- seq_id : the nr_assembly id of the species in Genrep" +
+		eol+"\t- name : name of the project" +
+		eol+"\t- public (OPTIONNAL default=false): true to make the project public" +
+		eol+""+
+		eol+"## command 'add_track' :" +
+		eol+"\t- url : url to fetch" +
+		eol+"\t- project_id : the project id in GDV" +
+		eol+"\t- name (OPTIONNAL default=name of the file): the name you want to give to the track" +
+		eol+""+
+		eol+"## command 'status' :" +
+		eol+"\t- job_id : the identifier of the job" +
+		eol+"";
 }
 

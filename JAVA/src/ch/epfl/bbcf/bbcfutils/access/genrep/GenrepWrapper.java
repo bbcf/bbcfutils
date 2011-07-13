@@ -60,7 +60,9 @@ public class GenrepWrapper {
 		@SuppressWarnings("unchecked")
 		List<Assembly> assemblies = (List<Assembly>) GenRepAccess.doQueryList(
 				Constants.URL, METHOD.ALL, FORMAT.json, new TypeReference<List<GenrepObject>>() {},KEY.assemblies,null);
+	System.out.println(id);
 		for(Assembly assembly : assemblies){
+			System.out.println(assembly.getName()+"  -"+assembly.getNr_assembly_id()+"-");
 			if(assembly.getNr_assembly_id()==id && assembly.isBbcf_valid()){
 				return assembly;
 			}
@@ -134,5 +136,7 @@ public class GenrepWrapper {
 		System.out.println("fetching  "+url);
 		return InternetConnection.sendGETConnection(url);
 	}
+	
+	
 
 }

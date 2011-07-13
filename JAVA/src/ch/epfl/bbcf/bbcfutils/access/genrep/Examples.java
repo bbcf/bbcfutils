@@ -22,7 +22,7 @@ public class Examples {
 		try {
 			//fetch the mus musculus nr assembly (mm9)
 			//NR_Assembly nrAssembly = GenrepWrapper.getNrAssemblyFromId(70);
-			Assembly assembly = GenrepWrapper.getAssemblyFromNrAssemblyId(70);
+			Assembly assembly = GenrepWrapper.getAssemblyFromNrAssemblyId(158);
 			//print different info on the assembly
 			System.out.println("assembly "+assembly.getName()+" from "+assembly.getSource_name());
 			//print more information on the genome associated with this assembly
