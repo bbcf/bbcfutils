@@ -22,6 +22,7 @@ import ch.epfl.bbcf.bbcfutils.conversion.json.pojo.TrackData.ClientConfig;
 import ch.epfl.bbcf.bbcfutils.conversion.json.pojo.TrackData.Type;
 import ch.epfl.bbcf.bbcfutils.exception.ConvertToJSONException;
 import ch.epfl.bbcf.bbcfutils.json.JsonMapper;
+import ch.epfl.bbcf.bbcfutils.parsing.SQLiteExtension;
 import ch.epfl.bbcf.bbcfutils.parsing.feature.BioSQLiteQualitative;
 import ch.epfl.bbcf.bbcfutils.parsing.feature.BioSQLiteQualitativeExt;
 import ch.epfl.bbcf.bbcfutils.parsing.feature.JSONFeature;
@@ -42,9 +43,9 @@ public class ConvertToJSON {
 	private int start;
 	private Type processingType;
 	private int end;
-	private String type;
+	private SQLiteExtension type;
 
-	public ConvertToJSON(String inputPath,String type){
+	public ConvertToJSON(String inputPath,SQLiteExtension type){
 		this.setInputPath(inputPath);
 		this.type = type;
 	}
@@ -95,9 +96,8 @@ public class ConvertToJSON {
 		}
 
 		/* separate qualitative & quantitative process */
-
-
-		if(type.equalsIgnoreCase("quantitative")){
+		switch(type){
+		case QUANTITATIVE:
 			try{
 				/* loop chromosomes */ 
 				for(Map.Entry<String, Integer> entry : chromosomes.entrySet()){
@@ -125,13 +125,8 @@ public class ConvertToJSON {
 			}
 			return true;
 
-
-
-
-
-
-
-		} else if(type.equalsIgnoreCase("qualitative")){
+		case QUALITATIVE:
+		case QUALITATIVE_EXTENDED:
 			/* guess precise type (basic or extended) */
 			processingType = Type.EXTENDED;
 			if(!chromosomes.isEmpty()){
@@ -141,7 +136,6 @@ public class ConvertToJSON {
 				}catch(SQLException e){
 					processingType = Type.BASIC;
 				} finally {
-					
 				}
 			}
 			try {
@@ -156,14 +150,14 @@ public class ConvertToJSON {
 			} catch (ClassNotFoundException e) {
 				throw new ConvertToJSONException(e);				
 			}
-			
-			
+
+
 
 			/* loop chromosomes */
 			for(Map.Entry<String, Integer> entry : chromosomes.entrySet()){
 				final String chromosome = entry.getKey();
 				final int length = entry.getValue();
-				
+
 				if(!makeDirectory(chromosome,outputPath+"/"+dbName)){
 					throw new ConvertToJSONException("cannot create directory : "+outputPath+"/"+dbName+"/"+chromosome);
 				}
@@ -196,10 +190,8 @@ public class ConvertToJSON {
 					}
 					r.close();
 					writeChromosome(jsonChromosome,length,dbName,ressourceUrl,types,trackName);
-					
+
 				} catch (SQLException e) {
-					throw new ConvertToJSONException(e);
-				} catch (JSONException e) {
 					throw new ConvertToJSONException(e);
 				} catch (InstantiationException e) {
 					throw new ConvertToJSONException(e);
@@ -207,9 +199,13 @@ public class ConvertToJSON {
 					throw new ConvertToJSONException(e);
 				} catch (ClassNotFoundException e) {
 					throw new ConvertToJSONException(e);
+				} catch (JSONException e) {
+					throw new ConvertToJSONException(e);
 				} catch (IOException e) {
 					throw new ConvertToJSONException(e);
 				}
+
+
 			}
 			try {
 				access.close();
@@ -218,6 +214,8 @@ public class ConvertToJSON {
 			}
 			return true;
 		}
+
+
 		return false;
 	}
 
@@ -243,7 +241,7 @@ public class ConvertToJSON {
 	 * @throws ClassNotFoundException
 	 * @throws IOException
 	 */
-	private boolean writeChromosome(JSONChromosome jsonChromosome,int length,String dbName,String ressourceUrl,List<String> types,String trackName) throws JSONException, SQLException, InstantiationException, IllegalAccessException, ClassNotFoundException, IOException {
+	private boolean writeChromosome(JSONChromosome jsonChromosome,int length,String dbName,String ressourceUrl,List<String> types,String trackName) throws SQLException, InstantiationException, IllegalAccessException, ClassNotFoundException, IOException {
 		List<JSONFeat> list = new ArrayList<JSONFeat>();
 		for(Map.Entry<String, JSONFeat> entry : jsonChromosome.features.entrySet()){
 			JSONFeat f = entry.getValue();
@@ -518,13 +516,26 @@ public class ConvertToJSON {
 
 
 
-		public void initFeature() throws JSONException{
+		public void initFeature() {
 			switch(processingType){
 			case BASIC:
-				this.feature=new JSONArray("["+start+","+end+","+score+","+Utility.protect(parentName)+","+strand+"]");
+				this.feature=new JSONArray();
+				this.feature.put(start);
+				this.feature.put(end);
+				try {
+					this.feature.put(score);
+				} catch (JSONException e) {
+					e.printStackTrace();
+				}
+				this.feature.put(Utility.protect(parentName));
+				this.feature.put(strand);
 				break;
 			case EXTENDED:
-				this.feature=new JSONArray("["+start+","+end+","+Utility.protect(parentName)+","+strand+"]");
+				this.feature=new JSONArray();
+				this.feature.put(start);
+				this.feature.put(end);
+				this.feature.put(Utility.protect(parentName));
+				this.feature.put(strand);
 				if(featureCount>0){
 					this.feature.put(this.subfeatures);
 				}
@@ -612,9 +623,9 @@ public class ConvertToJSON {
 	}
 
 	public static void main(String[] args){
-		ConvertToJSON c = new ConvertToJSON("/Users/jarosz/Desktop/A4.db","qualitative");
+		ConvertToJSON c = new ConvertToJSON("/Users/jarosz/Documents/epfl/flat_files/gff/arabido.sql",SQLiteExtension.QUALITATIVE);
 		try {
-			c.convert("/Users/jarosz/Desktop/","A10", "../../tracks_dev", "THE_TRACK");
+			c.convert("/Users/jarosz/Documents/epfl/flat_files/gff/","arabido8", "../../tracks", "THE_TRACK");
 		} catch (ConvertToJSONException e) {
 			e.printStackTrace();
 		}

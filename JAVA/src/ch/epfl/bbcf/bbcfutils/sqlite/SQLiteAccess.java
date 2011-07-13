@@ -282,15 +282,15 @@ public class SQLiteAccess extends SQLiteParent{
 
 
 	
-	public String testIfQualitative() throws SQLException{
+	public SQLiteExtension getDatabaseDatatype() throws SQLException{
 		String q1 = "SELECT * FROM attributes where key = 'datatype' limit 1; ";
 		Statement stat = connection.createStatement();
 		ResultSet r = stat.executeQuery(q1);
 		if(r.next()){
 			String dt = r.getString("value");
-			return dt;
+			return SQLiteExtension.valueOf(dt);
 		}
-		return "";
+		return null;
 	}
 	
 	

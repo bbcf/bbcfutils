@@ -54,6 +54,8 @@ public class TrackData {
 			break;
 		}
 		this.setHeaders(heads);
+		
+		this.arrowheadClass="transcript-arrowhead";
 
 
 //		List<TrackData.HistogramMeta> histm = new ArrayList<TrackData.HistogramMeta>();

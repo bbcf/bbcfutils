@@ -13,7 +13,8 @@ public class ParsingException extends Exception{
 	}
 
 	public ParsingException(Exception e) {
-		// TODO Auto-generated constructor stub
+		super(e.getMessage());
+		
 	}
 
 	public ParsingException(String string) {

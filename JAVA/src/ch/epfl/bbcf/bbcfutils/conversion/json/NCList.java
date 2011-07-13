@@ -21,8 +21,8 @@ public class NCList {
 		Collections.sort(sortables);
 	}
 
-	
-	public static List<JSONFeat> arrange(List<JSONFeat> list) throws JSONException{
+
+	public static List<JSONFeat> arrange(List<JSONFeat> list) {
 		List<JSONFeat> endList = new ArrayList<JSONFeat>();
 		for(int i=0;i<list.size();i++){
 			JSONFeat curFeat = list.get(i);
@@ -33,7 +33,7 @@ public class NCList {
 	}
 
 
-	private static int includeNextFeat(List<JSONFeat> list, int i, JSONFeat curFeat,boolean first) throws JSONException {
+	private static int includeNextFeat(List<JSONFeat> list, int i, JSONFeat curFeat,boolean first) {
 		if(first){
 			curFeat.initFeature();
 		}
@@ -42,14 +42,15 @@ public class NCList {
 			if(curFeat.getEnd()>nextFeat.getEnd()){
 				i++;
 				i = includeNextFeat(list,i,nextFeat,true);
-				curFeat.nesting(nextFeat);
+				try {
+					curFeat.nesting(nextFeat);
+				} catch (JSONException e) {
+				}
 				i = includeNextFeat(list,i,curFeat,false);
 			}
 		}
 		return i;
 	}
-
-
 
 
 }
