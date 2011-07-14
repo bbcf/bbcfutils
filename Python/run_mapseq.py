@@ -70,7 +70,7 @@ def main(argv = None):
             gl = use_pickle(M, "global variables")
             htss = frontend.Frontend( url=gl['hts_mapseq']['url'] )
             job = htss.job( hts_key )
-            [M.delete_execution(x) for x in M.search_executions(with_description=hts_key)]
+            [M.delete_execution(x) for x in M.search_executions(with_description=hts_key,fails=True)]
         elif os.path.exists(config_file):
             (job,gl) = frontend.parseConfig( config_file )
         else:
@@ -91,7 +91,7 @@ def main(argv = None):
             mapped_files = map_groups( ex, job, ex.working_directory, assembly, {'via': via} )
             pdf = add_pdf_stats( ex, mapped_files,
                                  dict((k,v['name']) for k,v in job.groups.iteritems()),
-                                 gl['script_path'] )
+                                 gl.get('script_path') or '' )
             if job.options['compute_densities']:
                 if not(job.options.get('read_extension')>0):
                     job.options['read_extension'] = mapped_files.values()[0].values()[0]['stats']['read_length']
