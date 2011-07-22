@@ -1,8 +1,6 @@
 #!/bin/env python
 """
-run_rnaseq.py
-
-[FIXME: Description ]
+A High-throughput RNA-seq analysis workflow.
 """
 import os
 import sys
