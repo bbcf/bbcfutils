@@ -86,7 +86,8 @@ def main(argv=None):
         with execution(M) as ex:
             job = get_fastq_files( job, ex.working_directory)
             print "Start workflow"
-            json = rnaseq_workflow(ex, job, assembly, via=via)
+            print "Current working directory:", ex.working_directory
+            json = rnaseq_workflow(ex, job, assembly, via=via, with_exons=False, maplot="normal")
 
         sys.exit(0)
     except Usage, err:
