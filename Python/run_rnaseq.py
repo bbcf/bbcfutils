@@ -82,12 +82,13 @@ def main(argv=None):
         assembly = g_rep.assembly(assembly_id)
         job.options['ucsc_bigwig'] = job.options.get('ucsc_bigwig') or True
         job.options['gdv_project'] = job.options.get('gdv_project') or False
+        job.options['discard_pcr_duplicates'] = job.options.get('discard_pcr_duplicates') or False
 
         with execution(M) as ex:
             job = get_fastq_files( job, ex.working_directory)
             print "Start workflow"
             print "Current working directory:", ex.working_directory
-            json = rnaseq_workflow(ex, job, assembly, via=via, with_exons=False, maplot="normal")
+            json = rnaseq_workflow(ex, job, assembly, via=via, with_exons=True, maplot="normal")
 
         sys.exit(0)
     except Usage, err:
