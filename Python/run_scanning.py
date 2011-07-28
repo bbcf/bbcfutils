@@ -112,7 +112,7 @@ def main(argv = None):
 
         # compute false discovery rate
         with execution(M, description=job.description) as ex:
-            background = genrep.statistics(assembly,output=unique_filename_in(), frequency=True)
+            background = genrep.statistics(assembly,output=unique_filename_in(), frequency=True, matrix_format=True)
             ex.add(background,  description="background:"+background)
             if len(job.groups) >2:
                 raise ValueError("They are more than 2 group in config file")
