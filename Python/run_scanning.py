@@ -170,7 +170,7 @@ def main(argv = None):
                 with Track(track_scanned, format="sql", chrmeta=assembly.chromosomes) as track_in:
                     for chromosome in track_in.all_chrs:
                         data_list = []
-                        for data in track_in.read( {"chr": chromosome, "score": ">= "+str(fdr)}, fields=Track.qualitative_fields ):
+                        for data in track_in.read( {"chr": chromosome, "score": (fdr, sys.maxsize)}, fields=Track.qualitative_fields ):
                             data_list.append(data)
                         if len(data_list) > 0:
                             track_out.write(chromosome, data_list)
@@ -189,7 +189,7 @@ def main(argv = None):
         # create gdv project
         json        = create_gdv_project(
                                             config["gdv"]["key"], config["gdv"]["email"],
-                                            project, None,
+                                            project,
                                             assembly.nr_assembly_id,
                                             config["gdv"]["url"],
                                             public = True
