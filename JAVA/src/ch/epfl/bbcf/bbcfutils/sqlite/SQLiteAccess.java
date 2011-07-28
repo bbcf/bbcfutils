@@ -282,15 +282,15 @@ public class SQLiteAccess extends SQLiteParent{
 
 
 	
-	public String testIfQualitative() throws SQLException{
+	public SQLiteExtension getDatabaseDatatype() throws SQLException{
 		String q1 = "SELECT * FROM attributes where key = 'datatype' limit 1; ";
 		Statement stat = connection.createStatement();
 		ResultSet r = stat.executeQuery(q1);
 		if(r.next()){
 			String dt = r.getString("value");
-			return dt;
+			return SQLiteExtension.valueOf(dt);
 		}
-		return "";
+		return null;
 	}
 	
 	
@@ -357,7 +357,7 @@ public class SQLiteAccess extends SQLiteParent{
 		return feat;
 	}
 
-	private String getTypeForExtendedQualitativeFeature(int type) throws SQLException{
+	public String getTypeForExtendedQualitativeFeature(int type) throws SQLException{
 		String query = "select type from types where identifier = ? limit 1";
 		PreparedStatement prep = connection.prepareStatement(query);
 		prep.setInt(1, type);
@@ -369,6 +369,19 @@ public class SQLiteAccess extends SQLiteParent{
 		r.close();
 		return t;
 	}
+	public List<String> getTypes() throws SQLException{
+		String query = "select type from types";
+		PreparedStatement prep = connection.prepareStatement(query);
+		ResultSet r = prep.executeQuery();
+		List<String> types = new ArrayList<String>();
+		while(r.next()){
+			types.add(r.getString(1));
+		}
+		r.close();
+		return types;
+	}
+	
+	
 
 
 }

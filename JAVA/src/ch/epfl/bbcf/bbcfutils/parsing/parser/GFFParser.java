@@ -106,6 +106,7 @@ public class GFFParser extends Parser{
 		start = end + 1;
 		end = s.indexOf('\t', start);
 		char strand = s.charAt(end - 1);
+		String strand_str =  s.substring(start, end);
 		//added by scooter willis to deal with glimmer predictions that
 		//have the start after the end but is a negative strand
 		int locationStart = Integer.parseInt(locStart);
@@ -116,6 +117,23 @@ public class GFFParser extends Parser{
 			locationEnd = temp;
 
 		}
+		int strand_int =0;
+		if(strand_str.equalsIgnoreCase("-")){
+			strand_int=-1;
+		} else if(strand_str.equalsIgnoreCase("+")){
+			strand_int=+1;
+		} else {
+			try {
+				strand_int = Integer.parseInt(strand_str);
+			} catch (Exception e) {
+				strand_int = 0;
+			}
+		}
+		
+		
+		
+		
+		
 		Location location = Location.fromBio(locationStart, locationEnd, strand);
 		assert (strand == '-') == location.isNegative();
 		int frame;
@@ -123,17 +141,7 @@ public class GFFParser extends Parser{
 		start = end + 1;
 		end = s.indexOf('\t', start);
 		String f = s.substring(start, end);
-		if(f.equalsIgnoreCase("-")){
-			frame=-1;
-		} else if(f.equalsIgnoreCase("+")){
-			frame=+1;
-		} else {
-			try {
-				frame = Integer.parseInt(f);
-			} catch (Exception e) {
-				frame = 0;
-			}
-		}
+		
 
 		//grab everything until end of line (or # comment)
 		start = end + 1;
@@ -163,7 +171,7 @@ public class GFFParser extends Parser{
 			}
 		}
 		return new GFFFeature(seqname,source,locationStart,locationEnd,
-				displayName,hierarchyId,score, frame, type, attributes);
+				displayName,hierarchyId,score, strand_int, type, attributes);
 
 	}
 
@@ -202,5 +210,7 @@ public class GFFParser extends Parser{
 		return types;
 	}
 
+	
+	
 
 }

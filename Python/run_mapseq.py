@@ -5,7 +5,7 @@ A High-throughput sequencing data mapping workflow.
 """
 from bbcflib import daflims, genrep, frontend, email, gdv, common
 from bbcflib.mapseq import *
-import sys, getopt, os
+import sys, getopt, os, re
 
 usage = """run_mapseq.py [-h] [-u via] [-w wdir] [-k job_key] [-c config_file] -d minilims
 
@@ -70,19 +70,20 @@ def main(argv = None):
             gl = use_pickle(M, "global variables")
             htss = frontend.Frontend( url=gl['hts_mapseq']['url'] )
             job = htss.job( hts_key )
-            [M.delete_execution(x) for x in M.search_executions(with_description=hts_key)]
+            [M.delete_execution(x) for x in M.search_executions(with_description=hts_key,fails=True)]
         elif os.path.exists(config_file):
             (job,gl) = frontend.parseConfig( config_file )
         else:
             raise ValueError("Need either a job key (-k) or a configuration file (-c).")
         g_rep = genrep.GenRep( url=gl["genrep_url"], root=gl["bwt_root"], 
-                               intype=job.options.get('input_type') )
+                               intype=job.options.get('input_type') or 0 )
         assembly = g_rep.assembly( job.assembly_id )
         if 'lims' in gl:
             dafl = dict((loc,daflims.DAFLIMS( username=gl['lims']['user'], password=pwd ))
                         for loc,pwd in gl['lims']['passwd'].iteritems())
         else:
             dafl = None
+        job.options['compute_densities'] = job.options.get('compute_densities') or True
         job.options['ucsc_bigwig'] = job.options.get('ucsc_bigwig') or True
         job.options['gdv_project'] = job.options.get('gdv_project') or False
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
@@ -90,14 +91,14 @@ def main(argv = None):
             mapped_files = map_groups( ex, job, ex.working_directory, assembly, {'via': via} )
             pdf = add_pdf_stats( ex, mapped_files,
                                  dict((k,v['name']) for k,v in job.groups.iteritems()),
-                                 gl['script_path'] )
+                                 gl.get('script_path') or '' )
             if job.options['compute_densities']:
                 if not(job.options.get('read_extension')>0):
                     job.options['read_extension'] = mapped_files.values()[0].values()[0]['stats']['read_length']
                 density_files = densities_groups( ex, job, mapped_files, assembly.chromosomes, via=via )
                 if job.options['gdv_project']:
                     gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
-                                                          job.description, hts_key, 
+                                                          job.description,  
                                                           assembly.nr_assembly_id,
                                                           gdv_url=gl['gdv']['url'], public=True )
                     add_pickle( ex, gdv_project, description='py:gdv_json' )
@@ -105,11 +106,11 @@ def main(argv = None):
         if 'py:gdv_json' in allfiles:
             allfiles['url'] = {gdv_project['public_url']: 'GDV view'}
             download_url = gl['hts_mapseq']['download']
-            [gdv.add_gdv_sqlite( gl['gdv']['key'], gl['gdv']['email'],
-                                 gdv_project['project_id'],
-                                 url=download_url+str(k), 
-                                 name = re.sub('\.sql','',str(f)),
-                                 gdv_url=gl['gdv']['url'], datatype="quantitative" ) 
+            [gdv.add_gdv_track( gl['gdv']['key'], gl['gdv']['email'],
+                                gdv_project['project_id'],
+                                url=download_url+str(k), 
+                                name = re.sub('\.sql','',str(f)),
+                                gdv_url=gl['gdv']['url'] ) 
              for k,f in allfiles['sql'].iteritems()]
         print json.dumps(allfiles)
         if 'email' in gl:

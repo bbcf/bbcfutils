@@ -11,6 +11,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import ch.epfl.bbcf.bbcfutils.parsing.SQLiteExtension;
+
 /**
  * A java class which regroup methods to build a sqlite 
  * database, formated for the BBCF (for qualitative and quantitative data),
@@ -70,16 +72,16 @@ public class SQLiteConstruct extends SQLiteParent{
 
 	/**
 	 * create a new database
-	 * @param type : must be qualitative or quantitative
+	 * @param ext : must be qualitative or quantitative
 	 */
-	public void createNewDatabase(String type) throws SQLException{
+	public void createNewDatabase(SQLiteExtension ext) throws SQLException{
 		Statement stat;
 		stat = this.connection.createStatement();
 		stat.executeUpdate("drop table if exists attributes;");
 		stat.executeUpdate("create table attributes (key text, value text);");
 		PreparedStatement prep = this.connection.prepareStatement("insert into attributes values (?,?);");
 		prep.setString(1, "datatype");
-		prep.setString(2,type);
+		prep.setString(2,ext.name());
 		prep.executeUpdate();
 		this.connection.commit();
 	}

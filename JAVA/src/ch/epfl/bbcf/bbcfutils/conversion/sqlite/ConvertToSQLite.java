@@ -16,6 +16,7 @@ import ch.epfl.bbcf.bbcfutils.access.genrep.json_pojo.Chromosome;
 import ch.epfl.bbcf.bbcfutils.exception.ExtensionNotRecognisedException;
 import ch.epfl.bbcf.bbcfutils.exception.ParsingException;
 import ch.epfl.bbcf.bbcfutils.parsing.Extension;
+import ch.epfl.bbcf.bbcfutils.parsing.SQLiteExtension;
 import ch.epfl.bbcf.bbcfutils.parsing.feature.BEDFeature;
 import ch.epfl.bbcf.bbcfutils.parsing.feature.BioSQLiteQualitative;
 import ch.epfl.bbcf.bbcfutils.parsing.feature.BioSQLiteQualitativeExt;
@@ -171,12 +172,12 @@ public class ConvertToSQLite {
 	 * @throws ClassNotFoundException
 	 * @throws SQLException
 	 */
-	public boolean convert(String outputPath,String type) throws IOException, ParsingException{
+	public boolean convert(String outputPath,SQLiteExtension sqliteExtension) throws IOException, ParsingException{
 		this.outputPath = outputPath;
 		File input = new File(inputPath);
 		try {
 			this.construct = SQLiteConstruct.getConnectionWithDatabase(outputPath);
-			this.construct.createNewDatabase(type);
+			this.construct.createNewDatabase(sqliteExtension);
 			this.construct.commit();
 		} catch (InstantiationException e) {
 			throw new ParsingException(e);
@@ -339,10 +340,13 @@ public class ConvertToSQLite {
 			try {
 				switch(extension){
 				case WIG:
-					construct.createNewDatabase("quantitative");
+					construct.createNewDatabase(SQLiteExtension.QUANTITATIVE);
 					break;
-				case BED:case BAM:case GFF:
-					construct.createNewDatabase("qualitative");
+				case BED:case BAM:
+					construct.createNewDatabase(SQLiteExtension.QUALITATIVE);
+					break;
+				case GFF:
+					construct.createNewDatabase(SQLiteExtension.QUALITATIVE_EXTENDED);
 					break;
 				}
 			} catch (SQLException e) {
@@ -392,7 +396,6 @@ public class ConvertToSQLite {
 			}
 			System.out.println("conversion to SQLite done ");
 		}
-
 	}
 
 
@@ -414,8 +417,8 @@ public class ConvertToSQLite {
 
 	public static void main(String[] args) throws MethodNotFoundException, IOException{
 		try {
-			ConvertToSQLite c = new ConvertToSQLite("/Users/jarosz/Desktop/test.bed",Extension.BED);
-			c.convert("/Users/jarosz/Desktop/final1.db","qualitative");
+			ConvertToSQLite c = new ConvertToSQLite("/Users/jarosz/Documents/epfl/flat_files/gff/arabido.gtf",Extension.GFF);
+			c.convert("/Users/jarosz/Documents/epfl/flat_files/gff/arabido4.sql",SQLiteExtension.QUALITATIVE_EXTENDED);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

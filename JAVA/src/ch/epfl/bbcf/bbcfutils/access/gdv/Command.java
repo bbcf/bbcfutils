@@ -2,158 +2,107 @@ package ch.epfl.bbcf.bbcfutils.access.gdv;
 
 import java.io.IOException;
 
+
 import ch.epfl.bbcf.bbcfutils.access.InternetConnection;
+import ch.epfl.bbcf.bbcfutils.access.gdv.RequestParameters.CMD;
+import ch.epfl.bbcf.bbcfutils.access.gdv.RequestParameters.PARAM;
 
 
 
 
 
 
-public abstract class Command {
+public class Command {
+
+	public static boolean doRequest(String url,RequestParameters params) {
+		/* prepare the body */
+		String body = addParam(PARAM.id,params.getId(),true);
+		body+=addParam(PARAM.command,params.getCommand().name());
+		body+=addParam(PARAM.mail,params.getMail());
+		body+=addParam(PARAM.key,params.getKey());
 
 
-	private String command;
-	private String mail;
-	private String pass;
+		CMD command = params.getCommand();
+		boolean ok = true;
+		switch(command){
 
-	protected Command(String command,String mail,String pass){
-		this.command = command;
-		this.mail = mail;
-		this.pass = pass;
-	}
-	/**
-	 * prepare the parameters to send to GDV
-	 * @param id
-	 * @param params
-	 */
-	protected abstract boolean doRequest(String id, RequestParameters params);
-
-	/**
-	 * send a post to GDV application
-	 * @param body
-	 * @return
-	 */
-	protected boolean send(String body2){
-		String body = "mail="+mail+"&key="+pass+"&command="+command+"&"+body2;
-		try {
-			System.out.println(body);
-			System.out.println(InternetConnection.sendPOSTConnection(PostToGDV.GDV_ADRESS, body,InternetConnection.MIME_TYPE_FORM_APPLICATION));
-			return true;
-		} catch (IOException e) {
-			e.printStackTrace();
+		case new_project:/* launch a new project on GDV */
+			System.out.println("NEW p");
+			ok = checkParam(PARAM.name,params.getName());
+			ok = checkParam(PARAM.seq_id,params.getSequenceId());
+			body+=addParam(PARAM.name,params.getName());
+			body+=addParam(PARAM.seq_id,params.getSequenceId());
+			body+=addParam(PARAM.Public, params.getIsPublic());
+			break;
+			
+			
+		case new_track:/* add a track on a GDV project */
+			ok = checkParam(PARAM.project_id,params.getProjectId());
+			ok = checkParam(PARAM.url,params.getUrl());
+			body+=addParam(PARAM.project_id,params.getProjectId());
+			body+=addParam(PARAM.url,params.getUrl());
+			body+=addParam(PARAM.name,params.getName());
+			break;
+			
+			
+		case assemblies:/* look at assemblies created in GDV */
+			break;
+			
+			
+		case status :/* get the status of a job */
+			ok = checkParam(PARAM.job_id,params.getJob_id());
+			body+=addParam(PARAM.job_id,params.getJob_id());
+			break;
+		default :
+			System.err.println("command not recognized ");
+		}
+		if(ok){
+			try {
+				String result = InternetConnection.sendPOSTConnection(url, body, InternetConnection.MIME_TYPE_FORM_APPLICATION);
+				System.out.println(result);
+				return true;
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
 		return false;
 	}
 
-
-
-	/**
-	 * Creation of a new project on GDV
-	 * 
-	 * @author Yohan Jarosz
-	 *
-	 */
-	public static class Project extends Command{
-		protected Project(String command,String mail,String pass){
-			super(command, mail, pass);
+	
+	
+	
+	
+	
+	
+	
+	
+	private static String addParam(PARAM key,String value,boolean first){
+		String s="";
+		if(!first){
+			s+="&";
 		}
-		@Override
-		protected boolean doRequest(String id, RequestParameters params) {
-			if(PostToGDV.checkParams(params.getSequenceId(),params.getName())){
-				String body = "id="+id
-				+"&"+RequestParameters.SEQUENCE_ID_PARAM+"="+params.getSequenceId()
-				+"&"+RequestParameters.NAME_PARAM+"="+params.getName();
-				if(null!=params.getIsPublic()){
-					body+="&"+RequestParameters.PUBLIC_PARAM+"="+params.getIsPublic();
-				}
-				return send(body);
-			}
+		s+=key+"="+value;
+		return s;
+	}
+
+	private static String addParam(PARAM key,String value){
+		return addParam(key, value, false);
+	}
+
+
+	public static boolean checkParam(final PARAM p,final String value) {
+		if(null==value){
+			System.err.println("missing param : "+p.name());
 			return false;
 		}
-
-
+		return true;
 	}
-
-	/**
-	 * Adding a track on GDV, already in SQLite format
-	 * 
-	 * @author Yohan Jarosz
-	 *
-	 */
-	public static class SQLite extends Command{
-		protected SQLite(String command,String mail,String pass){
-			super(command, mail, pass);
-		}
-
-		@Override
-		protected boolean doRequest(String id, RequestParameters params) {
-			if(PostToGDV.checkParams(params.getUrl(),params.getProjectId(),params.getDatatype())){
-				String body = "id="+id+"&"+RequestParameters.URL_PARAM+"="+params.getUrl()
-				+"&"+RequestParameters.PROJECT_ID_PARAM+"="+params.getProjectId()
-				+"&"+RequestParameters.DATATYPE_PARAM+"="+params.getDatatype();
-				if(null!=params.getName()){
-					body+="&"+RequestParameters.NAME_PARAM+"="+params.getName();
-				}
-				return send(body);
-			}
-			return false;
-
-		}
-
-	}
-
-
-
-
-
-	/**
-	 * Adding a new track on GDV
-	 * 
-	 * @author Yohan Jarosz
-	 *
-	 */
-	public static class Track extends Command{
-		protected Track(String command,String mail,String pass){
-			super(command, mail, pass);
-		}
-
-		@Override
-		protected boolean doRequest(String id, RequestParameters params) {
-			if(PostToGDV.checkParams(params.getUrl(),params.getProjectId())){
-				String body = "id="+id+"&"+RequestParameters.URL_PARAM+"="+params.getUrl()
-				+"&"+RequestParameters.PROJECT_ID_PARAM+"="+params.getProjectId();
-				if(null!=params.getName()){
-					body+="&"+RequestParameters.NAME_PARAM+"="+params.getName();
-				}
-				return send(body);
-			}
+	public static boolean checkCommand(final CMD value) {
+		if(null==value){
+			System.err.println("missing command");
 			return false;
 		}
+		return true;
 	}
-
-
-
-
-	/**
-	 * return the right method for the command given
-	 * @param command - the command 
-	 * @param pass - the password
-	 * @param mail - the mail
-	 * @return
-	 */
-	public static Command getControl(String command, String mail, String pass) {
-		if(command.equalsIgnoreCase(RequestParameters.NEW_PROJECT_COMMAND)){
-			return new Project(command,mail,pass);
-		} else if(command.equalsIgnoreCase(RequestParameters.ADD_SQLITE_COMMAND)){
-			return new SQLite(command,mail,pass);
-		} else if(command.equalsIgnoreCase(RequestParameters.ADD_TRACK_COMMAND)){
-			return new Track(command,mail,pass);
-		} else {
-			return null;
-		}
-	}
-
-
-
 }
 
