@@ -48,7 +48,7 @@ def main(argv = None):
     host                = ""
     website             = ""
     remote_path         = ""
-    track_web_path      = ""
+    result_path            = ""
     via                 = ""
     limspath            = ""
     fdr                 = 0
@@ -112,7 +112,7 @@ def main(argv = None):
 
         # compute false discovery rate
         with execution(M, description=job.description) as ex:
-            background = genrep.statistics(assembly,output=unique_filename_in())
+            background = genrep.statistics(assembly,output=unique_filename_in(), frequency=True)
             ex.add(background,  description="background:"+background)
             if len(job.groups) >2:
                 raise ValueError("They are more than 2 group in config file")
@@ -184,7 +184,10 @@ def main(argv = None):
                     args = ["-i " + abspath(expanduser(identity_file)) ]
                 source      = abspath(expanduser(track_filtered))
                 destination = "%s@%s:%s" %(username, host, remote_path)
+                result_path = "%s/%s" %(remote_path, track_filtered)
                 scp(ex, source, destination, args=args)
+            else:
+                result_path = track_filtered
 
         # create gdv project
         json        = create_gdv_project(
@@ -197,7 +200,7 @@ def main(argv = None):
         project_id  = get_project_id( json )
         add_gdv_track  (
                             config["gdv"]["key"], config["gdv"]["email"],
-                            project_id, track_web_path,
+                            project_id, result_path,
                             gdv_url=config["gdv"]["url"]
                         )
     except Usage, err:

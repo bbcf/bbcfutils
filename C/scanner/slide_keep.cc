@@ -13,7 +13,7 @@
 char* reverse(char s[])
 {
   int c, i, j;
-   
+
   for (i=0, j=strlen(s)-1; i < j;++i, --j)
   {
     c = s[i];
@@ -43,7 +43,7 @@ char* complement(char s[])
       {s[i]='a';break;}
     case 'T':
       {s[i]='A';break;}
-    } 
+    }
   }
   return s;
 }
@@ -67,8 +67,8 @@ int main(int argc, char **argv)
   wmR=read_WMR(argv[1]); //Read weight matrix
   bg=read_WM(argv[2]); //Read background matrix
   {
-	std::istringstream is(argv[3]);
-	is >> cutoff;
+  std::istringstream is(argv[3]);
+  is >> cutoff;
   }
   fin=fopen(argv[4], "r");
 
@@ -85,84 +85,84 @@ int main(int argc, char **argv)
     offset=0;
     for (int currentPos=0;currentPos < readed;++currentPos){
       switch(state){
-      case 0:{
-	if (buf[currentPos] == '>'){
-	  state=1;
-	  renduName=0;
-	}
-	break;
-      }
-      case 1:{
-	if (buf[currentPos] == '\n'){
-	  name[renduName]='\0';
-	  //printf("%s\n",name);
-	  state=2;
-	  renduName=0;
-	  positionInSequence=1;
-	  reachSpace=false;
-	}
-	else if (renduName < MAX_NAME && !reachSpace){
-	  if (buf[currentPos] != ' '){
-	    name[renduName++]=buf[currentPos];
-	  }
-	  else{
-	    reachSpace=true;
-	  }
-	}
-	break;
-      }
-      case 2:{
-	if (buf[currentPos] == '>'){
-	  state=1;
-	}
-	else if (buf[currentPos] != '\n'){
+        case 0:{
+          if (buf[currentPos] == '>'){
+            state=1;
+            renduName=0;
+          }
+          break;
+        }
+        case 1:{
+          if (buf[currentPos] == '\n'){
+            name[renduName]='\0';
+            //printf("%s\n",name);
+            state=2;
+            renduName=0;
+            positionInSequence=1;
+            reachSpace=false;
+          }
+          else if (renduName < MAX_NAME && !reachSpace){
+            if (buf[currentPos] != ' '){
+              name[renduName++]=buf[currentPos];
+            }
+            else{
+              reachSpace=true;
+            }
+          }
+          break;
+        }
+        case 2:{
+          if (buf[currentPos] == '>'){
+            state=1;
+          }
+          else if (buf[currentPos] != '\n'){
 
-	  double score=0.0;
-	  double scoreR=0.0;
-	  int posinMat=0;
-	  char yo=0;
-	  char curSeq[wm->span+1];curSeq[0]='\0';
-	  int renduSeq=0;
-	  for(renduSeq=0; posinMat < wm->span && currentPos+renduSeq < readed; ++renduSeq){
-	    if(wm->pos[posinMat].flag){
-	      if (buf[currentPos+renduSeq] == '>'){
-		state=0;
-		break;
-	      }
-	      else if(buf[currentPos+renduSeq] == '\n'){//Skip this char but the matrix stay at the same place
-		yo=posinMat;
-	      }
-	      else{
-		curSeq[posinMat]=buf[currentPos+renduSeq];
-		score += wm->pos[posinMat].f[buf[currentPos+renduSeq]] - 
-		  bg->pos[0].f[buf[currentPos+renduSeq]];
-		scoreR += wmR->pos[posinMat].f[buf[currentPos+renduSeq]] - 
-		  bg->pos[0].f[buf[currentPos+renduSeq]];
-		++posinMat;
-	      }
-	    }
-	  }
-	  if (posinMat == wm->span){ //we were able to process a complete chunk!
-	    curSeq[posinMat]='\0';
-	    if (score > cutoff)
-	      printf("%s\t%s\t%f\t%d\t%c\n",name,curSeq,score,positionInSequence,'+');
-	    if (scoreR > cutoff){
-	      printf("%s\t%s\t%f\t%d\t%c\n",name,complement(reverse(curSeq)),scoreR,positionInSequence,'-');
-	    }
-	    ++positionInSequence;
-	  }
-	  else{
-	    if(state == 2){ //we don't reach the end of the matrix and
-	      //we are still in state 2!
-	      for(offset=0; currentPos+offset < readed; ++offset){
-		buf[offset]=buf[currentPos+offset];
-	      }
-	      currentPos=readed;//Read another buffer
-	    }
-	  }
-	}
-	break;
-      }
+            double score=0.0;
+            double scoreR=0.0;
+            int posinMat=0;
+            char yo=0;
+            char curSeq[wm->span+1];curSeq[0]='\0';
+            int renduSeq=0;
+            for(renduSeq=0; posinMat < wm->span && currentPos+renduSeq < readed; ++renduSeq){
+              if(wm->pos[posinMat].flag){
+                if (buf[currentPos+renduSeq] == '>'){
+            state=0;
+            break;
+                }
+                else if(buf[currentPos+renduSeq] == '\n'){//Skip this char but the matrix stay at the same place
+            yo=posinMat;
+                }
+                else{
+            curSeq[posinMat]=buf[currentPos+renduSeq];
+            score += wm->pos[posinMat].f[buf[currentPos+renduSeq]] -
+              bg->pos[0].f[buf[currentPos+renduSeq]];
+            scoreR += wmR->pos[posinMat].f[buf[currentPos+renduSeq]] -
+              bg->pos[0].f[buf[currentPos+renduSeq]];
+            ++posinMat;
+                }
+              }
+            }
+            if (posinMat == wm->span){ //we were able to process a complete chunk!
+              curSeq[posinMat]='\0';
+              if (score > cutoff)
+                printf("%s\t%s\t%f\t%d\t%c\n",name,curSeq,score,positionInSequence,'+');
+              if (scoreR > cutoff){
+                printf("%s\t%s\t%f\t%d\t%c\n",name,complement(reverse(curSeq)),scoreR,positionInSequence,'-');
+              }
+              ++positionInSequence;
+            }
+            else{
+              if(state == 2){ //we don't reach the end of the matrix and
+                //we are still in state 2!
+                for(offset=0; currentPos+offset < readed; ++offset){
+            buf[offset]=buf[currentPos+offset];
+                }
+                currentPos=readed;//Read another buffer
+              }
+            }
+          }
+          break;
+        }
       }
     }
   }
