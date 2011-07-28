@@ -126,19 +126,19 @@ int main(int argc, char **argv)
             for(renduSeq=0; posinMat < wm->span && currentPos+renduSeq < readed; ++renduSeq){
               if(wm->pos[posinMat].flag){
                 if (buf[currentPos+renduSeq] == '>'){
-            state=0;
-            break;
+                  state=0;
+                  break;
                 }
                 else if(buf[currentPos+renduSeq] == '\n'){//Skip this char but the matrix stay at the same place
-            yo=posinMat;
+                  yo=posinMat;
                 }
                 else{
-            curSeq[posinMat]=buf[currentPos+renduSeq];
-            score += wm->pos[posinMat].f[buf[currentPos+renduSeq]] -
-              bg->pos[0].f[buf[currentPos+renduSeq]];
-            scoreR += wmR->pos[posinMat].f[buf[currentPos+renduSeq]] -
-              bg->pos[0].f[buf[currentPos+renduSeq]];
-            ++posinMat;
+                  curSeq[posinMat]=buf[currentPos+renduSeq];
+                  score += wm->pos[posinMat].f[buf[currentPos+renduSeq]] -
+                    bg->pos[0].f[buf[currentPos+renduSeq]];
+                  scoreR += wmR->pos[posinMat].f[buf[currentPos+renduSeq]] -
+                    bg->pos[0].f[buf[currentPos+renduSeq]];
+                  ++posinMat;
                 }
               }
             }
@@ -155,7 +155,7 @@ int main(int argc, char **argv)
               if(state == 2){ //we don't reach the end of the matrix and
                 //we are still in state 2!
                 for(offset=0; currentPos+offset < readed; ++offset){
-            buf[offset]=buf[currentPos+offset];
+                  buf[offset]=buf[currentPos+offset];
                 }
                 currentPos=readed;//Read another buffer
               }
