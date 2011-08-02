@@ -37,8 +37,8 @@ def main(argv = None):
     config_file         = None
     background          = ""
     matrix              = ""
-    original_bed_data   = ""
-    random_bed_data     = ""
+    original_data   = ""
+    random_data     = ""
     original_sql_data   = ""
     random_sql_data     = ""
     track_filtered      = ""
@@ -127,27 +127,39 @@ def main(argv = None):
                         # download data
                         data    = urllib2.urlopen(url)
                         uri     = unique_filename_in()
-                        with open(original_bed_data, "w") as f:
+                        with open(original_data, "w") as f:
                             f.write(data.read())
                     else:
                        uri = normcase(expanduser(url))
                     if job.groups[group]["control"] is True:
-                        original_bed_data = uri
+                        random_data = uri
                     else:
-                        random_bed_data = uri
+                        original_data = uri
                 else:
-                    random_bed_data = ""
+                    random_data = ""
 
             original_sql_data   = unique_filename_in()
             random_sql_data     = unique_filename_in()
             track_filtered      = unique_filename_in()
 
-            ex.add(original_bed_data,   "bed:"+original_bed_data)
             # convert to sql
-            with Track(original_bed_data, chrmeta=assembly.chromosomes) as track:
-                track.convert(original_sql_data, format='sql')
-                # create random track
-                track.shuffle_track(random_sql_data, repeat_number=5)
+            with Track(original_data, chrmeta=assembly.chromosomes) as track:
+                # Get sqlite file if is not arleady in this format
+                if track.format != "sql" or track.format != "db" or track.format != "sqlite":
+                    track.convert(original_sql_data, format='sql')
+                else:
+                    original_sql_data = original_data
+                # Generate a random population from orginal if it is not give from config file
+                if random_data == "":
+                    # create random track
+                    track.shuffle_track(random_sql_data, repeat_number=5)
+                else:
+                    with Track(random_data, chrmeta=assembly.chromosomes) as track_random:
+                        # Get sqlite file if is not arleady in this format
+                        if track.format != "sql" or track.format != "db" or track.format != "sqlite":
+                            track_random.convert(random_sql_data, format='sql')
+                        else:
+                            random_sql_data = random_data
             ex.add(original_sql_data,   "sql:"+original_sql_data)
             ex.add(random_sql_data,     "sql:"+random_sql_data)
             track_scanned,fdr = sqlite_to_false_discovery_rate(
@@ -168,7 +180,7 @@ def main(argv = None):
             # filter track with fdr as treshold
             with new(track_filtered, format="sql", datatype="qualitative") as track_out:
                 chromosome_used     = {}
-                track_out.meta_track= {"source": basename(original_bed_data)}
+                track_out.meta_track= {"source": basename(original_data)}
                 track_out.meta_track.update({"k":"v"})
                 with Track(track_scanned, format="sql", chrmeta=assembly.chromosomes) as track_in:
                     meta = dict([(v['name'],dict([('length',v['length'])])) for v in track_in.chrmeta.values()])
