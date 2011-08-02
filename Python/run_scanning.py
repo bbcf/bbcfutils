@@ -37,8 +37,8 @@ def main(argv = None):
     config_file         = None
     background          = ""
     matrix              = ""
-    original_data   = ""
-    random_data     = ""
+    original_data       = ""
+    random_data         = ""
     original_sql_data   = ""
     random_sql_data     = ""
     track_filtered      = ""
@@ -108,9 +108,36 @@ def main(argv = None):
         else:
             job, config = parseConfig(normcase(expanduser(config_file)))
 
-        genrep              = GenRep(config=config)
-        assembly            = genrep.assembly(job.assembly_id)
-        M                   = MiniLIMS(limspath)
+        if project == "": project = job.description
+        if matrix == "":
+            if "matrix" in job.options:
+                matrix = {basename(a):normcase(expanduser(job.options["matrix"]))}
+            else:
+                raise Usage("You need give a matrix file ")
+        if limspath == "":
+            if "minilims" in job.options:
+                limspath = job.options["minilims"]
+            else:
+                raise Usage("You need give a minilims path/name")
+        if via == "":
+            if "via" in job.options:
+                via = job.options["via"]
+            else:
+                via="lsf"
+        if host == "" and "host" in job.options:
+            host = job.options["host"]
+        if identity_file == "" and "identity_file" in job.options:
+            identity_file = job.options["identity_file"]
+        if remote_path == "" and "remote_path" in job.options:
+            remote_path = job.options["remote_path"]
+        if username == "" and "username" in job.options:
+            username = job.options["username"]
+        if website == "" and "website" in job.options:
+            website = job.options["website"]
+
+        genrep      = GenRep(config=config)
+        assembly    = genrep.assembly(job.assembly_id)
+        M           = MiniLIMS(limspath)
 
         # compute false discovery rate
         with execution(M, description=job.description) as ex:
@@ -142,7 +169,7 @@ def main(argv = None):
             random_sql_data     = unique_filename_in()
             track_filtered      = unique_filename_in()
 
-            # convert to sql
+            # convert data to sql
             with Track(original_data, chrmeta=assembly.chromosomes) as track:
                 # Get sqlite file if is not arleady in this format
                 if track.format != "sql" or track.format != "db" or track.format != "sqlite":
@@ -156,7 +183,7 @@ def main(argv = None):
                 else:
                     with Track(random_data, chrmeta=assembly.chromosomes) as track_random:
                         # Get sqlite file if is not arleady in this format
-                        if track.format != "sql" or track.format != "db" or track.format != "sqlite":
+                        if track_random.format != "sql" or track_random.format != "db" or track_random.format != "sqlite":
                             track_random.convert(random_sql_data, format='sql')
                         else:
                             random_sql_data = random_data
@@ -198,10 +225,10 @@ def main(argv = None):
             if host != "" and remote_path != "" and username != "":
                 args = []
                 if identity_file != "":
-                    args = ["-i " + normcase(expanduser(identity_file)) ]
+                    args = ["-i", normcase(expanduser(identity_file)), "-C" ]
                 source      = normcase(expanduser(track_filtered))
-                destination = "%s@%s:%s%s%s" %(username, host, remote_path, track_filtered, ".db")
-                result_path = "%s/%s%s" %(website, track_filtered, ".db")
+                destination = "%s@%s:%s%s%s.db" %(username, host, remote_path, sep, track_filtered)
+                result_path = "%s%s%s.db" %(website, sep, track_filtered)
                 scp(ex, source, destination, args=args)
             else:
                 result_path = track_filtered
