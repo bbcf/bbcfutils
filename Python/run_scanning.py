@@ -6,7 +6,8 @@ from bbcflib.gdv                import create_gdv_project, add_gdv_track, get_pr
 from bbcflib.frontend           import parseConfig
 from bbcflib.common             import scp, normalize_url
 from bbcflib.track              import Track, new
-from os.path                    import basename, expanduser, abspath, normcase, splitext, isfile, exists
+from os.path                    import basename, expanduser, normcase, splitext, isfile, exists
+from os                         import sep
 import getopt, sys
 
 usage = """%s [-h] [options] --matrix=/path/to/matrix.mat -c config_file --minilims=minilims_name
@@ -48,7 +49,7 @@ def main(argv = None):
     host                = ""
     website             = ""
     remote_path         = ""
-    result_path            = ""
+    result_path         = ""
     via                 = ""
     limspath            = ""
     fdr                 = 0
@@ -89,6 +90,7 @@ def main(argv = None):
                 identity_file = a
             elif o == "--remote_path":
                 remote_path = normcase(expanduser(a))
+                if not remote_path.endswith(sep): remote_path += sep
             elif o == "--matrix":
                 matrix = {basename(a):normcase(expanduser(a))}
             elif o == "--username":
@@ -165,26 +167,29 @@ def main(argv = None):
 
             # filter track with fdr as treshold
             with new(track_filtered, format="sql", datatype="qualitative") as track_out:
+                chromosome_used     = {}
                 track_out.meta_track= {"source": basename(original_bed_data)}
                 track_out.meta_track.update({"k":"v"})
                 with Track(track_scanned, format="sql", chrmeta=assembly.chromosomes) as track_in:
+                    meta = dict([(v['name'],dict([('length',v['length'])])) for v in track_in.chrmeta.values()])
                     for chromosome in track_in.all_chrs:
                         data_list = []
                         for data in track_in.read( {"chr": chromosome, "score": (fdr, sys.maxsize)}, fields=Track.qualitative_fields ):
                             data_list.append(data)
+                            chromosome_used[chromosome] = meta[chromosome]
                         if len(data_list) > 0:
                             track_out.write(chromosome, data_list)
-                    #track_out.meta_chr = list(chomosomes_used)
+                    track_out.chrmeta = chromosome_used
             ex.add(track_filtered,      "sql:"+track_filtered)
 
             # send new track to remote
             if host != "" and remote_path != "" and username != "":
                 args = []
                 if identity_file != "":
-                    args = ["-i " + abspath(expanduser(identity_file)) ]
-                source      = abspath(expanduser(track_filtered))
-                destination = "%s@%s:%s" %(username, host, remote_path)
-                result_path = "%s/%s" %(remote_path, track_filtered)
+                    args = ["-i " + normcase(expanduser(identity_file)) ]
+                source      = normcase(expanduser(track_filtered))
+                destination = "%s@%s:%s%s%s" %(username, host, remote_path, track_filtered, ".db")
+                result_path = "%s/%s%s" %(website, track_filtered, ".db")
                 scp(ex, source, destination, args=args)
             else:
                 result_path = track_filtered
