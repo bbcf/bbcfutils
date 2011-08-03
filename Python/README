@@ -1,0 +1,69 @@
+    ===================
+    | Works With motif |
+    ===================
+
+INTRODUCTION
+------------
+
+SCRIPTS
+-------
+    * run_scanning
+    run_scanning is a script for get sequence over represented on  whole genome. The sequences are selected by relation
+    with a Position Weigth Matrix ( pwm ) and result are filtered by using False discovery method. The results are send
+    to Genome Data Viewer ( GDV ).
+    Usage:
+        - From command line
+        - From config file
+    Config File template:
+    ---------------------------------
+[Global variables]
+genrep_url=
+bwt_root=
+
+[[gdv]]
+url=
+key=
+email=
+
+[Job]
+description=
+assembly_id=
+email=
+
+[Groups]
+[[1]]
+control=False
+name=
+
+[Runs]
+[[1]]
+url=
+group_id=
+machine_id=
+run=
+lane=
+machine_name=
+
+[Options]
+matrix=
+minilims=
+via=
+host=
+identity_file=
+remote_path=
+username=
+website=
+    ---------------------------------
+
+    WARNING parameter send through command line override the field in config file
+    By default run_scaning generate itself a random population, if user want give hs own random population, just add in
+    config file a group with control field set to True and add runs sectiong corresponding to this group
+
+    Optional field (comand line and config file) :
+        - via               default lsf
+        - host              default None
+        - identity_file     default None
+        - remote_path       default None
+        - username          default None
+        - website           default None
+    if you set one or more of this field: host, identity_file, username, website. You need set all of this.
