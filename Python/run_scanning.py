@@ -19,7 +19,7 @@ usage = """%s [-h] [options] --matrix=/path/to/matrix.mat -c config_file --minil
 --minilims MiniLIMS where Scanning executions and files will be stored.
 --project GDV project name
 --remote_path path where put track in host machine
---via via Run executions using method 'via' (can be "local" or "lsf")
+--via via Run executions using method "via" (can be "local" or "lsf")
 --username ssh username for login to host
 --website website were result will be taken for GDV (e.g http://sugar.epfl.ch)
 """ %(sys.argv[0])
@@ -37,8 +37,6 @@ def main(argv = None):
     config_file         = None
     background          = ""
     matrix              = ""
-    original_data       = ""
-    random_data         = ""
     original_sql_data   = ""
     random_sql_data     = ""
     track_filtered      = ""
@@ -53,6 +51,7 @@ def main(argv = None):
     via                 = ""
     limspath            = ""
     fdr                 = 0
+    runs                = {}
     if argv is None: argv = sys.argv
     try:
         try:
@@ -138,102 +137,6 @@ def main(argv = None):
         genrep      = GenRep(config=config)
         assembly    = genrep.assembly(job.assembly_id)
         M           = MiniLIMS(limspath)
-
-        # compute false discovery rate
-        with execution(M, description=job.description) as ex:
-            background = genrep.statistics(assembly,output=unique_filename_in(), frequency=True, matrix_format=True)
-            ex.add(background,  description="background:"+background)
-            if len(job.groups) >2:
-                raise ValueError("They are more than 2 group in config file")
-            for group in job.groups:
-                if "url" in job.groups[group]["runs"][group]:
-                    url = job.groups[group]["runs"][group]["url"]
-                    uri = ""
-                    if url.startswith("http") or url.startswith("www."):
-                        url = normalize_url(url)
-                        # download data
-                        data    = urllib2.urlopen(url)
-                        uri     = unique_filename_in()
-                        with open(original_data, "w") as f:
-                            f.write(data.read())
-                    else:
-                       uri = normcase(expanduser(url))
-                    if job.groups[group]["control"] is True:
-                        random_data = uri
-                    else:
-                        original_data = uri
-                else:
-                    random_data = ""
-
-            original_sql_data   = unique_filename_in()
-            random_sql_data     = unique_filename_in()
-            track_filtered      = unique_filename_in()
-
-            # convert data to sql
-            with Track(original_data, chrmeta=assembly.chromosomes) as track:
-                # Get sqlite file if is not arleady in this format
-                if track.format != "sql" or track.format != "db" or track.format != "sqlite":
-                    track.convert(original_sql_data, format='sql')
-                else:
-                    original_sql_data = original_data
-                # Generate a random population from orginal if it is not give from config file
-                if random_data == "":
-                    # create random track
-                    track.shuffle_track(random_sql_data, repeat_number=5)
-                else:
-                    with Track(random_data, chrmeta=assembly.chromosomes) as track_random:
-                        # Get sqlite file if is not arleady in this format
-                        if track_random.format != "sql" or track_random.format != "db" or track_random.format != "sqlite":
-                            track_random.convert(random_sql_data, format='sql')
-                        else:
-                            random_sql_data = random_data
-            ex.add(original_sql_data,   "sql:"+original_sql_data)
-            ex.add(random_sql_data,     "sql:"+random_sql_data)
-            track_scanned,fdr = sqlite_to_false_discovery_rate(
-                                                                ex,
-                                                                matrix,
-                                                                background,
-                                                                genrep,
-                                                                assembly.chromosomes,
-                                                                original_sql_data,
-                                                                random_sql_data,
-                                                                threshold=0,
-                                                                via=via,
-                                                                keep_max_only=True,
-                                                                alpha=0.05,
-                                                                nb_false_positive_hypotesis=5.0
-                                                              )
-
-            # filter track with fdr as treshold
-            with new(track_filtered, format="sql", datatype="qualitative") as track_out:
-                chromosome_used     = {}
-                track_out.meta_track= {"source": basename(original_data)}
-                track_out.meta_track.update({"k":"v"})
-                with Track(track_scanned, format="sql", chrmeta=assembly.chromosomes) as track_in:
-                    meta = dict([(v['name'],dict([('length',v['length'])])) for v in track_in.chrmeta.values()])
-                    for chromosome in track_in.all_chrs:
-                        data_list = []
-                        for data in track_in.read( {"chr": chromosome, "score": (fdr, sys.maxsize)}, fields=Track.qualitative_fields ):
-                            data_list.append(data)
-                            chromosome_used[chromosome] = meta[chromosome]
-                        if len(data_list) > 0:
-                            track_out.write(chromosome, data_list)
-                    track_out.chrmeta = chromosome_used
-            ex.add(track_filtered,      "sql:"+track_filtered)
-
-            # send new track to remote
-            if host != "" and remote_path != "" and username != "":
-                args = []
-                if identity_file != "":
-                    args = ["-i", normcase(expanduser(identity_file)), "-C" ]
-                source      = normcase(expanduser(track_filtered))
-                destination = "%s@%s:%s%s%s.db" %(username, host, remote_path, sep, track_filtered)
-                result_path = "%s%s%s.db" %(website, sep, track_filtered)
-                scp(ex, source, destination, args=args)
-            else:
-                result_path = track_filtered
-
-        # create gdv project
         json        = create_gdv_project(
                                             config["gdv"]["key"], config["gdv"]["email"],
                                             project,
@@ -242,14 +145,115 @@ def main(argv = None):
                                             public = True
                                         )
         project_id  = get_project_id( json )
-        add_gdv_track  (
-                            config["gdv"]["key"], config["gdv"]["email"],
-                            project_id, result_path,
-                            gdv_url=config["gdv"]["url"]
-                        )
+
+        # compute false discovery rate
+        with execution(M, description=job.description) as ex:
+            background = genrep.statistics(assembly,output=unique_filename_in(), frequency=True, matrix_format=True)
+            ex.add(background,  description="background:"+background)
+            if len(job.groups) >2:
+                raise ValueError("They are more than 2 group in config file")
+
+            for group_number in job.groups:
+                group = job.groups[group_number]
+                for run_number in group["runs"]:
+                    r = job.groups[group_number]["runs"][run_number]
+                    if "url" in r:
+                        url = r["url"]
+                        uri = ""
+                        if r["run"] not in runs:
+                            runs[r["run"]] = {"control":None, "experimental":None}
+                        if url.startswith("http") or url.startswith("www."):
+                            url = normalize_url(url)
+                            # download data
+                            data    = urllib2.urlopen(url)
+                            uri     = unique_filename_in()
+                            with open(run["experimental"], "w") as f:
+                                f.write(data.read())
+                        else:
+                           uri = normcase(expanduser(url))
+                        if group["control"]:
+                            runs[r["run"]]["control"] = uri
+                        else:
+                            runs[r["run"]]["experimental"] = uri
+
+            for run in runs:
+                current_run         = runs[run]
+                original_sql_data   = unique_filename_in()
+                random_sql_data     = unique_filename_in()
+                track_filtered      = unique_filename_in()
+
+                # convert data to sql
+                with Track(current_run["experimental"], chrmeta=assembly.chromosomes) as track:
+                    # Get sqlite file if is not arleady in this format
+                    if track.format != "sql" or track.format != "db" or track.format != "sqlite":
+                        track.convert(original_sql_data, format="sql")
+                    else:
+                        original_sql_data = current_run["experimental"]
+                    # Generate a random population from orginal if it is not give from config file
+                    if current_run["control"] is None:
+                        # create random track
+                        track.shuffle_track(random_sql_data, repeat_number=5)
+                    else:
+                        with Track(current_run["control"], chrmeta=assembly.chromosomes) as track_random:
+                            # Get sqlite file if is not arleady in this format
+                            if track_random.format != "sql" or track_random.format != "db" or track_random.format != "sqlite":
+                                track_random.convert(random_sql_data, format="sql")
+                            else:
+                                random_sql_data = current_run["control"]
+                ex.add(original_sql_data,   "sql:"+original_sql_data)
+                ex.add(random_sql_data,     "sql:"+random_sql_data)
+                track_scanned,fdr = sqlite_to_false_discovery_rate(
+                                                                    ex,
+                                                                    matrix,
+                                                                    background,
+                                                                    genrep,
+                                                                    assembly.chromosomes,
+                                                                    original_sql_data,
+                                                                    random_sql_data,
+                                                                    threshold=0,
+                                                                    via=via,
+                                                                    keep_max_only=True,
+                                                                    alpha=0.05,
+                                                                    nb_false_positive_hypotesis=5.0
+                                                                  )
+
+                # filter track with fdr as treshold
+                with new(track_filtered, format="sql", datatype="qualitative") as track_out:
+                    chromosome_used     = {}
+                    track_out.meta_track= {"source": basename(current_run["experimental"])}
+                    track_out.meta_track.update({"k":"v"})
+                    with Track(track_scanned, format="sql", chrmeta=assembly.chromosomes) as track_in:
+                        meta = dict([(v["name"],dict([("length",v["length"])])) for v in track_in.chrmeta.values()])
+                        for chromosome in track_in.all_chrs:
+                            data_list = []
+                            for data in track_in.read( {"chr": chromosome, "score": (fdr, sys.maxsize)}, fields=Track.qualitative_fields ):
+                                data_list.append(data)
+                                chromosome_used[chromosome] = meta[chromosome]
+                            if len(data_list) > 0:
+                                track_out.write(chromosome, data_list)
+                        track_out.chrmeta = chromosome_used
+                ex.add(track_filtered,      "sql:"+track_filtered)
+
+                # send new track to remote
+                if host != "" and remote_path != "" and username != "":
+                    args = []
+                    if identity_file != "":
+                        args = ["-i", normcase(expanduser(identity_file)), "-C" ]
+                    source      = normcase(expanduser(track_filtered))
+                    destination = "%s@%s:%s%s%s.db" %(username, host, remote_path, sep, track_filtered)
+                    result_path = "%s%s%s.db" %(website, sep, track_filtered)
+                    scp(ex, source, destination, args=args)
+                else:
+                    result_path = track_filtered
+
+                add_gdv_track  (
+                                    config["gdv"]["key"], config["gdv"]["email"],
+                                    project_id, result_path,
+                                    gdv_url=config["gdv"]["url"]
+                                )
     except Usage, err:
         print >>sys.stderr, err.msg
         print >>sys.stderr, usage
         return 2
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())
