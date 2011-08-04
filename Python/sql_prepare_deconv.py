@@ -1,4 +1,4 @@
-#!/archive/epfl/bbcf/bin/bin.x86_64/python
+#!/bin/env python
 import rpy2.robjects as robjects
 import sqlite3
 import re
