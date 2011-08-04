@@ -1,4 +1,4 @@
-#!/archive/epfl/bbcf/bin/bin.x86_64/python
+#!/bin/env python
 import getopt
 import os
 import sys
