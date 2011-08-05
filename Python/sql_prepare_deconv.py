@@ -1,6 +1,6 @@
 #!/bin/env python
 import rpy2.robjects as robjects
-import sqlite3
+from bbcflib.track import Track
 import re
 from numpy import *
 import getopt
@@ -22,13 +22,6 @@ read_len  read length
 class Usage(Exception):
     def __init__(self,  msg):
         self.msg = msg
-
-def select_bed_line(c,s,e):
-    sql = "select max(start,"+str(s)+"), "
-    sql += "min(end,"+str(e)+"), "
-    sql += "score from '"+c+"' where "
-    sql += "end>"+str(s)+" and start<"+str(e)+";"
-    return sql
 
 def parse_bed(file_name, seqname=None):
     def select_by_seqname(l):
@@ -90,18 +83,15 @@ def main(argv = None):
                           'minus': robjects.FloatVector([0 for i in allpos]),
                           'name': robjects.StrVector([reg_name for i in allpos])}
             for db,name in strands.iteritems():
-                connection = sqlite3.connect(db)
-                cur = connection.cursor()
-                cur.execute(select_bed_line(chr, start, end))
-                connection.commit()
-                n = 0
-                for sql_row in cur:
-                    while data_block['pos'][n] <= sql_row[0]:
-                        n+=1
-                    for p in range(sql_row[0],sql_row[1]):
-                        data_block[name][n] = sql_row[2]
-                        n+=1
-                cur.close()
+                with Track(db) as track:
+                    region = track.read({'chr':chr, 'start':start, 'end':end})
+                    n = 0
+                    for row in region:
+                        while data_block['pos'][n] <= row[0]:
+                            n+=1
+                        for p in range(row[0],row[1]):
+                            data_block[name][n] = row[2]
+                            n+=1
             r_block = robjects.DataFrame(data_block)
             robjects.r('counts=rbind(counts,%s)'%r_block.r_repr())
         robjects.r('save(counts,file="%s")' %output_file)
