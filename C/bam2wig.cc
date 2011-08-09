@@ -69,7 +69,6 @@ void createsql( posh &counts, const double cntw=1.0 ) {
     poshcit 
 	I0 = counts.lower_bound(-opts.start),
 	I1 = counts.lower_bound(-opts.end);
-    I0--;
     double lc, lastcnt(-1);
     int start = 0, stop = 0;
     sqlite3 *db_fwd, *db_rev, *db_both, *mydb;
@@ -131,7 +130,8 @@ void createsql( posh &counts, const double cntw=1.0 ) {
 	    sqlite3_close(mydb);
 	    return;
 	}
-	for ( poshcit I = I0; I != I1; I-- ) {
+	for ( poshcit I = I0; I != I1; ) {
+            I--;
 	    lc = I->second*cntw;
 	    if (-I->first > stop+1 || std::abs(lastcnt-lc)>1e-6) {
 		if (lastcnt >= opts.mincover && 
@@ -208,7 +208,6 @@ void printbed( posh &counts, const double cntw=1.0,
     poshcit 
 	I0 = counts.lower_bound(-opts.start),
 	I1 = counts.lower_bound(-opts.end);
-    I0--;
     int lc, lastcnt = -1;
     int start = 0, stop = 0;
     std::ofstream outfile;
@@ -221,7 +220,8 @@ void printbed( posh &counts, const double cntw=1.0,
     }
     if (opts.merge < 0) {
 	if (!opts.six) (*outstr) << bed_minus;
-	for ( poshcit I = I0; I != I1; I-- ) {
+	for ( poshcit I = I0; I != I1; ) {
+            I--;
 	    lc = (int)(.5+1e2*I->second*cntw);
 	    if (-I->first > stop+1 || lastcnt != lc) {
 		if (lastcnt >= 1e2*opts.mincover && 
