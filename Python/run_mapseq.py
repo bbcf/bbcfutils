@@ -73,6 +73,7 @@ def main(argv = None):
             [M.delete_execution(x) for x in M.search_executions(with_description=hts_key,fails=True)]
         elif os.path.exists(config_file):
             (job,gl) = frontend.parseConfig( config_file )
+            hts_key = job.description
         else:
             raise ValueError("Need either a job key (-k) or a configuration file (-c).")
         g_rep = genrep.GenRep( url=gl["genrep_url"], root=gl["bwt_root"], 

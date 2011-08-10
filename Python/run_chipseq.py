@@ -79,6 +79,7 @@ def main(argv = None):
             [M.delete_execution(x) for x in M.search_executions(with_description=hts_key,fails=True)]
         elif os.path.exists(config_file):
             (job,gl) = frontend.parseConfig( config_file )
+            hts_key = job.description
         else:
             raise ValueError("Need either a job key (-k) or a configuration file (-c).")
         mapseq_url = None
@@ -88,7 +89,7 @@ def main(argv = None):
         g_rep = genrep.GenRep( gl["genrep_url"], gl.get("bwt_root") )
         assembly = g_rep.assembly( job.assembly_id )
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
-            (mapped_files, job) = get_bam_wig_files( ex, job, ms_limspath, mapseq_url, gl.get('script_path') or '', via=via )
+            (mapped_files, job) = get_bam_wig_files( ex, job, minilims=ms_limspath, hts_url=mapseq_url, script_path=gl.get('script_path') or '', via=via )
             chipseq_files = workflow_groups( ex, job, mapped_files, assembly.chromosomes, gl.get('script_path') or '' )
         allfiles = common.get_files( ex.id, M )
         if 'gdv_project' in job.options and 'sql' in allfiles:
