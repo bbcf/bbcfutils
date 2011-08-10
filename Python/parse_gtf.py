@@ -38,7 +38,7 @@ def timer(f):
 #@timer
 def parse_gtf(input, output=None, nlines=None):
     """
-    Parse a .gtf file an returns a list of dictionaries, each one of them
+    Parse a .gtf file and returns a list of dictionaries, each one of them
     corresponding to a line (sequence element) of the file.
     *input*: a gtf file;
     *ouput*: name of the output pickle file;
