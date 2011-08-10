@@ -84,7 +84,7 @@ def main(argv = None):
                           'name': robjects.StrVector([reg_name for i in allpos])}
             for db,name in strands.iteritems():
                 with Track(db) as track:
-                    region = track.read({'chr':chr, 'start':start, 'end':end})
+                    region = track.read({'chr':chr, 'start':start, 'end':end, 'inclusion':'strict'})
                     n = 0
                     for row in region:
                         while data_block['pos'][n] <= row[0]:
