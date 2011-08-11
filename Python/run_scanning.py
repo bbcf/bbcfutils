@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/bin/env python
 
 """
 run_scanning is a script for get sequence over represented on  whole genome. The sequences are selected by relation
