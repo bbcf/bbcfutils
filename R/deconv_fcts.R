@@ -79,7 +79,7 @@ solve.one = function(counts,mu,lambda,len,reg,ktype) {
     for (n in names(counts)) {
         cnt=counts[[n]]
         N=length(cnt$minus)
-        if (N > 5000 || N < 10 || sum(c(cnt$minus,cnt$plus)^2)<2) {
+        if (N > 5000 || N < 2*len+lambda || sum(c(cnt$minus,cnt$plus)^2)<2) {
             allout$rtn[[n]] = list(prob=rep(0,N),value=1)
             next
         }
