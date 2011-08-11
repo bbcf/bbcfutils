@@ -38,7 +38,7 @@ def generate_mappings(species='human',ensembl_release=63):
     trans_by_gene is a dictionary      {gene ID: [transcripts IDs]};
     exons_by_trans is a dictionary     {transcript ID: [exons IDs]}.
 
-    - species is an Ensembl identifier as "human";
+    - species is an Ensembl identifier as "Homo Sapiens" or "C.Elegans";
     - ensembl_release is the version number of the Ensembl release
     to extract data from.
     '''
@@ -104,16 +104,9 @@ def main(argv=None):
                 raise Usage("Unhandled option: " + o)
 
         ### Program body ###
-        t1 = time.time()
         mappings = generate_mappings(species,ensembl_release)
-        t2 = time.time()
-        running_time = t2-t1
-        print "Execution time:", str(running_time), "s."
         with open(output_filename+".pickle","wb") as f:
             pickle.dump(mappings,f)
-        t3 = time.time()
-        running_time = t3-t2
-        print "Dumping time:", str(running_time), "s."
 
         sys.exit(0)
     except Usage, err:
