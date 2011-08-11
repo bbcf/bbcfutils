@@ -5,10 +5,9 @@ A High-throughput 4C-seq analysis workflow.
 """
 from bbcflib import daflims, genrep, frontend, email, gdv, common
 from bbcflib.mapseq import *
-from bbcflib.chipseq import *
 import sys, getopt, os, json, re
 
-import bbcflib.4cseq import *
+from bbcflib import c4seq
 
 usage = """run_4cseq.py [-h] [-u via] [-w wdir] [-k job_key] [-c config_file] -d minilims
 
@@ -85,13 +84,15 @@ def main(argv = None):
         job.options['ucsc_bigwig'] = True
         g_rep = genrep.GenRep( gl["genrep_url"], gl.get("bwt_root") )
 	assembly = g_rep.assembly( job.assembly_id )
-	primers_file='/scratch/cluster/monthly/htsstation/4cseq/'+job.id+'/primers.fa'
-	primers_dict=4cseq.loadPrimers(primersFile)
+	primers_file='/scratch/cluster/monthly/htsstation/4cseq/'+str(job.id)+'/primers.fa'
+	primers_dict=c4seq.loadPrimers(primers_file)
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
-            (mapped_files, job) = get_bam_wig_files( ex, job, ms_limspath, mapseq_url, gl.get['script_path'] or '', suffix=['merged'], via=via )
-	    4cseq_files = workflow_groups( ex, job, primers_dict, assembly,
-                                             mapseq_files, mapseq_url,  
-                                             gl.get['script_path'] or '' )
+            print(job.groups)
+	    print (ms_limspath, mapseq_url)
+	    (mapped_files, job) = get_bam_wig_files( ex, job, minilims=ms_limspath, hts_url=mapseq_url, suffix=['merged'],script_path=gl['script_path'] or '' , via=via )
+	    c4seq_files = c4seq.workflow_groups( ex, job, primers_dict, assembly,
+                                             mapped_files, mapseq_url,  
+                                             gl['script_path'] )
         allfiles = common.get_files( ex.id, M )
         if 1<0 and 'gdv_project' in job.options and 'sql' in allfiles:
             allfiles['url'] = {job.options['gdv_project']['public_url']: 'GDV view'}

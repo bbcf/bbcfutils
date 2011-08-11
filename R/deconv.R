@@ -18,7 +18,7 @@ plot(ccf$lag,ccf$acf,t='l',ylim=c(0,1),
      main=paste('Strand cross-correlation',chr.name))
 cut.ccf=ccf$acf
 cut.ccf[which(ccf$lag<mu)]=0
-lambda=ccf$lag[which.max(ccf$acf)]
+lambda=ccf$lag[which.max(cut.ccf)]
 sol = inverse.solve(counts,mu=mu,lambda=lambda,len=read.length,regul=1e-5,optimize=TRUE)
 col='red'
 #lab=substitute(expression(lambda=x),list(x=sol$par$lambda))
