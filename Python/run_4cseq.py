@@ -89,7 +89,7 @@ def main(argv = None):
 	primers_dict=4cseq.loadPrimers(primersFile)
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
             (mapped_files, job) = get_bam_wig_files( ex, job, ms_limspath, mapseq_url, gl.get['script_path'] or '', suffix=['merged'], via=via )
-	    4cseq_files = workflow_groups( ex, job, primers_dict, assembly,
+	    4cseq_files = workflow_groups( ex, job, primers_dict, g_rep,
                                              mapseq_files, mapseq_url,  
                                              gl.get['script_path'] or '' )
         allfiles = common.get_files( ex.id, M )
