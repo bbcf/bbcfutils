@@ -44,7 +44,7 @@ def main(argv = None):
             if o in ("-h", "--help"):
                 print __doc__
                 print usage
-                sys.exit(0)
+                return 0
             elif o in ("-u", "--via"):
                 if a=="local":
                     via = "local"
@@ -117,7 +117,7 @@ and its unique key is '''+hts_key+'''.
 You can retrieve the results at this url:
 '''+gl['hts_chipseq']['url']+"jobs/"+hts_key+"/get_results")
             r.send()
-        sys.exit(0)
+        return 0
     except Usage, err:
         print >>sys.stderr, err.msg
         print >>sys.stderr, usage
