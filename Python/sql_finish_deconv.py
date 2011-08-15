@@ -42,7 +42,7 @@ def main(argv = None):
             raise Usage("File %s does not exist." % infile)
         robjects.r.load('%s' %infile)
         with Track(outfile,format='sql') as track:
-            track.write(chr,_robject(robjects.r.wig,chrom))
+            track.write(chrom,_robject(robjects.r.wig,chrom))
         with open(outfile+'_deconv.bed','a') as fbed:
             for p in robjects.r.bed.iter_row():
                 bed_row = [p.rx2('chr')[0],

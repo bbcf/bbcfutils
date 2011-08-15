@@ -87,17 +87,22 @@ def main(argv = None):
 	primers_file='/scratch/cluster/monthly/htsstation/4cseq/'+str(job.id)+'/primers.fa'
 	primers_dict=c4seq.loadPrimers(primers_file)
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
-            print(job.groups)
-	    print (ms_limspath, mapseq_url)
-	    (mapped_files, job) = get_bam_wig_files( ex, job, minilims=ms_limspath, hts_url=mapseq_url, suffix=['merged'],script_path=gl['script_path'] or '' , via=via )
-	    c4seq_files = c4seq.workflow_groups( ex, job, primers_dict, assembly,
-                                             mapped_files, mapseq_url,  
-                                             gl['script_path'] )
+            (mapseq_files, job) = get_bam_wig_files( ex, job, ms_limspath, mapseq_url, suffix=['merged'],script_path=gl['script_path'], via=via )
+	    c4seq_files = c4seq.workflow_groups( ex, job, primers_dict, g_rep,
+                                           mapseq_files, mapseq_url,  
+                                           gl['script_path'])
         allfiles = common.get_files( ex.id, M )
+        job.options['gdv_project'] = job.options.get('gdv_project') or True
         if 1<0 and 'gdv_project' in job.options and 'sql' in allfiles:
             allfiles['url'] = {job.options['gdv_project']['public_url']: 'GDV view'}
             download_url = gl['hts_4cseq']['download']
-            [gdv.add_gdv_sqlite( gl['gdv']['key'], gl['gdv']['email'],
+            if job.options['gdv_project']:
+                    gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
+                                                          job.description,
+                                                          assembly.nr_assembly_id,
+                                                          gdv_url=gl['gdv']['url'], public=True )
+                    add_pickle( ex, gdv_project, description='py:gdv_json' )
+           [gdv.add_gdv_sqlite( gl['gdv']['key'], gl['gdv']['email'],
                                  job.options['gdv_project']['project_id'],
                                  url=download_url+str(k), 
                                  name = re.sub('\.sql','',str(f)),

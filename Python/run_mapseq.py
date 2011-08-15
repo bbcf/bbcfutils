@@ -40,7 +40,7 @@ def main(argv = None):
             if o in ("-h", "--help"):
                 print __doc__
                 print usage
-                sys.exit(0)
+                return 0
             elif o in ("-u", "--via"):
                 if a=="local":
                     via = "local"
@@ -104,7 +104,7 @@ def main(argv = None):
                                                           gdv_url=gl['gdv']['url'], public=True )
                     add_pickle( ex, gdv_project, description='py:gdv_json' )
         allfiles = common.get_files( ex.id, M )
-        if 'py:gdv_json' in allfiles:
+        if job.options['gdv_project']:
             allfiles['url'] = {gdv_project['public_url']: 'GDV view'}
             download_url = gl['hts_mapseq']['download']
             [gdv.add_gdv_track( gl['gdv']['key'], gl['gdv']['email'],
@@ -129,7 +129,7 @@ and its unique key is '''+hts_key+'''.
 You can now retrieve the results at this url:
 '''+gl['hts_mapseq']['url']+"jobs/"+hts_key+"/get_results")
             r.send()
-        sys.exit(0)
+        return 0
     except Usage, err:
         print >>sys.stderr, err.msg
         print >>sys.stderr, usage
