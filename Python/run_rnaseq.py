@@ -25,6 +25,18 @@ class Usage(Exception):
     def __init__(self,  msg):
         self.msg = msg
 
+def results_to_json(lims, exid):
+    """Create a JSON string describing the results of execution *exid*.
+
+    The execution is sought in *lims*, and all its output files and
+    their descriptions are written to the string.
+    """
+    produced_file_ids = lims.search_files(source=('execution',exid))
+    d = dict([(lims.fetch_file(i)['description'], lims.path_to_file(i))
+              for i in produced_file_ids])
+    j = json.dumps(d)
+    return j
+
 def main(argv=None):
     via = "lsf"
     limspath = "rnaseq"
@@ -88,7 +100,7 @@ def main(argv=None):
             job = get_fastq_files( job, ex.working_directory)
             print "Start workflow"
             print "Current working directory:", ex.working_directory
-            json = rnaseq_workflow(ex, job, assembly, via=via, with_exons=True, maplot="normal")
+            json = rnaseq_workflow(ex, job, assembly, target=["genes","exons","transcripts"], via=via, maplot="normal")
 
         sys.exit(0)
     except Usage, err:
