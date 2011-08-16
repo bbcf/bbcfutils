@@ -5,10 +5,13 @@ by Julien Delafontaine, <julien.delafontaine@epfl.ch>
 09.08.2011
 
 Takes a species identifier for Ensembl (e.g. 'human') and returns a pickle containing a tuple
-(gene_ids, gene_names, trans_to_gene_mapping, exons_to_trans_mapping).
-gene_ids is a list of gene IDs; gene_names is a dictionary {gene ID: gene name};
-trans_to_gene_mapping is a dictionary {gene ID: [transcripts IDs]};
-exons_to_trans_mapping is a dictionary {transcript ID: [exons IDs]}.
+(gene_ids, gene_names, transcript_mapping, exon_mapping, trans_by_gene, exons_by_trans).
+gene_ids is a list of gene IDs;
+gene_names is a dictionary         {gene ID: gene name};
+transcript_mapping is a dictionary {transcript ID: gene ID};
+exon_mapping is a dictionary       {exon ID: ([transcript IDs], gene ID)};
+trans_in_gene is a dictionary      {gene ID: [transcripts IDs]};
+exons_in_trans is a dictionary     {transcript ID: [exons IDs]}.
 """
 import cogent.db.ensembl as ensembl
 from numpy import *
@@ -34,9 +37,9 @@ def generate_mappings(species='human',ensembl_release=63):
     gene_ids is a list of gene IDs;
     gene_names is a dictionary         {gene ID: gene name};
     transcript_mapping is a dictionary {transcript ID: gene ID};
-    exon_mapping is a dictionary       {exon ID: (transcript ID, gene ID)};
-    trans_by_gene is a dictionary      {gene ID: [transcripts IDs]};
-    exons_by_trans is a dictionary     {transcript ID: [exons IDs]}.
+    exon_mapping is a dictionary       {exon ID: ([transcript IDs], gene ID)};
+    trans_in_gene is a dictionary      {gene ID: [transcripts IDs]};
+    exons_in_trans is a dictionary     {transcript ID: [exons IDs]}.
 
     - species is an Ensembl identifier as "Homo Sapiens" or "C.Elegans";
     - ensembl_release is the version number of the Ensembl release
@@ -44,7 +47,7 @@ def generate_mappings(species='human',ensembl_release=63):
     '''
     genome = ensembl.Genome(species, Release=ensembl_release)
     if genome.Species == 'None':
-        print ensembl.Species
+        print >>sys.stderr, ensembl.Species
         raise Usage("Error: Unknown species")
     #genome.getDistinct('BioType')
     gene_ids = []; gene_names = {}
