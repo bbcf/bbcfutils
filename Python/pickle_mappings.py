@@ -5,7 +5,7 @@ by Julien Delafontaine, <julien.delafontaine@epfl.ch>
 09.08.2011
 
 Takes a species identifier for Ensembl (e.g. 'human') and returns a pickle containing a tuple
-(gene_ids, gene_names, transcript_mapping, exon_mapping, trans_by_gene, exons_by_trans).
+(gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans).
 gene_ids is a list of gene IDs;
 gene_names is a dictionary         {gene ID: gene name};
 transcript_mapping is a dictionary {transcript ID: gene ID};
@@ -33,7 +33,7 @@ class Usage(Exception):
 
 def generate_mappings(species='human',ensembl_release=63):
     ''' Return a tuple
-    (gene_ids, gene_names, transcript_mapping, exon_mapping, trans_by_gene, exons_by_trans).
+    (gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans).
     gene_ids is a list of gene IDs;
     gene_names is a dictionary         {gene ID: gene name};
     transcript_mapping is a dictionary {transcript ID: gene ID};
