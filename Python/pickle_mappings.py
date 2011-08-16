@@ -51,10 +51,10 @@ def generate_mappings(species='human',ensembl_release=63):
     transcript_mapping = {}; exon_mapping = {}
     trans_in_gene = {}; exons_in_trans = {}
     gene_generator = genome.getGenesMatching(BioType='protein_coding')
-    k = 0
+    #k = 0
     for g in gene_generator:
-        k+=1
-        if k>10: break;
+        #k+=1
+        #if k>10: break;
         gid = g.StableId
         gene_ids.append(gid)
         gene_names[gid] = g.Symbol
