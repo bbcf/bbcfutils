@@ -15,6 +15,7 @@ from bbcflib.common             import scp, normalize_url
 from bbcflib.track              import Track, new
 from os.path                    import basename, expanduser, normcase, isfile, exists
 from os                         import sep
+from os.path                    import basename, splitext
 import getopt, sys, urllib2
 
 USAGE = """%s [-h] [options] --matrix = /path/to/matrix.mat -c config_file --minilims = minilims_name
@@ -161,7 +162,6 @@ def main(argv = None):
                                             public = True
                                         )
         project_id  = get_project_id( json )
-
         # compute false discovery rate
         with execution(lims, description = job.description) as ex:
             background = genrep.statistics  (
@@ -203,6 +203,7 @@ def main(argv = None):
                 original_sql_data   = unique_filename_in()
                 random_sql_data     = unique_filename_in()
                 track_filtered      = unique_filename_in()
+                print "alias %s => %s" % (current_run["experimental"], track_filtered)
 
                 # convert data to sql
                 with Track(current_run["experimental"], chrmeta = assembly.chromosomes) as track:
@@ -276,7 +277,7 @@ def main(argv = None):
                 add_gdv_track  (
                                     config["gdv"]["key"], config["gdv"]["email"],
                                     project_id, result_path,
-                                    name    = current_run["name"],
+                                    name    = splitext( basename( current_run["experimental"] )[0] ),
                                     gdv_url = config["gdv"]["url"]
                                 )
     except Usage, err:
