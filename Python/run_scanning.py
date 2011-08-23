@@ -277,7 +277,7 @@ def main(argv = None):
                 add_gdv_track  (
                                     config["gdv"]["key"], config["gdv"]["email"],
                                     project_id, result_path,
-                                    name    = splitext( basename( current_run["experimental"] )[0] ),
+                                    name    = splitext( basename( current_run["experimental"] ) )[0],
                                     gdv_url = config["gdv"]["url"]
                                 )
     except Usage, err:
