@@ -101,6 +101,32 @@ def main(argv=None):
             print "Start workflow"
             print "Current working directory:", ex.working_directory
             json = rnaseq_workflow(ex, job, assembly, target=["genes","exons","transcripts"], via=via, maplot="normal")
+        results_to_json(M, ex.id)
+
+        allfiles = common.get_files( ex.id, M )
+        if 'gdv_project' in job.options and 'sql' in allfiles:
+            allfiles['url'] = {job.options['gdv_project']['public_url']: 'GDV view'}
+            download_url = gl['hts_chipseq']['download']
+            [gdv.add_gdv_track( gl['gdv']['key'], gl['gdv']['email'],
+                                job.options['gdv_project']['project_id'],
+                                url=download_url+str(k), 
+                                name = re.sub('\.sql','',str(f)),
+                                gdv_url=gl['gdv']['url'] ) 
+             for k,f in allfiles['sql'].iteritems()]
+        print json.dumps(allfiles)
+        if 'email' in gl:
+            r = email.EmailReport( sender=gl['email']['sender'],
+                                   to=str(job.email),
+                                   subject="Chipseq job "+str(job.description),
+                                   smtp_server=gl['email']['smtp'] )
+            r.appendBody('''
+Your RNA-seq job is finished. \n
+The description was: 
+'''+str(job.description)+'''
+and its unique key is '''+hts_key+'''.\n
+You can retrieve the results at this url:
+'''+gl['hts_chipseq']['url']+"jobs/"+hts_key+"/get_results")
+            r.send()
 
         sys.exit(0)
     except Usage, err:
