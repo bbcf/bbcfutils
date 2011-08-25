@@ -1,6 +1,10 @@
 #!/bin/env python
 """
 A High-throughput RNA-seq analysis workflow.
+
+Whatever script calls this workflow needs to pass back the JSON string
+it returns in some sensible way. For the usual HTSStation
+frontend, this just means printing it to stdout.
 """
 import os
 import sys

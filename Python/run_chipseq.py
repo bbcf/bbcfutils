@@ -89,8 +89,10 @@ def main(argv = None):
         g_rep = genrep.GenRep( gl["genrep_url"], gl.get("bwt_root") )
         assembly = g_rep.assembly( job.assembly_id )
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
-            (mapped_files, job) = get_bam_wig_files( ex, job, minilims=ms_limspath, hts_url=mapseq_url, script_path=gl.get('script_path') or '', via=via )
+            (mapped_files, job) = get_bam_wig_files( ex, job, minilims=ms_limspath, hts_url=mapseq_url,
+                                                     script_path=gl.get('script_path') or '', via=via )
             chipseq_files = workflow_groups( ex, job, mapped_files, assembly.chromosomes, gl.get('script_path') or '' )
+            
         allfiles = common.get_files( ex.id, M )
         if 'gdv_project' in job.options and 'sql' in allfiles:
             allfiles['url'] = {job.options['gdv_project']['public_url']: 'GDV view'}
