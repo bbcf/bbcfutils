@@ -1,9 +1,10 @@
+#!/bin/env python
 """
-Creates an MA-plot from a CSV file.
+Creates an `MA-plot` to compare transcription levels of a set of genes
+(or other features) in two different conditions, from a CSV file.
 
 The class AnnoteFinder is used to create interactive - clickable - plots.
 """
-
 import sys, os, pickle, json, pysam, urllib, math, time
 import numpy
 import csv
@@ -19,11 +20,11 @@ import matplotlib.pyplot as plt
 
 usage = """maplot.py [-h] [-l limspath] [-u via] [-m mode] [-d deg] [-b bins] [-a aid] CSV_data
 
-Creates an "MA-plot" to compare transcription levels of a set of genes
+Creates an `MA-plot` to compare transcription levels of a set of genes
 (or other features) in two different conditions.
 
 **Input**: str - a CSV file with rows of the form (feature_name, mean_expression, fold_change).
-**Output**: str - the name of the .png file produced, and the name of a json
+**Output**: (str,str) - the name of the .png file produced, and the name of a json
 containing enough information to reconstruct the plot using Javascript.
 
 Options:
@@ -40,7 +41,7 @@ Note: the assembly_id is used to add more information on features into the json 
 class Usage(Exception):
     def __init__(self,  msg):
         self.msg = msg
-
+        
 
 def MAplot(data, mode="normal", deg=4, bins=30, assembly_id=None):
     """
