@@ -17,6 +17,7 @@ from bbcflib.common import timer
 #import matplotlib
 #matplotlib.use('Agg') #trying to avoid problems with -X ssh sessions (force backend)
 import matplotlib.pyplot as plt
+import pdb
 
 usage = """maplot.py [-h] [-l limspath] [-u via] [-m mode] [-d deg] [-b bins] [-a aid] CSV_data
 
@@ -43,7 +44,7 @@ class Usage(Exception):
         self.msg = msg
         
 
-def MAplot(data, mode="normal", deg=4, bins=30, assembly_id=None):
+def MAplot(dataset, mode="normal", deg=4, bins=30, assembly_id=None):
     """
     Creates an "MA-plot" to compare transcription levels of a set of genes
     in two different conditions. It returns the name of the .png file produced,
@@ -60,25 +61,42 @@ def MAplot(data, mode="normal", deg=4, bins=30, assembly_id=None):
     """
 
     # Extract data from CSV
-    names=[]; means=[]; ratios=[]; points=[]; delimiter=None;
-    with open(data,'r') as f:
-        header = f.readline()
-        for d in ['\t',',',' ',':','-']:
-            if len(header.split(d)) == 3:
-                delimiter = d; break;
-        if not delimiter:
-            print """Each line of the CSV file must be of the form \n
-                     Feature_name    Mean    fold_change \n
-                     Accepted delimiters: (space) , : - \t    """
-        csvreader = csv.reader(f, delimiter=delimiter, quoting=csv.QUOTE_NONE)
-        for row in csvreader:
-            if float(row[1])!=0:
-                names.append(row[0])
-                means.append(numpy.log10(float(row[1])))
-                ratios.append(numpy.log2(float(row[2])))
+    if isinstance(dataset,str): dataset = [dataset]
+    names=[]; means=[]; ratios=[]; points=[]; delimiter=None;groups={}
+    for data in dataset:
+        with open(data,'r') as f:
+            header = f.readline()
+            for d in ['\t',',',' ',':','-']:
+                if len(header.split(d)) == 3:
+                    delimiter = d; break;
+            if not delimiter:
+                print """Each line of the CSV file must be of the form \n
+                         Feature_name    Mean    fold_change \n
+                         Accepted delimiters: (space) , : - \t    """
+            csvreader = csv.reader(f, delimiter=delimiter, quoting=csv.QUOTE_NONE)
+            n=[]; m=[]; r=[]
+            for row in csvreader:
+                #numpy.seterr(all='raise')
+                if float(row[1])>0 and float(row[2])>0:
+                    n.append(row[0])
+                    m.append(numpy.log10(float(row[1])))
+                    r.append(numpy.log2(float(row[2])))
+        groups[data] = zip(n, m, r)
+        names.extend(n); means.extend(m); ratios.extend(r)
     points = zip(names, means, ratios)
-    points = [p for p in points if (p[1]!=0 and p[2]!=0)]
     xmin = min(means); xmax = max(means); ymin = min(ratios); ymax = max(ratios)
+
+    # Figure
+    fig = plt.figure(figsize=[14,9])
+    ax = fig.add_subplot(111)
+    fig.subplots_adjust(left=0.08, right=0.98, bottom=0.08, top=0.98)
+
+    # Points
+    colors = iter(["black","red","green","cyan","magenta","yellow"])
+    for data in dataset:
+        print groups[data][:3]
+        pts = zip(*groups[data])
+        ax.plot(pts[1], pts[2], ".", color=colors.next())
 
     # Create bins
     N = len(points); dN = N/bins #points per bin
@@ -94,44 +112,35 @@ def MAplot(data, mode="normal", deg=4, bins=30, assembly_id=None):
         points_in[b] = [p for p in points if p[1]>=intervals[b] and p[1]<intervals[b+1]]
         perc[b] = [p[2] for p in points_in[b]]
 
-    # Figure
-    fig = plt.figure(figsize=[14,9])
-    ax = fig.add_subplot(111)
-    fig.subplots_adjust(left=0.08, right=0.98, bottom=0.08, top=0.98)
-
-    # Points
-    points = zip(*points)
-    ax.plot(points[1], points[2], ".", color="black")
-    points = zip(*points)
-
     # Lines (best fit of percentiles)
     annotes=[]; spline_annotes=[]; spline_coords={}
-    percentiles = [1,5,25,50,75,95,99]
+    percentiles = [0.1,1,5,25,50,75,95,99,99.9]
     for k in percentiles:
         h = numpy.ones(bins)
         for b in range(bins):
             if points_in[b] != []:
                 h[b] = stats.scoreatpercentile(perc[b], k)
-                if k==1:
+                if k==0.1:
                     for p in points_in[b]:
                         if p[2]<h[b]:
                             annotes.append(p)
-                if k==99:
+                if k==99.9:
                     for p in points_in[b]:
                         if p[2]>h[b]:
                             annotes.append(p)
             else: h[b] = h[b-1]
-        x = intervals[:-1]+(intervals[1:]-intervals[:-1])/2.
-        spline = UnivariateSpline(x, h, k=deg)
-        xs = numpy.array(numpy.linspace(xmin, xmax, 10*bins)) #to increase spline smoothness
-        ys = numpy.array(spline(xs))
-        l = len(xs)
-        xi = numpy.arange(l)[numpy.ceil(l/6):numpy.floor(8*l/9)]
-        x_spline = xs[xi]
-        y_spline = ys[xi]
-        ax.plot(x_spline, y_spline, "-", color="blue") #ax.plot(x, h, "o", color="blue")
-        spline_annotes.append((k,x_spline[0],y_spline[0])) #quantile percentages
-        spline_coords[k] = zip(x_spline,y_spline)
+        if k in percentiles[1:-1]:
+            x = intervals[:-1]+(intervals[1:]-intervals[:-1])/2.
+            spline = UnivariateSpline(x, h, k=deg)
+            xs = numpy.array(numpy.linspace(xmin, xmax, 10*bins)) #to increase spline smoothness
+            ys = numpy.array(spline(xs))
+            l = len(xs)
+            xi = numpy.arange(l)[numpy.ceil(l/6):numpy.floor(8*l/9)]
+            x_spline = xs[xi]
+            y_spline = ys[xi]
+            ax.plot(x_spline, y_spline, "-", color="blue") #ax.plot(x, h, "o", color="blue")
+            spline_annotes.append((k,x_spline[0],y_spline[0])) #quantile percentages
+            spline_coords[k] = zip(x_spline,y_spline)
 
     # Decoration
     ax.set_xlabel("Log10 of sqrt(x1*x2)")
@@ -186,7 +195,7 @@ def MAplot(data, mode="normal", deg=4, bins=30, assembly_id=None):
                "color": rgb_to_hex((255,0,255))}
              ]
     splinelabels = {"id": "Spline labels",
-                    "data": [spline_coords[k][0] for k in percentiles],
+                    "data": [spline_coords[k][0] for k in percentiles[1:-1]],
                     "points": {"show":False}, "lines": {"show":False},
                     "labels": ["1%","5%","25%","50%","75%","95%","99%"]}
     jsdata = "var data = " + json.dumps(jsdata) + ";\n" \
@@ -308,7 +317,7 @@ def main(argv=None):
         argv = sys.argv
     try:
         try:
-            opts,args = getopt.getopt(sys.argv[1:],"hu:m:d:b:a:",
+            opts,args = getopt.getopt(sys.argv[1:],"hl:u:m:d:b:a:",
                          ["help","via","mode","deg","bins","aid"])
         except getopt.error, msg:
             raise Usage(msg)
@@ -327,19 +336,15 @@ def main(argv=None):
                 if a=="interactive": mode = "interactive"
                 else: mode = "normal"
             elif o in ("-d", "--deg"):
-                if isinstance(a,int): deg = a
-                else: raise Usage("The polynom degree must be an integer got %s." % (a,))
+                deg = int(a)
             elif o in ("-b", "--bins"):
-                if isinstance(a,int): bins = a
-                else: raise Usage("The number of bins must be an integer got %s." % (a,))
+                bins = int(a)
             elif o in ("-a", "--aid"):
                 assembly_id = a
             else: raise Usage("Unhandled option: " + o)
 
         if len(args) < 1:
             raise Usage("maplot.py needs at least one argument (CSV file).")
-
-        data = str(args[0])
 
         # Program body #
         if limspath:
@@ -350,7 +355,7 @@ def main(argv=None):
                 ex.add(jsname, description="json:json output for file: "+data)
             results_to_json(M, ex.id)
         else:
-            figname, jsname = MAplot(data, mode, deg, bins, assembly_id)
+            figname, jsname = MAplot(args, mode=mode, deg=deg, bins=bins, assembly_id=assembly_id)
             print "png:", figname, "; json:", jsname
         # End of program body #
 
