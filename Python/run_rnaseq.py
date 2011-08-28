@@ -105,14 +105,16 @@ def main(argv=None):
             
         with execution(M) as ex:
             #if ms_limspath:
-            #    last_execution_id = max(MS.search_executions(fails=False))
-            #    processed, job = import_mapseq_results(last_execution_id, MS, ex.id, gl['hts_rnaseq']['url'])
+            #    last_execution_id = MS.search_executions(fails=False)[-1]
+            #    bam_files, job = import_mapseq_results(last_execution_id, MS,
+            #                                           ex.working_directory, gl['hts_mapseq']['url'])
             #else:
+            bam_files = None
             job = get_fastq_files( job, ex.working_directory)
             print "Start workflow"
             print "Current working directory:", ex.working_directory
             rnaseq_workflow(ex, job, assembly, target=["genes","exons","transcripts"],
-                            mapping=MS, via=via, maplot="normal")
+                            bam_files=bam_files, via=via, maplot="normal")
             
         results_to_json(M, ex.id)
 

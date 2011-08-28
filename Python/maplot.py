@@ -60,16 +60,16 @@ def MAplot(data, mode="normal", deg=4, bins=30, assembly_id=None):
     """
 
     # Extract data from CSV
-    names=[]; means=[]; ratios=[]; points=[]
+    names=[]; means=[]; ratios=[]; points=[]; delimiter=None;
     with open(data,'r') as f:
         header = f.readline()
         for d in ['\t',',',' ',':','-']:
             if len(header.split(d)) == 3:
                 delimiter = d; break;
-            else:
-                print """Each line of the CSV file must be of the form \n
-                              Feature_name    Mean    fold_change \n
-                           Accepted delimiters: (space) , : - \t    """
+        if not delimiter:
+            print """Each line of the CSV file must be of the form \n
+                     Feature_name    Mean    fold_change \n
+                     Accepted delimiters: (space) , : - \t    """
         csvreader = csv.reader(f, delimiter=delimiter, quoting=csv.QUOTE_NONE)
         for row in csvreader:
             if float(row[1])!=0:
@@ -98,7 +98,6 @@ def MAplot(data, mode="normal", deg=4, bins=30, assembly_id=None):
     fig = plt.figure(figsize=[14,9])
     ax = fig.add_subplot(111)
     fig.subplots_adjust(left=0.08, right=0.98, bottom=0.08, top=0.98)
-    figname = None
 
     # Points
     points = zip(*points)
@@ -116,11 +115,11 @@ def MAplot(data, mode="normal", deg=4, bins=30, assembly_id=None):
                 if k==1:
                     for p in points_in[b]:
                         if p[2]<h[b]:
-                            annotes.append(p[0])
+                            annotes.append(p)
                 if k==99:
                     for p in points_in[b]:
                         if p[2]>h[b]:
-                            annotes.append(p[0])
+                            annotes.append(p)
             else: h[b] = h[b-1]
         x = intervals[:-1]+(intervals[1:]-intervals[:-1])/2.
         spline = UnivariateSpline(x, h, k=deg)
