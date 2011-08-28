@@ -62,7 +62,7 @@ def main(argv = None):
                 config_file = a
             else:
                 raise Usage("Unhandled option: " + o)
-        if not(limspath #and os.path.exists(limspath) 
+        if not(limspath and os.path.exists(limspath) 
                and (hts_key != None or (config_file and os.path.exists(config_file)))):
             raise Usage("")
         M = MiniLIMS( limspath )

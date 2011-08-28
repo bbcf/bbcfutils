@@ -8,10 +8,10 @@ import getopt
 from bbcflib.rnaseq import *
 from bbcflib import frontend
 from bbcflib import common
-from bbcflib.mapseq import get_fastq_files, get_bam_wig_files
+from bbcflib.mapseq import get_fastq_files, import_mapseq_results
 
 usage = """run_rnaseq.py [-h] [-u via] [-w wdir] [-k job_key] [-c config_file] [-d minilims] [-m minilims]
-E.g. >>> python run_rnaseq.py -u lsf -c jobtest.txt -m rnaseq
+E.g. >>> python run_rnaseq.py -u lsf -c jobtest.txt -m archive/mapseq_full2_lims -d rnaseq
 
 -h           Print this message and exit
 -u via       Run executions using method 'via' (can be "local" or "lsf")
@@ -71,6 +71,7 @@ def main(argv=None):
                 limspath = a
             elif o in ("-m", "--mapseq_minilims"):
                 ms_limspath = a
+                MS = MiniLIMS(ms_limspath)
             elif o in ("-k", "--key"):
                 hts_key = a
             elif o in ("-c", "--config"):
@@ -82,12 +83,7 @@ def main(argv=None):
         if limspath == None:
             raise Usage("Must specify a MiniLIMS to attach to")
 
-        if ms_limspath:
-            M = MiniLIMS(ms_limspath)
-            new_mapping = False
-        else:
-            M = MiniLIMS(limspath)
-            new_mapping = True
+        M = MiniLIMS(limspath)
         if hts_key:
             gl = use_pickle( M, "global variables" )
             htss = frontend.Frontend( url=gl['hts_rnaseq']['url'] )
@@ -109,14 +105,14 @@ def main(argv=None):
             
         with execution(M) as ex:
             #if ms_limspath:
-            #    (mapped_files, job) = get_bam_wig_files( ex, job, minilims=ms_limspath, hts_url=mapseq_url,
-            #                                             script_path=gl.get('script_path') or '', via=via )
+            #    last_execution_id = max(MS.search_executions(fails=False))
+            #    processed, job = import_mapseq_results(last_execution_id, MS, ex.id, gl['hts_rnaseq']['url'])
             #else:
             job = get_fastq_files( job, ex.working_directory)
             print "Start workflow"
             print "Current working directory:", ex.working_directory
             rnaseq_workflow(ex, job, assembly, target=["genes","exons","transcripts"],
-                            new_mapping=new_mapping, via=via, maplot="normal")
+                            mapping=MS, via=via, maplot="normal")
             
         results_to_json(M, ex.id)
 
