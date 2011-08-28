@@ -12,11 +12,11 @@ from bbcflib.genrep             import GenRep
 from bbcflib.gdv                import create_gdv_project, add_gdv_track, get_project_id
 from bbcflib.frontend           import parseConfig
 from bbcflib.common             import scp, normalize_url
-from bbcflib.track              import Track, new
+from bbcflib.track              import Track, new, load
 from os.path                    import basename, expanduser, normcase, isfile, exists
 from os                         import sep
 from os.path                    import basename, splitext
-import getopt, sys, urllib2
+import getopt, sys, urllib2, logging, sqlite3
 
 USAGE = """%s [-h] [options] --matrix = /path/to/matrix.mat -c config_file --minilims = minilims_name
 -h Print this message and exit
@@ -37,6 +37,59 @@ class Usage(Exception):
     def __init__(self, msg):
         super(Usage, self).__init__()
         self.msg = msg
+
+def fix_sqlite_db(database):
+    db      = sqlite3.connect(database)
+    cursor  = db.cursor()
+    chr_name=  cursor.execute("SELECT name FROM chrNames")
+    for chromosome in chr_name.fetchall():
+        exist = cursor.execute("SELECT COUNT(name) FROM sqlite_master WHERE type='table' AND name='"+chromosome[0]+"';").fetchone()[0]
+        if exist == 0:
+            cursor.execute("DELETE FROM chrNames WHERE name=?", (chromosome[0],))
+    #~ result  = cursor.execute("SELECT name FROM chrNames")
+    #~ for i in result.fetchall():
+        #~ cursor.execute("CREATE TABLE IF NOT EXISTS '"+i[0]+"'(start INTEGER, end INTEGER, score REAL);")
+    db.commit()
+    cursor.close()
+    db.close()
+    track_scanned_signal_tmp = unique_filename_in()
+    track_scanned_signal = unique_filename_in()
+    # temp result with duplicate element
+    with new(track_scanned_signal_tmp, format = "sql", datatype= "quantitative") as t:
+        with load(database) as b:
+            t.chrmeta = b.chrmeta
+            for chrom in b:
+                for value in b.read(chrom, fields=['start','end','score', 'strand']):
+                    if value[3] == 1:
+                        t.write(chrom, (t.chrmeta[chrom]-(value[1]+1), t.chrmeta[chrom]-(value[0]), value[2],))
+                    else:
+                        t.write(chrom, (value[0:3],))
+    # result without duplicate element id duplicate element exist take higher score
+    with new(track_scanned_signal, format = "sql", datatype= "quantitative") as t:
+        with load(database) as b:
+            t.chrmeta = b.chrmeta
+    db1     = sqlite3.connect(track_scanned_signal)
+    db2     = sqlite3.connect(track_scanned_signal_tmp)
+    cursor1 = db1.cursor()
+    cursor2 = db2.cursor()
+    chr_name=  cursor2.execute("SELECT name FROM chrNames")
+    for chromosome in chr_name.fetchall():
+        cursor1.execute("CREATE TABLE '"+chromosome[0]+"' (start INTEGER, end INTEGER, score REAL);")
+        #~ values = cursor2.execute("SELECT DISTINCT start, end, score FROM '"+chromosome[0]+"'")*
+        values = cursor2.execute    ("""
+SELECT t.start, t.end, t.score FROM '"""+chromosome[0]+"""' t INNER JOIN (
+    SELECT start, end, MAX(score) AS MAXSCORE FROM '"""+chromosome[0]+"""' GROUP BY start
+) groupedt ON t.start=groupedt.start AND t.score=MAXSCORE;
+                                    """)
+        for v in values.fetchall():
+            cursor1.execute("INSERT INTO '"+chromosome[0]+"' VALUES (?,?,?) ", (v[0], v[1], v[2],) )
+    db1.commit()
+    db2.commit()
+    cursor1.close()
+    cursor2.close()
+    db2.close()
+    db2.close()
+    return track_scanned_signal
 
 def main(argv = None):
     """
@@ -61,10 +114,12 @@ def main(argv = None):
     website             = ""
     remote_path         = ""
     result_path         = ""
+    track_regions_path  = ""
     via                 = ""
     limspath            = ""
     fdr                 = 0
     runs                = {}
+    logging.basicConfig(filename='run_scanning.log',level=logging.INFO)
     if argv is None:
         argv = sys.argv
     try:
@@ -153,7 +208,7 @@ def main(argv = None):
 
         genrep      = GenRep(config = config)
         assembly    = genrep.assembly(job.assembly_id)
-        lims           = MiniLIMS(limspath)
+        lims        = MiniLIMS(limspath)
         json        = create_gdv_project(
                                             config["gdv"]["key"], config["gdv"]["email"],
                                             project,
@@ -170,7 +225,6 @@ def main(argv = None):
                                                 frequency = True,
                                                 matrix_format = True
                                             )
-            ex.add(background,  description = "background:"+background)
             if len(job.groups) >2:
                 raise ValueError("They are more than 2 group in config file")
 
@@ -203,7 +257,8 @@ def main(argv = None):
                 original_sql_data   = unique_filename_in()
                 random_sql_data     = unique_filename_in()
                 track_filtered      = unique_filename_in()
-                print "alias %s => %s" % (current_run["experimental"], track_filtered)
+                logging.info( "[%s]" % job.description )
+                logging.info( "alias %s => %s" % (current_run["experimental"], track_filtered) )
 
                 # convert data to sql
                 with Track(current_run["experimental"], chrmeta = assembly.chromosomes) as track:
@@ -225,22 +280,20 @@ def main(argv = None):
                                 track_random.convert(random_sql_data, format = "sql")
                             else:
                                 random_sql_data = current_run["control"]
-                ex.add(original_sql_data,   "sql:"+original_sql_data)
-                ex.add(random_sql_data,     "sql:"+random_sql_data)
-                track_scanned, fdr = sqlite_to_false_discovery_rate(
-                                                                    ex,
-                                                                    matrix,
-                                                                    background,
-                                                                    genrep,
-                                                                    assembly.chromosomes,
-                                                                    original_sql_data,
-                                                                    random_sql_data,
-                                                                    threshold = 0,
-                                                                    via = via,
-                                                                    keep_max_only = True,
-                                                                    alpha = 0.05,
-                                                                    nb_false_positive_hypotesis = 5.0
-                                                                  )
+                track_scanned, fdr, p_value = sqlite_to_false_discovery_rate(
+                                                                                ex,
+                                                                                matrix,
+                                                                                background,
+                                                                                genrep,
+                                                                                assembly.chromosomes,
+                                                                                original_sql_data,
+                                                                                random_sql_data,
+                                                                                threshold = -100,
+                                                                                via = via,
+                                                                                keep_max_only = False,
+                                                                                alpha = 0.05,
+                                                                                nb_sample = 5.0
+                                                                            )
 
                 # filter track with fdr as treshold
                 with new(track_filtered, format = "sql", datatype = "qualitative") as track_out:
@@ -260,26 +313,48 @@ def main(argv = None):
                             if len(data_list) > 0:
                                 track_out.write(chromosome, data_list)
                         track_out.chrmeta = chromosome_used
-                ex.add(track_filtered,      "sql:"+track_filtered)
+                ex.add(track_filtered,      "sql: filtred %s" % track_filtered)
+                logging.info( "scanned: %s" % track_scanned )
+                logging.info( "score selected: %f with p: %.3f" % (fdr, p_value) )
+                logging.info( "filtred: %s" % track_filtered )
 
-                # send new track to remote
+
+                # fix track
+                track_scanned_signal = fix_sqlite_db(track_scanned)
+                logging.info( "scanned signal: %s" % track_scanned_signal )
+                ex.add(track_scanned_signal, description="%s: sql track signal %s" % (job.description, track_scanned_signal))
+
+                # send filtred track and scanned track to remote
                 if host != "" and remote_path != "" and username != "":
                     args = []
                     if identity_file != "":
                         args = ["-i", normcase(expanduser(identity_file)), "-C" ]
-                    source      = normcase(expanduser(track_filtered))
-                    destination = "%s@%s:%s%s%s.db" % (username, host, remote_path, sep, track_filtered)
-                    result_path = "%s%s%s.db" % (website, sep, track_filtered)
-                    scp(ex, source, destination, args = args)
+                    source_filtred      = normcase(expanduser(track_filtered))
+                    source_scanned      = normcase(expanduser(track_scanned_signal))
+                    result_destination          = "%s@%s:%s%s%s.db" % (username, host, remote_path, sep, track_filtered)
+                    result_path                 = "%s%s%s.db" % (website, sep, track_filtered)
+                    track_regions_destination   = "%s@%s:%s%s%s.db" % (username, host, remote_path, sep, track_scanned_signal)
+                    track_regions_path          = "%s%s%s.db" % (website, sep, track_scanned_signal)
+                    scp(ex, source_filtred, result_destination, args = args)
+                    scp(ex, source_scanned, track_regions_destination, args = args)
                 else:
                     result_path = track_filtered
-
+                # Send to GDV filtred track
                 add_gdv_track  (
                                     config["gdv"]["key"], config["gdv"]["email"],
                                     project_id, result_path,
-                                    name    = splitext( basename( current_run["experimental"] ) )[0],
+                                    name    = "filtred_%s" % (splitext( basename( current_run["experimental"] ) )[0]),
                                     gdv_url = config["gdv"]["url"]
                                 )
+                # Send to GDV scanned track
+                add_gdv_track  (
+                                    config["gdv"]["key"], config["gdv"]["email"],
+                                    project_id, track_regions_path,
+                                    name    = "regions_%s" % (splitext( basename( current_run["experimental"] ) )[0]),
+                                    gdv_url = config["gdv"]["url"]
+                                )
+                logging.info( "++++++++++++")
+            logging.info( "-------------------END--------------------")
     except Usage, err:
         print >> sys.stderr, err.msg
         print >> sys.stderr, USAGE
