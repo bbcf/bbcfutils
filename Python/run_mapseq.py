@@ -23,7 +23,7 @@ class Usage(Exception):
 
 def main(argv = None):
     via = "lsf"
-    limspath = None
+    limspath = "mapseq"
     hts_key = ''
     working_dir = None
     config_file = None
