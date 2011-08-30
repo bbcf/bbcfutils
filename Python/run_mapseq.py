@@ -23,7 +23,7 @@ class Usage(Exception):
 
 def main(argv = None):
     via = "lsf"
-    limspath = "mapseq"
+    limspath = None
     hts_key = ''
     working_dir = None
     config_file = None
@@ -64,7 +64,7 @@ def main(argv = None):
                 raise Usage("Unhandled option: " + o)
         if not(limspath and os.path.exists(limspath) 
                and (hts_key != None or (config_file and os.path.exists(config_file)))):
-            raise Usage("")
+            raise Usage("Need a minilims and a job key or a configuration file")
         M = MiniLIMS( limspath )
         if len(hts_key)>1:
             gl = use_pickle(M, "global variables")
