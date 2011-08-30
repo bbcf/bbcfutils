@@ -2,6 +2,8 @@
 """
 Creates an `MA-plot` to compare transcription levels of a set of genes
 (or other features) in two different conditions, from a CSV file.
+One can enter several datasets (CSV files), each of which will be plotted
+in a different color, and be annotated if requested.
 
 The class AnnoteFinder is used to create interactive - clickable - plots.
 """
@@ -19,23 +21,31 @@ from bbcflib.common import timer
 import matplotlib.pyplot as plt
 import pdb
 
-usage = """maplot.py [-h] [-l limspath] [-u via] [-m mode] [-d deg] [-b bins] [-a aid] CSV_data
+usage = """maplot.py [-h] [-l limspath] [-u via] [-m mode] [-d deg] [-b bins] [-a aid]
+                     [-q quantiles] [-a annotate] data_1 .. data_n
 
 Creates an `MA-plot` to compare transcription levels of a set of genes
 (or other features) in two different conditions.
 
-**Input**: str - a CSV file with rows of the form (feature_name, mean_expression, fold_change).
+**Input**: CSV files with rows of the form (feature_name, mean_expression, fold_change).
 **Output**: (str,str) - the name of the .png file produced, and the name of a json
 containing enough information to reconstruct the plot using Javascript.
 
 Options:
 -h, --help   print this message and exit.
--l, --lims   str - name of or path to the bein's MiniLIMS to receive output files.
--u  --via    str - protocol, may be 'local' or 'lsf'.
--m, --mode   str - 'normal' - static .pgn output - or 'interactive' - clic to display gene names.
--d, --deg    int - degree of the interpolant percentile splines.
--b, --bins   int - number of divisions of the x axis to calculate percentiles.
--a, --aid  int or str - identifier for the Genrep assembly (e.g. 'hg19', or 76)
+-l, --lims   name of or path to the bein's MiniLIMS to receive output files.
+-u  --via    protocol, may be 'local' or 'lsf'.
+-m, --mode   'normal' - static .pgn output - or 'interactive' - clic to display gene names.
+-d, --deg    degree of the interpolant percentile splines.
+-b, --bins   number of divisions of the x axis to calculate percentiles.
+-a, --aid    identifier for the Genrep assembly (e.g. 'hg19', or 76)
+-q, --quantiles   if other than 'True', quantile splines wont't be drawn. Thus may
+improve speed and lisibility in some cases.
+-n, --annotate    indication of which datasets to annotate (if 'normal' mode). Must be a
+binary string of the same lenght as the number of datasets, 1 indicating to annotate the
+corresponding set, 0 not to annotate. E.g. For a list of datasets d1,d2,d3, if you want
+to annotate only d3, type --annotate 001.
+
 Note: the assembly_id is used to add more information on features into the json output.
 """
 
@@ -44,13 +54,14 @@ class Usage(Exception):
         self.msg = msg
         
 
-def MAplot(dataset, mode="normal", deg=4, bins=30, assembly_id=None):
+def MAplot(dataset, annotate=None, mode="normal", deg=4, bins=30, assembly_id=None, quantiles=True):
     """
     Creates an "MA-plot" to compare transcription levels of a set of genes
     in two different conditions. It returns the name of the .png file produced,
     and the name of a json containing enough information to reconstruct the plot using Javascript.
 
-    * *data*:  string, name of a CSV file with rows (feature_name, mean_expression, fold_change)
+    * *data*:  list or string, containing names of CSV files with rows of
+    the form (feature_name, mean_expression, fold_change)
     * *mode*:  string, display mode:
     - if `interactive`, click on a point to display its name
     - if `normal`, name of genes over 99%/under 1% quantile are displayed
@@ -86,7 +97,7 @@ def MAplot(dataset, mode="normal", deg=4, bins=30, assembly_id=None):
     points = zip(names, means, ratios)
     xmin = min(means); xmax = max(means); ymin = min(ratios); ymax = max(ratios)
 
-    # Figure
+    # Figure initialization
     fig = plt.figure(figsize=[14,9])
     ax = fig.add_subplot(111)
     fig.subplots_adjust(left=0.08, right=0.98, bottom=0.08, top=0.98)
@@ -94,42 +105,49 @@ def MAplot(dataset, mode="normal", deg=4, bins=30, assembly_id=None):
     # Points
     colors = iter(["black","red","green","cyan","magenta","yellow"])
     for data in dataset:
-        print groups[data][:3]
         pts = zip(*groups[data])
         ax.plot(pts[1], pts[2], ".", color=colors.next())
 
-    # Create bins
-    N = len(points); dN = N/bins #points per bin
-    rmeans = numpy.sort(means)
-    intervals = []
-    for i in range(bins):
-        intervals.append(rmeans[i*dN])
-    intervals.append(xmax)
-    intervals = numpy.array(intervals)
+    # Annotation of points
+    annotes={}
+    if mode == "interactive":
+        af = AnnoteFinder( means, ratios, names )
+        plt.connect('button_press_event', af)
+        plt.draw()
+        plt.show()
+    elif mode == "normal":
+        if annotate:
+            for data,annote in zip(dataset,annotate):
+                if annote==1:
+                    annotes[data] = []
+                    for p in groups[data]:
+                        ax.annotate(p[0], xy=(p[1],p[2]) )
+                        annotes[data].append(p[0])
 
-    points_in = {}; perc = {}
-    for b in range(bins):
-        points_in[b] = [p for p in points if p[1]>=intervals[b] and p[1]<intervals[b+1]]
-        perc[b] = [p[2] for p in points_in[b]]
+    if quantiles:
+        # Create bins
+        N = len(points); dN = N/bins #points per bin
+        rmeans = numpy.sort(means)
+        intervals = []
+        for i in range(bins):
+            intervals.append(rmeans[i*dN])
+        intervals.append(xmax)
+        intervals = numpy.array(intervals)
 
-    # Lines (best fit of percentiles)
-    annotes=[]; spline_annotes=[]; spline_coords={}
-    percentiles = [0.1,1,5,25,50,75,95,99,99.9]
-    for k in percentiles:
-        h = numpy.ones(bins)
+        points_in = {}; perc = {}
         for b in range(bins):
-            if points_in[b] != []:
-                h[b] = stats.scoreatpercentile(perc[b], k)
-                if k==0.1:
-                    for p in points_in[b]:
-                        if p[2]<h[b]:
-                            annotes.append(p)
-                if k==99.9:
-                    for p in points_in[b]:
-                        if p[2]>h[b]:
-                            annotes.append(p)
-            else: h[b] = h[b-1]
-        if k in percentiles[1:-1]:
+            points_in[b] = [p for p in points if p[1]>=intervals[b] and p[1]<intervals[b+1]]
+            perc[b] = [p[2] for p in points_in[b]]
+
+        # Lines (best fit of percentiles)
+        spline_annotes=[]; spline_coords={}
+        percentiles = [1,5,25,50,75,95,99]
+        for k in percentiles:
+            h = numpy.ones(bins)
+            for b in range(bins):
+                if points_in[b] != []:
+                    h[b] = stats.scoreatpercentile(perc[b], k)
+                else: h[b] = h[b-1]
             x = intervals[:-1]+(intervals[1:]-intervals[:-1])/2.
             spline = UnivariateSpline(x, h, k=deg)
             xs = numpy.array(numpy.linspace(xmin, xmax, 10*bins)) #to increase spline smoothness
@@ -142,79 +160,74 @@ def MAplot(dataset, mode="normal", deg=4, bins=30, assembly_id=None):
             spline_annotes.append((k,x_spline[0],y_spline[0])) #quantile percentages
             spline_coords[k] = zip(x_spline,y_spline)
 
-    # Decoration
+        # Annotation of splines (percentage)
+        for sa in spline_annotes:
+            ax.annotate(str(sa[0])+"%", xy=(sa[1],sa[2]), xytext=(-33,-5), textcoords='offset points',
+                    bbox=dict(facecolor="white",edgecolor=None,boxstyle="square,pad=.4"))
+
+    # Output figure
     ax.set_xlabel("Log10 of sqrt(x1*x2)")
     ax.set_ylabel("Log2 of x1/x2")
-    for sa in spline_annotes:
-        ax.annotate(str(sa[0])+"%", xy=(sa[1],sa[2]), xytext=(-33,-5), textcoords='offset points',
-                    bbox=dict(facecolor="white",edgecolor=None,boxstyle="square,pad=.4"))
-    if mode == "interactive":
-        af = AnnoteFinder( means, ratios, names )
-        plt.connect('button_press_event', af)
-        plt.draw()
-        plt.show()
-    else:
-        for p in annotes:
-            ax.annotate(p[0], xy=(p[1],p[2]) )
     figname = unique_filename_in()+".png"
     fig.savefig(figname)
 
     # Output for Javascript
     def rgb_to_hex(rgb):
         return '#%02x%02x%02x' % rgb
-    jsdata = [{"label": "Data points",
-               "data": points,
-               "labels": annotes,
-               "points": {"symbol":"circle", "show":True},
-               "color": "black"},
-              ## {"label": "Genes with p-value < " + str(alpha),
-              ##  "data": redpoints,
-              ##  "labels": annotes_red,
-              ##  "pvals": pvals_red,
-              ##  "points": {"symbol":"circle", "show":True},
-              ##  "color": "red"},
-              ## {"label": "Genes with p-value > " + str(alpha),
-              ##  "data": blackpoints,
-              ##  "labels": annotes_black,
-              ##  "pvals": pvals_black,
-              ##  "points": {"symbol":"circle", "show":True},
-              ##  "color": "black"},
-              {"label": "Mean", "data": spline_coords[50],
-               "lines": {"show":True}, "color": rgb_to_hex((255,0,255)) },
-              {"id": "1% Quantile", "data": spline_coords[1], "lines": {"show":True, "lineWidth":0, "fill": 0.12},
-               "color": rgb_to_hex((255,0,255))},
-              {"id": "5% Quantile", "data": spline_coords[5], "lines": {"show":True, "lineWidth":0, "fill": 0.18},
-               "color": rgb_to_hex((255,0,255))},
-              {"id": "25% Quantile", "data": spline_coords[25], "lines": {"show":True, "lineWidth":0, "fill": 0.3},
-               "color": rgb_to_hex((255,0,255))},
-              {"id": "75% Quantile", "data": spline_coords[75], "lines": {"show":True, "lineWidth":0, "fill": 0.3},
-               "color": rgb_to_hex((255,0,255))},
-              {"id": "95% Quantile", "data": spline_coords[95], "lines": {"show":True, "lineWidth":0, "fill": 0.18},
-               "color": rgb_to_hex((255,0,255))},
-              {"id": "99% Quantile", "data": spline_coords[99], "lines": {"show":True, "lineWidth":0, "fill": 0.12},
-               "color": rgb_to_hex((255,0,255))}
-             ]
-    splinelabels = {"id": "Spline labels",
-                    "data": [spline_coords[k][0] for k in percentiles[1:-1]],
-                    "points": {"show":False}, "lines": {"show":False},
-                    "labels": ["1%","5%","25%","50%","75%","95%","99%"]}
-    jsdata = "var data = " + json.dumps(jsdata) + ";\n" \
-             + "var splinelabels = " + json.dumps(splinelabels) + ";\n"
-    if assembly_id:
-        nr_assemblies = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies.json").read()
-        nr_assemblies = json.loads(nr_assemblies)
-        if isinstance(assembly_id,str):
-            for a in nr_assemblies:
-                if a['nr_assembly']['name'] == assembly_id:
-                    assembly_id = a['nr_assembly']['id']; break
-        url_template = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies/" \
-                                      + str(assembly_id) + "/get_links.json?gene_name=%3CName%3E")
-        jsdata = jsdata + "var url_template = " + url_template.read() + ";"
-    jsname = unique_filename_in()+".js"
-    #jsname = "data.js"
-    with open(jsname,"w") as js:
-        js.write(jsdata)
-    
+    ## jsdata = [{"label": "Data points",
+    ##            "data": points,
+    ##            "labels": annotes,
+    ##            "points": {"symbol":"circle", "show":True},
+    ##            "color": "black"},
+    ##           ## {"label": "Genes with p-value < " + str(alpha),
+    ##           ##  "data": redpoints,
+    ##           ##  "labels": annotes_red,
+    ##           ##  "pvals": pvals_red,
+    ##           ##  "points": {"symbol":"circle", "show":True},
+    ##           ##  "color": "red"},
+    ##           ## {"label": "Genes with p-value > " + str(alpha),
+    ##           ##  "data": blackpoints,
+    ##           ##  "labels": annotes_black,
+    ##           ##  "pvals": pvals_black,
+    ##           ##  "points": {"symbol":"circle", "show":True},
+    ##           ##  "color": "black"},
+    ##           {"label": "Mean", "data": spline_coords[50],
+    ##            "lines": {"show":True}, "color": rgb_to_hex((255,0,255)) },
+    ##           {"id": "1% Quantile", "data": spline_coords[1], "lines": {"show":True, "lineWidth":0, "fill": 0.12},
+    ##            "color": rgb_to_hex((255,0,255))},
+    ##           {"id": "5% Quantile", "data": spline_coords[5], "lines": {"show":True, "lineWidth":0, "fill": 0.18},
+    ##            "color": rgb_to_hex((255,0,255))},
+    ##           {"id": "25% Quantile", "data": spline_coords[25], "lines": {"show":True, "lineWidth":0, "fill": 0.3},
+    ##            "color": rgb_to_hex((255,0,255))},
+    ##           {"id": "75% Quantile", "data": spline_coords[75], "lines": {"show":True, "lineWidth":0, "fill": 0.3},
+    ##            "color": rgb_to_hex((255,0,255))},
+    ##           {"id": "95% Quantile", "data": spline_coords[95], "lines": {"show":True, "lineWidth":0, "fill": 0.18},
+    ##            "color": rgb_to_hex((255,0,255))},
+    ##           {"id": "99% Quantile", "data": spline_coords[99], "lines": {"show":True, "lineWidth":0, "fill": 0.12},
+    ##            "color": rgb_to_hex((255,0,255))}
+    ##          ]
+    ## splinelabels = {"id": "Spline labels",
+    ##                 "data": [spline_coords[k][0] for k in percentiles[1:-1]],
+    ##                 "points": {"show":False}, "lines": {"show":False},
+    ##                 "labels": ["1%","5%","25%","50%","75%","95%","99%"]}
+    ## jsdata = "var data = " + json.dumps(jsdata) + ";\n" \
+    ##          + "var splinelabels = " + json.dumps(splinelabels) + ";\n"
+    ## if assembly_id:
+    ##     nr_assemblies = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies.json").read()
+    ##     nr_assemblies = json.loads(nr_assemblies)
+    ##     if isinstance(assembly_id,str):
+    ##         for a in nr_assemblies:
+    ##             if a['nr_assembly']['name'] == assembly_id:
+    ##                 assembly_id = a['nr_assembly']['id']; break
+    ##     url_template = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies/" \
+    ##                                   + str(assembly_id) + "/get_links.json?gene_name=%3CName%3E")
+    ##     jsdata = jsdata + "var url_template = " + url_template.read() + ";"
+    ## jsname = unique_filename_in()+".js"
+    ## #jsname = "data.js"
+    ## with open(jsname,"w") as js:
+    ##     js.write(jsdata)
+
+    jsname = None
     return figname, jsname
 
 #----------------------------------------------------------#
@@ -312,13 +325,15 @@ def main(argv=None):
     deg = 4
     bins = 30
     assembly_id = None
+    annotate = None
+    quantiles = True
 
     if argv is None:
         argv = sys.argv
     try:
         try:
-            opts,args = getopt.getopt(sys.argv[1:],"hl:u:m:d:b:a:",
-                         ["help","via","mode","deg","bins","aid"])
+            opts,args = getopt.getopt(sys.argv[1:],"hl:u:m:d:b:a:n:q:",
+                         ["help","via","mode","deg","bins","aid","annotate","quantiles"])
         except getopt.error, msg:
             raise Usage(msg)
         for o, a in opts:
@@ -341,21 +356,30 @@ def main(argv=None):
                 bins = int(a)
             elif o in ("-a", "--aid"):
                 assembly_id = a
+            elif o in ("-n", "--annotate"):
+                annotate = a
+            elif o in ("-q", "--quantiles"):
+                quantiles = a
             else: raise Usage("Unhandled option: " + o)
 
         if len(args) < 1:
             raise Usage("maplot.py needs at least one argument (CSV file).")
 
+        if annotate: annotate = [eval(a) for a in annotate] # 0100101 -> [0,1,0,0,1,0,1]
+        if quantiles != 'True': quantiles = False
+
         # Program body #
         if limspath:
             M = MiniLIMS(limspath)
             with execution(M) as ex:
-                figname, jsname = MAplot(data, mode, deg, bins, assembly_id)
+                figname, jsname = MAplot(args, mode=mode, deg=deg, bins=bins,
+                                         assembly_id=assembly_id, annotate=annotate)
                 ex.add(figname, description="png:MAplot of data from file: "+data)
                 ex.add(jsname, description="json:json output for file: "+data)
             results_to_json(M, ex.id)
         else:
-            figname, jsname = MAplot(args, mode=mode, deg=deg, bins=bins, assembly_id=assembly_id)
+            figname, jsname = MAplot(args, mode=mode, deg=deg, bins=bins, assembly_id=assembly_id,
+                                     annotate=annotate, quantiles=quantiles)
             print "png:", figname, "; json:", jsname
         # End of program body #
 
