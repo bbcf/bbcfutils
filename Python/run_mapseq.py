@@ -86,7 +86,7 @@ def main(argv = None):
             dafl = None
         job.options['compute_densities'] = job.options.get('compute_densities') or True
         job.options['ucsc_bigwig'] = job.options.get('ucsc_bigwig') or True
-        job.options['gdv_project'] = job.options.get('gdv_project') or False
+        job.options['create_gdv_project'] = job.options.get('create_gdv_project') or False
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
             job = get_fastq_files( job, ex.working_directory, dafl )
             mapped_files = map_groups( ex, job, ex.working_directory, assembly, {'via': via} )
@@ -97,14 +97,14 @@ def main(argv = None):
                 if not(job.options.get('read_extension')>0):
                     job.options['read_extension'] = mapped_files.values()[0].values()[0]['stats']['read_length']
                 density_files = densities_groups( ex, job, mapped_files, assembly.chromosomes, via=via )
-                if job.options['gdv_project']:
+                if job.options['create_gdv_project']:
                     gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
                                                           job.description,  
                                                           assembly.nr_assembly_id,
                                                           gdv_url=gl['gdv']['url'], public=True )
                     add_pickle( ex, gdv_project, description='py:gdv_json' )
         allfiles = common.get_files( ex.id, M )
-        if job.options['gdv_project']:
+        if job.options['create_gdv_project']:
             allfiles['url'] = {gdv_project['public_url']: 'GDV view'}
             download_url = gl['hts_mapseq']['download']
             [gdv.add_gdv_track( gl['gdv']['key'], gl['gdv']['email'],
