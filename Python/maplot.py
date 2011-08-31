@@ -18,9 +18,8 @@ from scipy.interpolate import UnivariateSpline
 from scipy.optimize import curve_fit
 from bbcflib.common import timer
 import matplotlib
-matplotlib.use('Agg', warn=False) #trying to avoid problems with -X ssh sessions (force backend)
+matplotlib.use('Agg', warn=False) #force backend (trying to avoid problems with -X ssh sessions)
 import matplotlib.pyplot as plt
-import pdb
 
 usage = """maplot.py [-h] [-l limspath] [-u via] [-m mode] [-d deg] [-b bins] [-a aid]
                      [-q quantiles] [-a annotate] data_1 .. data_n
@@ -41,7 +40,7 @@ Options:
 -d, --deg    degree of the interpolant percentile splines.
 -b, --bins   number of divisions of the x axis to calculate percentiles.
 -a, --aid    identifier for the Genrep assembly (e.g. 'hg19', or 76)
--q, --quantiles   if other than 'True', quantile splines wont't be drawn. Thus may
+-q, --quantiles   if other than True, quantile splines wont't be drawn. Thus may
 improve speed and lisibility in some cases.
 -n, --annotate    indication of which datasets to annotate (if 'normal' mode). Must be a
 binary string of the same lenght as the number of datasets, 1 indicating to annotate the
@@ -132,13 +131,14 @@ def MAplot(dataset, annotate=None, mode="normal", deg=4, bins=30, assembly_id=No
                         ax.annotate(p[0], xy=(p[1],p[2]))
                         annotes[data].append(p[0])
 
+    # Lines (best fit of percentiles)
     if quantiles:
         # Create bins
         # If counts < (2,3), their mean < log10(sqrt(2*3))
         meaningless = math.log10(math.sqrt(2*3))
         intervals = numpy.linspace(meaningless, xmax, bins+1) #xmin?
 
-        points_in = []; perc = []
+        points_in = []
         for i in range(len(intervals)-2,-1,-1): #from l-1 to 0, decreasing
             p_in_i = [p for p in points if p[1]>=intervals[i] and p[1]<intervals[i+1]]
             if len(p_in_i) < 10:
@@ -148,7 +148,7 @@ def MAplot(dataset, annotate=None, mode="normal", deg=4, bins=30, assembly_id=No
         points_in.reverse()
         x = intervals[:-1]+(intervals[1:]-intervals[:-1])/2. #the middle point of each bin
         
-        # Lines (best fit of percentiles)
+        # Compute percentiles in each bin
         spline_annotes=[]; spline_coords={};
         percentiles = [1,5,25,50,75,90,99]
         for k in percentiles:
@@ -156,14 +156,14 @@ def MAplot(dataset, annotate=None, mode="normal", deg=4, bins=30, assembly_id=No
             for b in range(bins):
                 h.append( stats.scoreatpercentile([p[2] for p in points_in[b]], k) )
 
-            #xs = numpy.concatenate((x,[4]))  # add a factice point (4,0) - corresponding to zero
-            #hs = numpy.concatenate((h,[0]))  # features with expression level of 10^4.
+            #xs = numpy.concatenate((x,[4])) # add a factice point (10,0) - corresponding to zero
+            #hs = numpy.concatenate((h,[0]))  # features with expression level of 10^10.
             coeffs = numpy.polyfit(x, h, deg)
             x_spline = numpy.array(numpy.linspace(x[0], 0.80*x[-1], 10*bins))
             y_spline = numpy.polyval(coeffs, x_spline)
 
             ax.plot(x_spline, y_spline, "-", color="blue")
-            ax.plot(x, h, "o", color="blue")
+            #ax.plot(x, h, "o", color="blue")
             spline_annotes.append((k,x_spline[0],y_spline[0])) #quantile percentages
             spline_coords[k] = zip(x_spline,y_spline)
 
@@ -180,44 +180,38 @@ def MAplot(dataset, annotate=None, mode="normal", deg=4, bins=30, assembly_id=No
     figname = unique_filename_in()+".png"
     fig.savefig(figname)
 
+
     # Output for Javascript
     def rgb_to_hex(rgb):
         return '#%02x%02x%02x' % rgb
     jsdata = []
+    # - data points
     for data in dataset:
         jsdata.append({"label": "Data points from file "+os.path.basename(data),
                        "data": groups[data],
                        "labels": annotes.get(data),
                        "points": {"symbol":"circle", "show":True},
-                       "color": datacolors[data]  })
+                       "color": datacolors[data] })
+    # - mean
+    jsdata.append({"label": "Mean", "data": spline_coords[50],
+                   "lines": {"show":True}, "color": rgb_to_hex((255,0,255)) })
+
+    # - splines
+    transparencies = iter([0.12, 0.18, 0.3, 0.3, 0.18, 0.12])
+    percentiles.pop(percentiles.index(50))
     for i in percentiles:
-        jsdata.append(
-              {"id": str(i)+" % Quantile",
-               "data": spline_coords[i],
-               "lines": {"show":True, "lineWidth":0, "fill": 0.12},
-               "color": rgb_to_hex((255,0,255))}  )
-               
-            # [{"label": "Mean", "data": spline_coords[50],
-            #    "lines": {"show":True}, "color": rgb_to_hex((255,0,255)) },
-            #   {"id": "1% Quantile", "data": spline_coords[1], "lines": {"show":True, "lineWidth":0, "fill": 0.12},
-            #    "color": rgb_to_hex((255,0,255))},
-            #   {"id": "5% Quantile", "data": spline_coords[5], "lines": {"show":True, "lineWidth":0, "fill": 0.18},
-            #    "color": rgb_to_hex((255,0,255))},
-            #   {"id": "25% Quantile", "data": spline_coords[25], "lines": {"show":True, "lineWidth":0, "fill": 0.3},
-            #    "color": rgb_to_hex((255,0,255))},
-            #   {"id": "75% Quantile", "data": spline_coords[75], "lines": {"show":True, "lineWidth":0, "fill": 0.3},
-            #    "color": rgb_to_hex((255,0,255))},
-            #   {"id": "95% Quantile", "data": spline_coords[95], "lines": {"show":True, "lineWidth":0, "fill": 0.18},
-            #    "color": rgb_to_hex((255,0,255))},
-            #   {"id": "99% Quantile", "data": spline_coords[99], "lines": {"show":True, "lineWidth":0, "fill": 0.12},
-            #    "color": rgb_to_hex((255,0,255))}
-            #  ])
+        jsdata.append({"id": str(i)+" % Quantile",
+                       "data": spline_coords[i],
+                       "lines": {"show":True, "lineWidth":0, "fill": transparencies.next()},
+                       "color": rgb_to_hex((255,0,255)) })
     splinelabels = {"id": "Spline labels",
                     "data": [spline_coords[k][0] for k in percentiles[1:-1]],
                     "points": {"show":False}, "lines": {"show":False},
                     "labels": ["1%","5%","25%","50%","75%","95%","99%"]}
     jsdata = "var data = " + json.dumps(jsdata) + ";\n" \
              + "var splinelabels = " + json.dumps(splinelabels) + ";\n"
+
+    # - url for more info on features
     if assembly_id:
         nr_assemblies = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies.json").read()
         nr_assemblies = json.loads(nr_assemblies)
@@ -228,13 +222,16 @@ def MAplot(dataset, annotate=None, mode="normal", deg=4, bins=30, assembly_id=No
         url_template = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies/" \
                                       + str(assembly_id) + "/get_links.json?gene_name=%3CName%3E")
         jsdata = jsdata + "var url_template = " + url_template.read() + ";"
+
+    # - export
     jsname = unique_filename_in()+".js"
-    #jsname = "data.js"
+    jsname = "data2.js"
     with open(jsname,"w") as js:
         js.write(jsdata)
 
-    jsname = None
+    #jsname = None
     return figname, jsname
+
 
 #----------------------------------------------------------#
 
