@@ -15,9 +15,10 @@ from bein import *
 from bein.util import unique_filename_in
 from scipy import stats
 from scipy.interpolate import UnivariateSpline
+from scipy.optimize import curve_fit
 from bbcflib.common import timer
-#import matplotlib
-#matplotlib.use('Agg') #trying to avoid problems with -X ssh sessions (force backend)
+import matplotlib
+matplotlib.use('Agg', warn=False) #trying to avoid problems with -X ssh sessions (force backend)
 import matplotlib.pyplot as plt
 import pdb
 
@@ -27,7 +28,8 @@ usage = """maplot.py [-h] [-l limspath] [-u via] [-m mode] [-d deg] [-b bins] [-
 Creates an `MA-plot` to compare transcription levels of a set of genes
 (or other features) in two different conditions.
 
-**Input**: CSV files with rows of the form (feature_name, mean_expression, fold_change).
+**Input**: CSV files with rows of the form
+(feature_name, expression_in_condition1, expression_in_condition2).
 **Output**: (str,str) - the name of the .png file produced, and the name of a json
 containing enough information to reconstruct the plot using Javascript.
 
@@ -52,8 +54,7 @@ Note: the assembly_id is used to add more information on features into the json 
 class Usage(Exception):
     def __init__(self,  msg):
         self.msg = msg
-        
-
+    
 def MAplot(dataset, annotate=None, mode="normal", deg=4, bins=30, assembly_id=None, quantiles=True):
     """
     Creates an "MA-plot" to compare transcription levels of a set of genes
@@ -73,29 +74,34 @@ def MAplot(dataset, annotate=None, mode="normal", deg=4, bins=30, assembly_id=No
 
     # Extract data from CSV
     if isinstance(dataset,str): dataset = [dataset]
-    names=[]; means=[]; ratios=[]; points=[]; delimiter=None;groups={}
+    names=[]; means=[]; ratios=[]; pvals=[]; points=[]; delimiter=None; groups={}
     for data in dataset:
         with open(data,'r') as f:
             header = f.readline()
             for d in ['\t',',',' ',':','-']:
-                if len(header.split(d)) == 3:
+                if len(header.split(d)) in [3,4]:
                     delimiter = d; break;
             if not delimiter:
                 print """Each line of the CSV file must be of the form \n
-                         Feature_name    Mean    fold_change \n
+                         Feature_name    Expression_cond1    Expression_cond2 \n
                          Accepted delimiters: (space) , : - \t    """
             csvreader = csv.reader(f, delimiter=delimiter, quoting=csv.QUOTE_NONE)
-            n=[]; m=[]; r=[]
+            n=[]; m=[]; r=[]; p=[]
             for row in csvreader:
                 #numpy.seterr(all='raise')
-                if float(row[1])>0 and float(row[2])>0:
+                c1 = float(row[1]); c2 = float(row[2])
+                if c1>0.1 and c2>0.1:
                     n.append(row[0])
-                    m.append(numpy.log10(float(row[1])))
-                    r.append(numpy.log2(float(row[2])))
-        groups[data] = zip(n, m, r)
-        names.extend(n); means.extend(m); ratios.extend(r)
-    points = zip(names, means, ratios)
+                    m.append(numpy.log10(numpy.sqrt(c1*c2)))
+                    r.append(numpy.log2(c1/c2))
+                if len(row)==4:
+                    p.append(float(row[3]))
+                else: p.append(None)
+        groups[data] = zip(n, m, r, p)
+        names.extend(n); means.extend(m); ratios.extend(r); pvals.extend(p)
+    points = zip(names, means, ratios, pvals)
     xmin = min(means); xmax = max(means); ymin = min(ratios); ymax = max(ratios)
+    xlen = abs(xmax-xmin); ylen = abs(ymax-ymin)
 
     # Figure initialization
     fig = plt.figure(figsize=[14,9])
@@ -104,9 +110,11 @@ def MAplot(dataset, annotate=None, mode="normal", deg=4, bins=30, assembly_id=No
 
     # Points
     colors = iter(["black","red","green","cyan","magenta","yellow"])
+    datacolors = {}
     for data in dataset:
         pts = zip(*groups[data])
-        ax.plot(pts[1], pts[2], ".", color=colors.next())
+        datacolors[data] = colors.next()
+        ax.plot(pts[1], pts[2], ".", color=datacolors[data])
 
     # Annotation of points
     annotes={}
@@ -121,42 +129,41 @@ def MAplot(dataset, annotate=None, mode="normal", deg=4, bins=30, assembly_id=No
                 if annote==1:
                     annotes[data] = []
                     for p in groups[data]:
-                        ax.annotate(p[0], xy=(p[1],p[2]) )
+                        ax.annotate(p[0], xy=(p[1],p[2]))
                         annotes[data].append(p[0])
 
     if quantiles:
         # Create bins
-        N = len(points); dN = N/bins #points per bin
-        rmeans = numpy.sort(means)
-        intervals = []
-        for i in range(bins):
-            intervals.append(rmeans[i*dN])
-        intervals.append(xmax)
-        intervals = numpy.array(intervals)
+        # If counts < (2,3), their mean < log10(sqrt(2*3))
+        meaningless = math.log10(math.sqrt(2*3))
+        intervals = numpy.linspace(meaningless, xmax, bins+1) #xmin?
 
-        points_in = {}; perc = {}
-        for b in range(bins):
-            points_in[b] = [p for p in points if p[1]>=intervals[b] and p[1]<intervals[b+1]]
-            perc[b] = [p[2] for p in points_in[b]]
-
+        points_in = []; perc = []
+        for i in range(len(intervals)-2,-1,-1): #from l-1 to 0, decreasing
+            p_in_i = [p for p in points if p[1]>=intervals[i] and p[1]<intervals[i+1]]
+            if len(p_in_i) < 10:
+                intervals = numpy.delete(intervals,i); bins-=1
+            else:
+                points_in.append(p_in_i)
+        points_in.reverse()
+        x = intervals[:-1]+(intervals[1:]-intervals[:-1])/2. #the middle point of each bin
+        
         # Lines (best fit of percentiles)
-        spline_annotes=[]; spline_coords={}
-        percentiles = [1,5,25,50,75,95,99]
+        spline_annotes=[]; spline_coords={};
+        percentiles = [1,5,25,50,75,90,99]
         for k in percentiles:
-            h = numpy.ones(bins)
+            h=[]
             for b in range(bins):
-                if points_in[b] != []:
-                    h[b] = stats.scoreatpercentile(perc[b], k)
-                else: h[b] = h[b-1]
-            x = intervals[:-1]+(intervals[1:]-intervals[:-1])/2.
-            spline = UnivariateSpline(x, h, k=deg)
-            xs = numpy.array(numpy.linspace(xmin, xmax, 10*bins)) #to increase spline smoothness
-            ys = numpy.array(spline(xs))
-            l = len(xs)
-            xi = numpy.arange(l)[numpy.ceil(l/6):numpy.floor(8*l/9)]
-            x_spline = xs[xi]
-            y_spline = ys[xi]
-            ax.plot(x_spline, y_spline, "-", color="blue") #ax.plot(x, h, "o", color="blue")
+                h.append( stats.scoreatpercentile([p[2] for p in points_in[b]], k) )
+
+            #xs = numpy.concatenate((x,[4])) # add a factice point (10,0) - corresponding to zero
+            #hs = numpy.concatenate((h,[0]))  # features with expression level of 10^10.
+            coeffs = numpy.polyfit(x, h, deg)
+            x_spline = numpy.array(numpy.linspace(x[0], 0.80*x[-1], 10*bins))
+            y_spline = numpy.polyval(coeffs, x_spline)
+
+            ax.plot(x_spline, y_spline, "-", color="blue")
+            ax.plot(x, h, "o", color="blue")
             spline_annotes.append((k,x_spline[0],y_spline[0])) #quantile percentages
             spline_coords[k] = zip(x_spline,y_spline)
 
@@ -168,61 +175,60 @@ def MAplot(dataset, annotate=None, mode="normal", deg=4, bins=30, assembly_id=No
     # Output figure
     ax.set_xlabel("Log10 of sqrt(x1*x2)")
     ax.set_ylabel("Log2 of x1/x2")
+    plt.xlim([xmin-0.1*xlen,xmax+0.1*xlen])
+    plt.ylim([ymin-0.1*ylen,ymax+0.1*ylen])
     figname = unique_filename_in()+".png"
     fig.savefig(figname)
 
     # Output for Javascript
     def rgb_to_hex(rgb):
         return '#%02x%02x%02x' % rgb
-    ## jsdata = [{"label": "Data points",
-    ##            "data": points,
-    ##            "labels": annotes,
-    ##            "points": {"symbol":"circle", "show":True},
-    ##            "color": "black"},
-    ##           ## {"label": "Genes with p-value < " + str(alpha),
-    ##           ##  "data": redpoints,
-    ##           ##  "labels": annotes_red,
-    ##           ##  "pvals": pvals_red,
-    ##           ##  "points": {"symbol":"circle", "show":True},
-    ##           ##  "color": "red"},
-    ##           ## {"label": "Genes with p-value > " + str(alpha),
-    ##           ##  "data": blackpoints,
-    ##           ##  "labels": annotes_black,
-    ##           ##  "pvals": pvals_black,
-    ##           ##  "points": {"symbol":"circle", "show":True},
-    ##           ##  "color": "black"},
-    ##           {"label": "Mean", "data": spline_coords[50],
-    ##            "lines": {"show":True}, "color": rgb_to_hex((255,0,255)) },
-    ##           {"id": "1% Quantile", "data": spline_coords[1], "lines": {"show":True, "lineWidth":0, "fill": 0.12},
-    ##            "color": rgb_to_hex((255,0,255))},
-    ##           {"id": "5% Quantile", "data": spline_coords[5], "lines": {"show":True, "lineWidth":0, "fill": 0.18},
-    ##            "color": rgb_to_hex((255,0,255))},
-    ##           {"id": "25% Quantile", "data": spline_coords[25], "lines": {"show":True, "lineWidth":0, "fill": 0.3},
-    ##            "color": rgb_to_hex((255,0,255))},
-    ##           {"id": "75% Quantile", "data": spline_coords[75], "lines": {"show":True, "lineWidth":0, "fill": 0.3},
-    ##            "color": rgb_to_hex((255,0,255))},
-    ##           {"id": "95% Quantile", "data": spline_coords[95], "lines": {"show":True, "lineWidth":0, "fill": 0.18},
-    ##            "color": rgb_to_hex((255,0,255))},
-    ##           {"id": "99% Quantile", "data": spline_coords[99], "lines": {"show":True, "lineWidth":0, "fill": 0.12},
-    ##            "color": rgb_to_hex((255,0,255))}
-    ##          ]
-    ## splinelabels = {"id": "Spline labels",
-    ##                 "data": [spline_coords[k][0] for k in percentiles[1:-1]],
-    ##                 "points": {"show":False}, "lines": {"show":False},
-    ##                 "labels": ["1%","5%","25%","50%","75%","95%","99%"]}
-    ## jsdata = "var data = " + json.dumps(jsdata) + ";\n" \
-    ##          + "var splinelabels = " + json.dumps(splinelabels) + ";\n"
-    ## if assembly_id:
-    ##     nr_assemblies = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies.json").read()
-    ##     nr_assemblies = json.loads(nr_assemblies)
-    ##     if isinstance(assembly_id,str):
-    ##         for a in nr_assemblies:
-    ##             if a['nr_assembly']['name'] == assembly_id:
-    ##                 assembly_id = a['nr_assembly']['id']; break
-    ##     url_template = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies/" \
-    ##                                   + str(assembly_id) + "/get_links.json?gene_name=%3CName%3E")
-    ##     jsdata = jsdata + "var url_template = " + url_template.read() + ";"
-    ## jsname = unique_filename_in()+".js"
+    jsdata = []
+    for data in dataset:
+        jsdata.append({"label": "Data points from file "+os.path.basename(data),
+                       "data": groups[data],
+                       "labels": annotes.get(data),
+                       "points": {"symbol":"circle", "show":True},
+                       "color": datacolors[data]  })
+    for i in percentiles:
+        jsdata.append(
+              {"id": str(i)+" % Quantile",
+               "data": spline_coords[i],
+               "lines": {"show":True, "lineWidth":0, "fill": 0.12},
+               "color": rgb_to_hex((255,0,255))}  )
+               
+            # [{"label": "Mean", "data": spline_coords[50],
+            #    "lines": {"show":True}, "color": rgb_to_hex((255,0,255)) },
+            #   {"id": "1% Quantile", "data": spline_coords[1], "lines": {"show":True, "lineWidth":0, "fill": 0.12},
+            #    "color": rgb_to_hex((255,0,255))},
+            #   {"id": "5% Quantile", "data": spline_coords[5], "lines": {"show":True, "lineWidth":0, "fill": 0.18},
+            #    "color": rgb_to_hex((255,0,255))},
+            #   {"id": "25% Quantile", "data": spline_coords[25], "lines": {"show":True, "lineWidth":0, "fill": 0.3},
+            #    "color": rgb_to_hex((255,0,255))},
+            #   {"id": "75% Quantile", "data": spline_coords[75], "lines": {"show":True, "lineWidth":0, "fill": 0.3},
+            #    "color": rgb_to_hex((255,0,255))},
+            #   {"id": "95% Quantile", "data": spline_coords[95], "lines": {"show":True, "lineWidth":0, "fill": 0.18},
+            #    "color": rgb_to_hex((255,0,255))},
+            #   {"id": "99% Quantile", "data": spline_coords[99], "lines": {"show":True, "lineWidth":0, "fill": 0.12},
+            #    "color": rgb_to_hex((255,0,255))}
+            #  ])
+    splinelabels = {"id": "Spline labels",
+                    "data": [spline_coords[k][0] for k in percentiles[1:-1]],
+                    "points": {"show":False}, "lines": {"show":False},
+                    "labels": ["1%","5%","25%","50%","75%","95%","99%"]}
+    jsdata = "var data = " + json.dumps(jsdata) + ";\n" \
+             + "var splinelabels = " + json.dumps(splinelabels) + ";\n"
+    if assembly_id:
+        nr_assemblies = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies.json").read()
+        nr_assemblies = json.loads(nr_assemblies)
+        if isinstance(assembly_id,str):
+            for a in nr_assemblies:
+                if a['nr_assembly']['name'] == assembly_id:
+                    assembly_id = a['nr_assembly']['id']; break
+        url_template = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies/" \
+                                      + str(assembly_id) + "/get_links.json?gene_name=%3CName%3E")
+        jsdata = jsdata + "var url_template = " + url_template.read() + ";"
+    jsname = unique_filename_in()+".js"
     ## #jsname = "data.js"
     ## with open(jsname,"w") as js:
     ##     js.write(jsdata)
@@ -326,7 +332,7 @@ def main(argv=None):
     bins = 30
     assembly_id = None
     annotate = None
-    quantiles = True
+    quantiles = 'True'
 
     if argv is None:
         argv = sys.argv
@@ -367,15 +373,16 @@ def main(argv=None):
 
         if annotate: annotate = [eval(a) for a in annotate] # 0100101 -> [0,1,0,0,1,0,1]
         if quantiles != 'True': quantiles = False
+        args = [os.path.abspath(a) for a in args]
 
         # Program body #
         if limspath:
             M = MiniLIMS(limspath)
             with execution(M) as ex:
-                figname, jsname = MAplot(args, mode=mode, deg=deg, bins=bins,
-                                         assembly_id=assembly_id, annotate=annotate)
-                ex.add(figname, description="png:MAplot of data from file: "+data)
-                ex.add(jsname, description="json:json output for file: "+data)
+                figname, jsname = MAplot(args, mode=mode, deg=deg, bins=bins, assembly_id=assembly_id,
+                                         annotate=annotate, quantiles=quantiles)
+                if figname: ex.add(figname, description="png:MAplot of data")
+                if jsname: ex.add(jsname, description="json:output for JavaScript")
             results_to_json(M, ex.id)
         else:
             figname, jsname = MAplot(args, mode=mode, deg=deg, bins=bins, assembly_id=assembly_id,
