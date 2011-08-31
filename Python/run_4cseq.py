@@ -102,7 +102,7 @@ def main(argv = None):
                                                           assembly.nr_assembly_id,
                                                           gdv_url=gl['gdv']['url'], public=True )
                     add_pickle( ex, gdv_project, description='py:gdv_json' )
-           [gdv.add_gdv_sqlite( gl['gdv']['key'], gl['gdv']['email'],
+            [gdv.add_gdv_sqlite( gl['gdv']['key'], gl['gdv']['email'],
                                  job.options['gdv_project']['project_id'],
                                  url=download_url+str(k), 
                                  name = re.sub('\.sql','',str(f)),
