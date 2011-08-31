@@ -39,7 +39,7 @@ Options:
 -m, --mode   'normal' - static .pgn output - or 'interactive' - clic to display gene names.
 -d, --deg    degree of the interpolant percentile splines.
 -b, --bins   number of divisions of the x axis to calculate percentiles.
--a, --aid    identifier for the Genrep assembly (e.g. 'hg19', or 76)
+-a, --aid    identifier for the Genrep assembly (e.g. 'hg19')
 -q, --quantiles   if other than True, quantile splines wont't be drawn. Thus may
 improve speed and lisibility in some cases.
 -n, --annotate    indication of which datasets to annotate (if 'normal' mode). Must be a
@@ -81,9 +81,9 @@ def MAplot(dataset, annotate=None, mode="normal", deg=4, bins=30, assembly_id=No
                 if len(header.split(d)) in [3,4]:
                     delimiter = d; break;
             if not delimiter:
-                print """Each line of the CSV file must be of the form \n
+                print """\n Each line of the CSV file must be of the form \n
                          Feature_name    Expression_cond1    Expression_cond2 \n
-                         Accepted delimiters: (space) , : - \t    """
+                         Accepted delimiters: (space) , : - \\t    \n"""
             csvreader = csv.reader(f, delimiter=delimiter, quoting=csv.QUOTE_NONE)
             n=[]; m=[]; r=[]; p=[]
             for row in csvreader:
@@ -323,7 +323,7 @@ def main(argv=None):
     try:
         try:
             opts,args = getopt.getopt(sys.argv[1:],"hl:u:m:d:b:a:n:q:",
-                         ["help","via","mode","deg","bins","aid","annotate","quantiles"])
+                         ["help","lims=","via=","mode=","deg=","bins=","aid=","annotate=","quantiles="])
         except getopt.error, msg:
             raise Usage(msg)
         for o, a in opts:
