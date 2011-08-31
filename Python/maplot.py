@@ -156,8 +156,8 @@ def MAplot(dataset, annotate=None, mode="normal", deg=4, bins=30, assembly_id=No
             for b in range(bins):
                 h.append( stats.scoreatpercentile([p[2] for p in points_in[b]], k) )
 
-            #xs = numpy.concatenate((x,[4])) # add a factice point (10,0) - corresponding to zero
-            #hs = numpy.concatenate((h,[0]))  # features with expression level of 10^10.
+            #xs = numpy.concatenate((x,[4]))  # add a factice point (4,0) - corresponding to zero
+            #hs = numpy.concatenate((h,[0]))  # features with expression level of 10^4.
             coeffs = numpy.polyfit(x, h, deg)
             x_spline = numpy.array(numpy.linspace(x[0], 0.80*x[-1], 10*bins))
             y_spline = numpy.polyval(coeffs, x_spline)
@@ -229,9 +229,9 @@ def MAplot(dataset, annotate=None, mode="normal", deg=4, bins=30, assembly_id=No
                                       + str(assembly_id) + "/get_links.json?gene_name=%3CName%3E")
         jsdata = jsdata + "var url_template = " + url_template.read() + ";"
     jsname = unique_filename_in()+".js"
-    ## #jsname = "data.js"
-    ## with open(jsname,"w") as js:
-    ##     js.write(jsdata)
+    #jsname = "data.js"
+    with open(jsname,"w") as js:
+        js.write(jsdata)
 
     jsname = None
     return figname, jsname
