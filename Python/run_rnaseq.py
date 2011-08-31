@@ -11,7 +11,7 @@ from bbcflib import common
 from bbcflib.mapseq import get_fastq_files, import_mapseq_results
 
 usage = """run_rnaseq.py [-h] [-u via] [-w wdir] [-k job_key] [-c config_file] [-d minilims] [-m minilims]
-E.g. >>> python run_rnaseq.py -u lsf -c jobtest.txt -m archive/mapseq_full2_lims -d rnaseq
+E.g. >>> python run_rnaseq.py -u lsf -c jobtest.txt -m archive/RNAseq_full -d rnaseq
 
 -h           Print this message and exit
 -u via       Run executions using method 'via' (can be "local" or "lsf")
@@ -44,6 +44,7 @@ def main(argv=None):
     ms_limspath = None
     hts_key = None
     working_dir = os.getcwd()
+    bam_files = False
 
     if argv is None:
         argv = sys.argv
@@ -71,7 +72,7 @@ def main(argv=None):
                 limspath = a
             elif o in ("-m", "--mapseq_minilims"):
                 ms_limspath = a
-                MS = MiniLIMS(ms_limspath)
+                bam_files = True
             elif o in ("-k", "--key"):
                 hts_key = a
             elif o in ("-c", "--config"):
@@ -105,11 +106,11 @@ def main(argv=None):
             
         with execution(M) as ex:
             #if ms_limspath:
+            #    MS = MiniLIMS(ms_limspath)
             #    last_execution_id = MS.search_executions(fails=False)[-1]
             #    bam_files, job = import_mapseq_results(last_execution_id, MS,
             #                                           ex.working_directory, gl['hts_mapseq']['url'])
             #else:
-            bam_files = None
             job = get_fastq_files( job, ex.working_directory)
             print "Start workflow"
             print "Current working directory:", ex.working_directory
