@@ -16,7 +16,7 @@ from bein.util import unique_filename_in
 from scipy import stats
 from scipy.interpolate import UnivariateSpline
 from scipy.optimize import curve_fit
-from bbcflib.common import timer
+from bbcflib.common import timer, results_to_json
 import matplotlib
 matplotlib.use('Agg', warn=False) #force backend (trying to avoid problems with -X ssh sessions)
 import matplotlib.pyplot as plt
@@ -303,19 +303,6 @@ class AnnoteFinder:
     annotesToDraw = [(x,y,a) for x,y,a in self.data if a==annote]
     for x,y,a in annotesToDraw:
       self.drawAnnote(self.axis, x, y, a)
-
-
-def results_to_json(lims, exid):
-    """Create a JSON string describing the results of execution *exid*.
-
-    The execution is sought in *lims*, and all its output files and
-    their descriptions are written to the string.
-    """
-    produced_file_ids = lims.search_files(source=('execution',exid))
-    d = dict([(lims.fetch_file(i)['description'], lims.path_to_file(i))
-              for i in produced_file_ids])
-    j = json.dumps(d)
-    return j
 
 
 #---------------------------- MAIN ------------------------------#
