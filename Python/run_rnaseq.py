@@ -10,7 +10,7 @@ from bbcflib import frontend
 from bbcflib import common
 from bbcflib.mapseq import get_fastq_files, get_bam_wig_files
 
-usage = """run_rnaseq.py [-h] [-u via] [-w wdir] [-k job_key] [-c config_file] [-d minilims] [-m minilims]
+usage = """run_rnaseq.py [-h] [-u via] [-w wdir] [-k job_key] [-c config_file] [-d minilims] [-m minilims] [-t target]
 E.g. >>> python run_rnaseq.py -u lsf -c jobtest.txt -m archive/RNAseq_full -d rnaseq
 
 -h           Print this message and exit
@@ -52,7 +52,7 @@ def main(argv=None):
         argv = sys.argv
     try:
         try:
-            opts,args = getopt.getopt(sys.argv[1:],"hu:k:d:w:m:c:t:",
+            opts,args = getopt.getopt(sys.argv[1:],"hu:k:d:m:w:c:t:",
                 ["help","via=","key=","minilims=","mapseq_minilims=","working-directory=","config=","target="])
         except getopt.error, msg:
             raise Usage(msg)
@@ -79,7 +79,7 @@ def main(argv=None):
                 hts_key = a
             elif o in ("-c", "--config"):
                 config_file = a
-            elif o in ("-t", "--config"):
+            elif o in ("-t", "--target"):
                 target = a
             else: raise Usage("Unhandled option: " + o)
 
