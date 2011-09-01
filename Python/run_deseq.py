@@ -58,7 +58,7 @@ def main(argv = None):
         optargs = {}
         if not maplot=="None": optargs['maplot'] = maplot
         
-        result = inference(cond1_label, cond1, cond2_label, cond2, assembly_id, target, method, **optargs)
+        result = comparisons(cond1_label, cond1, cond2_label, cond2, assembly_id, target, method, **optargs)
         with open(output,"wb") as f:
             pickle.dump(result,f)
         

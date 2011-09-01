@@ -8,7 +8,7 @@ import getopt
 from bbcflib.rnaseq import *
 from bbcflib import frontend
 from bbcflib import common
-from bbcflib.mapseq import get_fastq_files, import_mapseq_results
+from bbcflib.mapseq import get_fastq_files, get_bam_wig_files
 
 usage = """run_rnaseq.py [-h] [-u via] [-w wdir] [-k job_key] [-c config_file] [-d minilims] [-m minilims]
 E.g. >>> python run_rnaseq.py -u lsf -c jobtest.txt -m archive/RNAseq_full -d rnaseq
@@ -105,13 +105,17 @@ def main(argv=None):
         job.options['discard_pcr_duplicates'] = job.options.get('discard_pcr_duplicates') or False            
             
         with execution(M) as ex:
-            #if ms_limspath:
-            #    MS = MiniLIMS(ms_limspath)
-            #    last_execution_id = MS.search_executions(fails=False)[-1]
-            #    bam_files, job = import_mapseq_results(last_execution_id, MS,
-            #                                           ex.working_directory, gl['hts_mapseq']['url'])
-            #else:
-            job = get_fastq_files( job, ex.working_directory)
+            if ms_limspath:
+                print "Loading BAM files..."
+                (bam_files, job) = get_bam_wig_files(ex, job, minilims=ms_limspath, hts_url=mapseq_url,
+                                                        script_path=gl.get('script_path') or '', via=via )
+                print "Loaded."
+            else:
+                print "Alignment..."
+                job = get_fastq_files( job, ex.working_directory)
+                fastq_root = os.path.abspath(ex.working_directory)
+                bam_files = map_groups(ex, job, fastq_root, assembly_or_dict = assembly)
+                print "Reads aligned."
             print "Start workflow"
             print "Current working directory:", ex.working_directory
             rnaseq_workflow(ex, job, assembly, target=["genes","exons","transcripts"],
