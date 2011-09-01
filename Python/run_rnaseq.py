@@ -20,6 +20,7 @@ E.g. >>> python run_rnaseq.py -u lsf -c jobtest.txt -m archive/RNAseq_full -d rn
 -m minilims  MiniLIMS where a previous Mapseq execution and files has been stored.
 -k job_key   Alphanumeric key specifying the job
 -c file      Config file
+-t target    Target features, inside of quotes, separated by spaces. E.g. "genes exons transcripts"
 """
 
 class Usage(Exception):
@@ -40,18 +41,19 @@ def results_to_json(lims, exid):
 
 def main(argv=None):
     via = "lsf"
-    limspath = "rnaseq"
+    limspath = None
     ms_limspath = None
     hts_key = None
     working_dir = os.getcwd()
-    bam_files = False
+    bam_files = None
+    target = None
 
     if argv is None:
         argv = sys.argv
     try:
         try:
-            opts,args = getopt.getopt(sys.argv[1:],"hu:k:d:w:m:c:",
-                ["help","via","key","minilims","mapseq_minilims","working-directory","config"])
+            opts,args = getopt.getopt(sys.argv[1:],"hu:k:d:w:m:c:t:",
+                ["help","via=","key=","minilims=","mapseq_minilims=","working-directory=","config=","target="])
         except getopt.error, msg:
             raise Usage(msg)
         for o, a in opts:
@@ -77,12 +79,16 @@ def main(argv=None):
                 hts_key = a
             elif o in ("-c", "--config"):
                 config_file = a
+            elif o in ("-t", "--config"):
+                target = a
             else: raise Usage("Unhandled option: " + o)
 
         if len(args) != 0:
             raise Usage("workflow.py takes no arguments without specifiers [-x arg].")
         if limspath == None:
             raise Usage("Must specify a MiniLIMS to attach to")
+        if target: target = target.split(" ")
+        
 
         M = MiniLIMS(limspath)
         if hts_key:
@@ -103,7 +109,8 @@ def main(argv=None):
         job.options['ucsc_bigwig'] = job.options.get('ucsc_bigwig') or True
         job.options['gdv_project'] = job.options.get('gdv_project') or False
         job.options['discard_pcr_duplicates'] = job.options.get('discard_pcr_duplicates') or False            
-            
+
+        # Program body #
         with execution(M) as ex:
             if ms_limspath:
                 print "Loading BAM files..."
@@ -118,8 +125,9 @@ def main(argv=None):
                 print "Reads aligned."
             print "Start workflow"
             print "Current working directory:", ex.working_directory
-            rnaseq_workflow(ex, job, assembly, target=["genes","exons","transcripts"],
-                            bam_files=bam_files, via=via, maplot="normal")
+            rnaseq_workflow(ex, job, assembly, bam_files,
+                            target=["genes","exons","transcripts"], via=via)
+        # End of program body #
             
         results_to_json(M, ex.id)
 
