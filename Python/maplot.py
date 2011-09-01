@@ -87,9 +87,14 @@ def MAplot(dataset, annotate=None, mode="normal", deg=4, bins=30, assembly_id=No
             csvreader = csv.reader(f, delimiter=delimiter, quoting=csv.QUOTE_NONE)
             n=[]; m=[]; r=[]; p=[]
             for row in csvreader:
-                #numpy.seterr(all='raise')
+                #numpy.seterr(all='raise') # testing
                 c1 = float(row[1]); c2 = float(row[2])
-                if c1>0.1 and c2>0.1:
+                if c1>=1 and c2>=1 and c1<=10e8 and c2<=10e8:
+                    """ Counts of 1 may become slightly inferior after normalization processes,
+                    thus features with count 1 may be excluded - they shouldn't matter anyway.
+                    Another threshold of 10^8 was added in case operations on counts suffered
+                    of numerical instability or bad conversions of NA values.
+                    You may want to modify these values. """
                     n.append(row[0])
                     m.append(numpy.log10(numpy.sqrt(c1*c2)))
                     r.append(numpy.log2(c1/c2))
@@ -118,8 +123,9 @@ def MAplot(dataset, annotate=None, mode="normal", deg=4, bins=30, assembly_id=No
     # Lines (best fit of percentiles)
     if quantiles:
         # Create bins
-        # If counts < (2,3), their mean < log10(sqrt(2*3))
-        meaningless = math.log10(math.sqrt(2*3))
+        """ If counts < (2,3), their mean < log10(sqrt(2*3)). You may want to
+        modify this value to obtaine nicer splines for your data. """
+        meaningless = math.log10(math.sqrt(6))
         intervals = numpy.linspace(meaningless, xmax, bins+1) #xmin?
 
         points_in = []
@@ -143,11 +149,11 @@ def MAplot(dataset, annotate=None, mode="normal", deg=4, bins=30, assembly_id=No
             #xs = numpy.concatenate((x,[4])) # add a factice point (10,0) - corresponding to zero
             #hs = numpy.concatenate((h,[0]))  # features with expression level of 10^10.
             coeffs = numpy.polyfit(x, h, deg)
-            x_spline = numpy.array(numpy.linspace(x[0], 0.80*x[-1], 10*bins))
+            x_spline = numpy.array(numpy.linspace(x[0], 0.85*x[-1], 10*bins))
             y_spline = numpy.polyval(coeffs, x_spline)
 
             ax.plot(x_spline, y_spline, "-", color="blue")
-            #ax.plot(x, h, "o", color="blue")
+            #ax.plot(x, h, "o", color="blue") # testing
             spline_annotes.append((k,x_spline[0],y_spline[0])) #quantile percentages
             spline_coords[k] = zip(x_spline,y_spline)
 
