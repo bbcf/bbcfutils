@@ -115,22 +115,6 @@ def MAplot(dataset, annotate=None, mode="normal", deg=4, bins=30, assembly_id=No
         datacolors[data] = colors.next()
         ax.plot(pts[1], pts[2], ".", color=datacolors[data])
 
-    # Annotation of points
-    annotes={}
-    if mode == "interactive":
-        af = AnnoteFinder( means, ratios, names )
-        plt.connect('button_press_event', af)
-        plt.draw()
-        plt.show()
-    elif mode == "normal":
-        if annotate:
-            for data,annote in zip(dataset,annotate):
-                if annote==1:
-                    annotes[data] = []
-                    for p in groups[data]:
-                        ax.annotate(p[0], xy=(p[1],p[2]))
-                        annotes[data].append(p[0])
-
     # Lines (best fit of percentiles)
     if quantiles:
         # Create bins
@@ -172,6 +156,22 @@ def MAplot(dataset, annotate=None, mode="normal", deg=4, bins=30, assembly_id=No
             ax.annotate(str(sa[0])+"%", xy=(sa[1],sa[2]), xytext=(-33,-5), textcoords='offset points',
                     bbox=dict(facecolor="white",edgecolor=None,boxstyle="square,pad=.4"))
 
+    # Annotation of points
+    annotes={}
+    if mode == "interactive":
+        af = AnnoteFinder( means, ratios, names )
+        plt.connect('button_press_event', af)
+        plt.draw()
+        plt.show()
+    elif mode == "normal":
+        if annotate:
+            for data,annote in zip(dataset,annotate):
+                if annote==1:
+                    annotes[data] = []
+                    for p in groups[data]:
+                        ax.annotate(p[0], xy=(p[1],p[2]))
+                        annotes[data].append(p[0])
+    
     # Output figure
     ax.set_xlabel("Log10 of sqrt(x1*x2)")
     ax.set_ylabel("Log2 of x1/x2")
@@ -258,7 +258,7 @@ class AnnoteFinder:
     self.xtol = xtol
     self.ytol = ytol
     if axis is None:
-      self.axis = pylab.gca()
+      self.axis = plt.gca()
     else:
       self.axis= axis
     self.drawnAnnotations = {}
