@@ -93,7 +93,7 @@ def main(argv = None):
                                            gl['script_path'])
         allfiles = common.get_files( ex.id, M )
         job.options['gdv_project'] = job.options.get('gdv_project') or True
-        if 1<0 and 'gdv_project' in job.options and 'sql' in allfiles:
+        if 'gdv_project' in job.options and 'sql' in allfiles:
             allfiles['url'] = {job.options['gdv_project']['public_url']: 'GDV view'}
             download_url = gl['hts_4cseq']['download']
             if job.options['gdv_project']:
