@@ -1,22 +1,15 @@
 #!/bin/env python
-import getopt
-import os
-import sys
+import os, sys, getopt
 import pickle
-import numpy
-from bbcflib.rnaseq import inference
-import rpy2.robjects as robjects
-import rpy2.robjects.packages as rpackages
-import rpy2.robjects.numpy2ri
-import rpy2.rlike.container as rlc
+from bbcflib.rnaseq import comparisons
 
-usage = """run_deseq.py cond1_file cond2_file cond1_label cond2_label assembly_id target method maplot output
+usage = """run_deseq.py cond1_file cond2_file cond1_label cond2_label assembly_id target method output
 
-*cond1_file*, *cond2_file*      arrays of counts
+*cond1_file*, *cond2_file*      arrays (.pickle) of counts
 *cond1_label*, *cond2_label*    string describing the respective condition
-*assembly_id*                   integer or string describing the assembly (e.g. 'hg19' or 76)
-*method*                        'normal' or 'blind', for DESeq
-*maplot*                        'interactive' - clic to see names - or 'normal' - produces a .png
+*assembly_id*                   assembly ID (e.g. 'hg19' or 76)
+*target*                        array (.pickle) indicating the target features (e.g. ['genes','exons'])
+*method*                        'normal', 'blind' or 'pooled', for DESeq
 *output*                        name of the output pickle file
 """
 
@@ -26,7 +19,7 @@ class Usage(Exception):
 
 def main(argv = None):
     """
-    Usage: run_deseq.py cond1_file cond2_file cond1_label cond2_label assembly_id target method maplot output
+    Usage: run_deseq.py cond1_file cond2_file cond1_label cond2_label assembly_id target method output
     """
     if argv is None:
         argv = sys.argv[1:]
@@ -51,12 +44,10 @@ def main(argv = None):
             target = pickle.load(f)
             
         method = str(argv[6])
-        maplot = str(argv[7])
-
-        output = str(argv[8])
+        output = str(argv[7])
 
         optargs = {}
-        if not maplot=="None": optargs['maplot'] = maplot
+        #if not maplot=="None": optargs['maplot'] = maplot
         
         result = comparisons(cond1_label, cond1, cond2_label, cond2, assembly_id, target, method, **optargs)
         with open(output,"wb") as f:

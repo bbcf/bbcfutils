@@ -87,9 +87,14 @@ def MAplot(dataset, annotate=None, mode="normal", deg=4, bins=30, assembly_id=No
             csvreader = csv.reader(f, delimiter=delimiter, quoting=csv.QUOTE_NONE)
             n=[]; m=[]; r=[]; p=[]
             for row in csvreader:
-                #numpy.seterr(all='raise')
+                #numpy.seterr(all='raise') # testing
                 c1 = float(row[1]); c2 = float(row[2])
-                if c1>0.1 and c2>0.1:
+                if c1>=1 and c2>=1 and c1<=10e8 and c2<=10e8:
+                    """ Counts of 1 may become slightly inferior after normalization processes,
+                    thus features with count 1 may be excluded - they shouldn't matter anyway.
+                    Another threshold of 10^8 was added in case operations on counts suffered
+                    of numerical instability or bad conversions of NA values.
+                    You may want to modify these values. """
                     n.append(row[0])
                     m.append(numpy.log10(numpy.sqrt(c1*c2)))
                     r.append(numpy.log2(c1/c2))
@@ -118,8 +123,9 @@ def MAplot(dataset, annotate=None, mode="normal", deg=4, bins=30, assembly_id=No
     # Lines (best fit of percentiles)
     if quantiles:
         # Create bins
-        # If counts < (2,3), their mean < log10(sqrt(2*3))
-        meaningless = math.log10(math.sqrt(2*3))
+        """ If counts < (2,3), their mean < log10(sqrt(2*3)). You may want to
+        modify this value to obtaine nicer splines for your data. """
+        meaningless = math.log10(math.sqrt(6))
         intervals = numpy.linspace(meaningless, xmax, bins+1) #xmin?
 
         points_in = []
@@ -143,11 +149,11 @@ def MAplot(dataset, annotate=None, mode="normal", deg=4, bins=30, assembly_id=No
             #xs = numpy.concatenate((x,[4])) # add a factice point (10,0) - corresponding to zero
             #hs = numpy.concatenate((h,[0]))  # features with expression level of 10^10.
             coeffs = numpy.polyfit(x, h, deg)
-            x_spline = numpy.array(numpy.linspace(x[0], 0.80*x[-1], 10*bins))
+            x_spline = numpy.array(numpy.linspace(x[0], 0.85*x[-1], 10*bins))
             y_spline = numpy.polyval(coeffs, x_spline)
 
             ax.plot(x_spline, y_spline, "-", color="blue")
-            #ax.plot(x, h, "o", color="blue")
+            #ax.plot(x, h, "o", color="blue") # testing
             spline_annotes.append((k,x_spline[0],y_spline[0])) #quantile percentages
             spline_coords[k] = zip(x_spline,y_spline)
 
@@ -187,11 +193,16 @@ def MAplot(dataset, annotate=None, mode="normal", deg=4, bins=30, assembly_id=No
     jsdata = []
     # - data points
     for data in dataset:
-        jsdata.append({"label": "Data points from file "+os.path.basename(data),
-                       "data": groups[data],
+        name = os.path.basename(data)
+        gdata = zip(*groups[data])
+        pvals = gdata[3]
+        datapts = zip(*gdata[1:3])
+        jsdata.append({"label": "Data points from file "+name,
+                       "data": datapts,
                        "labels": annotes.get(data),
                        "points": {"symbol":"circle", "show":True},
-                       "color": datacolors[data] })
+                       "color": datacolors[data],
+                       "pvals": pvals})
     # - mean
     jsdata.append({"label": "Mean", "data": spline_coords[50],
                    "lines": {"show":True}, "color": rgb_to_hex((255,0,255)) })
@@ -205,8 +216,9 @@ def MAplot(dataset, annotate=None, mode="normal", deg=4, bins=30, assembly_id=No
                        "lines": {"show":True, "lineWidth":0, "fill": transparencies.next()},
                        "color": rgb_to_hex((255,0,255)) })
     splinelabels = {"id": "Spline labels",
-                    "data": [spline_coords[k][0] for k in percentiles[1:-1]],
-                    "points": {"show":False}, "lines": {"show":False},
+                    "data": [spline_coords[k][0] for k in percentiles],
+                    "points": {"show":False},
+                    "lines": {"show":False},
                     "labels": ["1%","5%","25%","50%","75%","95%","99%"]}
     jsdata = "var data = " + json.dumps(jsdata) + ";\n" \
              + "var splinelabels = " + json.dumps(splinelabels) + ";\n"
@@ -215,17 +227,18 @@ def MAplot(dataset, annotate=None, mode="normal", deg=4, bins=30, assembly_id=No
     if assembly_id:
         nr_assemblies = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies.json").read()
         nr_assemblies = json.loads(nr_assemblies)
-        if isinstance(assembly_id,str):
-            for a in nr_assemblies:
-                if a['nr_assembly']['name'] == assembly_id:
-                    assembly_id = a['nr_assembly']['id']; break
-        url_template = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies/" \
-                                      + str(assembly_id) + "/get_links.json?gene_name=%3CName%3E")
+        for a in nr_assemblies:
+            if a['nr_assembly']['name'] == assembly_id or a['nr_assembly']['id'] == assembly_id:
+                    assembly_id = a['nr_assembly']['id'];
+                    md5 = a['nr_assembly']['md5']; break
+        url_template = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies/" +
+                        "get_links/" + str(assembly_id) + ".json?gene_name=%3CName%3E&md5=" + md5)
         jsdata = jsdata + "var url_template = " + url_template.read() + ";"
+    else: jsdata = jsdata + "var url_template = null;"
 
     # - export
     jsname = unique_filename_in()+".js"
-    jsname = "data2.js"
+    jsname = "data2.txt"
     with open(jsname,"w") as js:
         js.write(jsdata)
 

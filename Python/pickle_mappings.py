@@ -76,7 +76,7 @@ def main(argv=None):
 
     try:
         try:
-            opts, args = getopt.getopt(argv, "ho:r:", ["help","output","release"])
+            opts, args = getopt.getopt(argv, "ho:r:", ["help","output=","release="])
         except getopt.error, msg:
             raise Usage(msg)
         

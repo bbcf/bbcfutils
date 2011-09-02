@@ -35,9 +35,9 @@ def main(argv = None):
     try:
         try:
             opts,args = getopt.getopt(sys.argv[1:],"hu:k:d:w:m:c:",
-                                      ["help","via","key","minilims",
-                                       "mapseq_minilims",
-                                       "working-directory","config"])
+                                      ["help","via=","key=","minilims=",
+                                       "mapseq_minilims=",
+                                       "working-directory=","config="])
         except getopt.error, msg:
             raise Usage(msg)
         for o, a in opts:
