@@ -3,10 +3,9 @@
 A High-throughput RNA-seq analysis workflow.
 
 """
-import os, sys, json
-import getopt
-from bbcflib import rnaseq, frontend, common, mapseq
-from bein.util import use_pickle
+import os, sys, json, getopt
+from bbcflib import rnaseq, frontend, common, mapseq, genrep
+from bein.util import use_pickle, unique_filename_in
 from bein import program, execution, MiniLIMS
 from bbcflib.mapseq import get_fastq_files, get_bam_wig_files
 
@@ -104,7 +103,7 @@ def main(argv=None):
         mapseq_url = None
         if 'hts_mapseq' in gl:
             mapseq_url = gl['hts_mapseq']['url']
-        g_rep = GenRep( gl['genrep_url'], gl.get('bwt_root'), intype=1 ) #intype is for mapping on the exons
+        g_rep = genrep.GenRep( gl['genrep_url'], gl.get('bwt_root'), intype=1 ) #intype is for mapping on the exons
         assembly = g_rep.assembly(assembly_id)
         job.options['ucsc_bigwig'] = job.options.get('ucsc_bigwig') or True
         job.options['gdv_project'] = job.options.get('gdv_project') or False
@@ -115,12 +114,12 @@ def main(argv=None):
         with execution(M) as ex:
             if ms_limspath:
                 print "Loading BAM files..."
-                (bam_files, job) = get_bam_wig_files(ex, job, minilims=ms_limspath, hts_url=mapseq_url,
+                (bam_files, job) = mapseq.get_bam_wig_files(ex, job, minilims=ms_limspath, hts_url=mapseq_url,
                                                         script_path=gl.get('script_path') or '', via=via )
                 print "Loaded."
             else:
                 print "Alignment..."
-                job = get_fastq_files( job, ex.working_directory)
+                job = mapseq.get_fastq_files( job, ex.working_directory)
                 fastq_root = os.path.abspath(ex.working_directory)
                 bam_files = mapseq.map_groups(ex, job, fastq_root, assembly_or_dict = assembly)
                 print "Reads aligned."
