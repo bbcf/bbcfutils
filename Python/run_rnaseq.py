@@ -5,22 +5,22 @@ A High-throughput RNA-seq analysis workflow.
 """
 import os, sys, json
 import getopt
-from bbcflib.rnaseq import *
-from bbcflib import frontend
-from bbcflib import common
+from bbcflib import rnaseq, frontend, common, mapseq
+from bein.util import use_pickle
+from bein import program, execution, MiniLIMS
 from bbcflib.mapseq import get_fastq_files, get_bam_wig_files
 
 usage = """run_rnaseq.py [-h] [-u via] [-w wdir] [-k job_key] [-c config_file] [-d minilims] [-m minilims] [-t target]
-E.g. >>> python run_rnaseq.py -u lsf -c jobtest.txt -m archive/RNAseq_full -d rnaseq
+E.g. >>> python run_rnaseq.py -u lsf -c jobbamtest.txt -m archive/RNAseq_full -d rnaseq
 
 -h           Print this message and exit
--u via       Run executions using method 'via' (can be "local" or "lsf")
+-u via       Run executions using method 'via' (can be 'local' or 'lsf')
 -w wdir      Create execution working directories in wdir
 -d minilims  MiniLIMS where RNAseq executions and files will be stored.
 -m minilims  MiniLIMS where a previous Mapseq execution and files has been stored.
 -k job_key   Alphanumeric key specifying the job
 -c file      Config file
--t target    Target features, inside of quotes, separated by spaces. E.g. "genes exons transcripts"
+-t target    Target features, inside of quotes, separated by spaces. E.g. 'genes exons transcripts'
 """
 
 class Usage(Exception):
@@ -110,6 +110,7 @@ def main(argv=None):
         job.options['gdv_project'] = job.options.get('gdv_project') or False
         job.options['discard_pcr_duplicates'] = job.options.get('discard_pcr_duplicates') or False            
 
+
         # Program body #
         with execution(M) as ex:
             if ms_limspath:
@@ -121,14 +122,15 @@ def main(argv=None):
                 print "Alignment..."
                 job = get_fastq_files( job, ex.working_directory)
                 fastq_root = os.path.abspath(ex.working_directory)
-                bam_files = map_groups(ex, job, fastq_root, assembly_or_dict = assembly)
+                bam_files = mapseq.map_groups(ex, job, fastq_root, assembly_or_dict = assembly)
                 print "Reads aligned."
             print "Start workflow"
             print "Current working directory:", ex.working_directory
-            rnaseq_workflow(ex, job, assembly, bam_files,
+            rnaseq.rnaseq_workflow(ex, job, assembly, bam_files,
                             target=["genes","exons","transcripts"], via=via)
         # End of program body #
-            
+
+
         results_to_json(M, ex.id)
 
         allfiles = common.get_files(ex.id, M)
