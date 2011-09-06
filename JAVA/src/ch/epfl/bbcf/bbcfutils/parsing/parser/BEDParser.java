@@ -61,6 +61,9 @@ public class BEDParser extends Parser{
 			Integer start,end,thickStart = null,thickEnd = null;
 			String chromosome;
 			String[] chr_start_end_name_score_strand= line.split("\\s");
+//			for(String str : chr_start_end_name_score_strand){
+//				System.out.println(str);
+//			}
 			switch(chr_start_end_name_score_strand.length){
 			case 12:blockStarts = chr_start_end_name_score_strand[11];
 			case 11:blockSizes = chr_start_end_name_score_strand[10];

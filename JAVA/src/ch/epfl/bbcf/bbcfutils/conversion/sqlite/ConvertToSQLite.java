@@ -67,7 +67,6 @@ public class ConvertToSQLite {
 		this.altsNames=new HashMap<String, String>();
 	}
 	public ConvertToSQLite(String inputPath,Extension extension,int nrAssemblyId) throws ExtensionNotRecognisedException, ParsingException{
-		System.out.println("cv to SQlite");
 		this.inputPath = inputPath;
 		this.parser = takeParser(extension);
 		this.handler = takeHandler();
@@ -104,12 +103,10 @@ public class ConvertToSQLite {
 	 */
 	private List<String> takeChromosomes(int nrAssemblyId2) throws MethodNotFoundException, IOException {
 		Assembly assembly;
-		System.out.println("take chromosomes");
 		assembly = GenrepWrapper.getAssemblyFromNrAssemblyId(nrAssemblyId2);
 		List<Chromosome> chromosomes = assembly.getChromosomes();
 		List<String> chrNames = new ArrayList<String>();
 		for(Chromosome chromosome : chromosomes){
-			System.out.println("chromosome : "+chromosome.getChr_name());
 			chrNames.add(chromosome.getChr_name());
 		}
 		return chrNames;
@@ -306,7 +303,6 @@ public class ConvertToSQLite {
 				}
 				//try to find a mapping
 				Chromosome newChr = GenrepWrapper.guessChromosome(current, assembly.getId());
-
 				if(null==newChr){//no mapping found
 					previousUnmapped=current;
 					return null;
@@ -356,11 +352,12 @@ public class ConvertToSQLite {
 
 		@Override
 		public void end() throws ParsingException {
+			System.out.println("end");
 			try {
 				construct.commit();
 				List<String> chrNames = construct.getChromosomesNames();
 				if(chrNames.isEmpty()){
-					throw new ParsingException("no chromosomes found in building the database");
+					throw new ParsingException("no chromosomes found when building the database");
 				}
 				Map<String,Integer> map = new HashMap<String, Integer>();
 				for(String chr : chrNames){
@@ -386,7 +383,7 @@ public class ConvertToSQLite {
 				construct.commit();
 				construct.close();
 			} catch (SQLException e) {
-				throw new ParsingException(e);
+				e.printStackTrace();
 			} catch (InstantiationException e) {
 				throw new ParsingException(e);
 			} catch (IllegalAccessException e) {
@@ -417,8 +414,8 @@ public class ConvertToSQLite {
 
 	public static void main(String[] args) throws MethodNotFoundException, IOException{
 		try {
-			ConvertToSQLite c = new ConvertToSQLite("/Users/jarosz/Documents/epfl/flat_files/gff/arabido.gtf",Extension.GFF);
-			c.convert("/Users/jarosz/Documents/epfl/flat_files/gff/arabido4.sql",SQLiteExtension.QUALITATIVE_EXTENDED);
+			ConvertToSQLite c = new ConvertToSQLite("/Users/jarosz/Desktop/test.BED",Extension.BED);
+			c.convert("/Users/jarosz/Desktop/test5.sql",SQLiteExtension.QUALITATIVE);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -429,6 +426,7 @@ public class ConvertToSQLite {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+	
 
 
 
