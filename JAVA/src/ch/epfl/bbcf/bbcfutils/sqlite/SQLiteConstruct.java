@@ -161,12 +161,15 @@ public class SQLiteConstruct extends SQLiteParent{
 	 * @throws SQLException 
 	 */
 	public List<String> getChromosomesNames() throws SQLException {
+		System.out.println("get chrnames");
 		List<String> chrNames = new ArrayList<String>();
 		Statement stat = connection.createStatement();
 		String query = "SELECT name FROM sqlite_master where type='table'and name!='attributes' and name!='types';";
 		ResultSet rs = getResultSet(stat, query);
 		while (rs.next()) {
-			chrNames.add(rs.getString(1));
+			String name = rs.getString(1);
+			System.out.println(name);
+			chrNames.add(name);
 		}
 		rs.close();
 		return chrNames;

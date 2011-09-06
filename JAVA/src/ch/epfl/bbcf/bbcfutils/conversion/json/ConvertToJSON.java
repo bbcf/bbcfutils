@@ -192,6 +192,7 @@ public class ConvertToJSON {
 					writeChromosome(jsonChromosome,length,dbName,ressourceUrl,types,trackName);
 
 				} catch (SQLException e) {
+					e.printStackTrace();
 					throw new ConvertToJSONException(e);
 				} catch (InstantiationException e) {
 					throw new ConvertToJSONException(e);
@@ -607,7 +608,7 @@ public class ConvertToJSON {
 			this.array = new JSONArray();
 		}
 		protected void add(final JSONArray feature){
-			this.array.put(feature);
+			this.array.put(feature);	
 		}
 		/**
 		 * write the chunk to the output and then
@@ -623,9 +624,11 @@ public class ConvertToJSON {
 	}
 
 	public static void main(String[] args){
-		ConvertToJSON c = new ConvertToJSON("/Users/jarosz/Documents/epfl/flat_files/gff/arabido.sql",SQLiteExtension.QUALITATIVE);
+		
+		
+		ConvertToJSON c = new ConvertToJSON("/Users/jarosz/Desktop/gminer_bool_not.sqlite3",SQLiteExtension.QUALITATIVE);
 		try {
-			c.convert("/Users/jarosz/Documents/epfl/flat_files/gff/","arabido8", "../../tracks", "THE_TRACK");
+			c.convert("/Users/jarosz/Desktop/","DIR", "../../tracks", "THE_TRACK");
 		} catch (ConvertToJSONException e) {
 			e.printStackTrace();
 		}

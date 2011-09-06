@@ -5,11 +5,11 @@ import ch.epfl.bbcf.bbcfutils.access.genrep.MethodNotFoundException;
 public class ParsingException extends Exception{
 
 	public ParsingException(NumberFormatException nfe, String string, int lineNb) {
-		// TODO Auto-generated constructor stub
+		super(nfe.getMessage()+"   "+string+"  at line "+lineNb);
 	}
 
 	public ParsingException(String string, int lineNb) {
-		// TODO Auto-generated constructor stub
+		super(string+"  at line "+lineNb);
 	}
 
 	public ParsingException(Exception e) {
@@ -18,7 +18,7 @@ public class ParsingException extends Exception{
 	}
 
 	public ParsingException(String string) {
-		// TODO Auto-generated constructor stub
+		super(string);
 	}
 
 }

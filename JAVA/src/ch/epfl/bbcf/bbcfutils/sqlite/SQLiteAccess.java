@@ -50,7 +50,7 @@ public class SQLiteAccess extends SQLiteParent{
 	 * @throws SQLiteAccess
 	 */
 	public static SQLiteAccess getConnectionWithDatabase(String fullPath)
-	throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException{
+			throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException{
 		Class.forName("org.sqlite.JDBC").newInstance();
 		Connection conn = DriverManager.getConnection("jdbc:sqlite:/"+fullPath);
 		conn.setAutoCommit(false);
@@ -72,7 +72,7 @@ public class SQLiteAccess extends SQLiteParent{
 	 * @throws SQLiteAccess
 	 */
 	protected static SQLiteAccess getConnectionWithDatabase(String fullPath,int limitQueriesSize)
-	throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException{
+			throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException{
 		Class.forName("org.sqlite.JDBC").newInstance();
 		Connection conn = DriverManager.getConnection("jdbc:sqlite:/"+fullPath);
 		conn.setAutoCommit(false);
@@ -154,14 +154,14 @@ public class SQLiteAccess extends SQLiteParent{
 		rs.close();
 		return result;
 	}
-	
+
 	/**
 	 * get all attributes of the file
 	 * @return a map
 	 * @throws SQLException
 	 */
 	public Map<String,String> getAttributes() throws SQLException {
-		 Map<String,String> atts = new HashMap<String, String>();
+		Map<String,String> atts = new HashMap<String, String>();
 		String query = "select * from attributes;";
 		PreparedStatement prep = connection.prepareStatement(query);
 		ResultSet rs = prep.executeQuery();
@@ -171,7 +171,7 @@ public class SQLiteAccess extends SQLiteParent{
 		rs.close();
 		return atts;
 	}
-	
+
 	public SQLiteExtension getDatatype() throws SQLException, ExtensionNotRecognisedException{
 		String datatype = getAttribute("datatype");
 		if(datatype.equalsIgnoreCase("qualitative")){
@@ -281,20 +281,20 @@ public class SQLiteAccess extends SQLiteParent{
 	}
 
 
-	
+
 	public SQLiteExtension getDatabaseDatatype() throws SQLException{
 		String q1 = "SELECT * FROM attributes where key = 'datatype' limit 1; ";
 		Statement stat = connection.createStatement();
 		ResultSet r = stat.executeQuery(q1);
 		if(r.next()){
 			String dt = r.getString("value");
-			return SQLiteExtension.valueOf(dt);
+			return SQLiteExtension.valueOf(dt.toUpperCase());
 		}
 		return null;
 	}
-	
-	
-	
+
+
+
 	public ResultSet prepareFeatures(String chr) throws SQLException {
 		String query = "SELECT * FROM "+protect(chr)+" order by start asc";
 		Statement prep = connection.createStatement();
@@ -311,16 +311,24 @@ public class SQLiteAccess extends SQLiteParent{
 		feat.setScore(r.getFloat(3));
 		return feat;
 	}
-	
-	public BioSQLiteQualitative getNextQualitativeFeature(ResultSet r, String chr) throws SQLException{
+
+	public BioSQLiteQualitative getNextQualitativeFeature(ResultSet r, String chr) throws SQLException {
 		BioSQLiteQualitative feat = new BioSQLiteQualitative();
 		feat.setChromosome(chr);
 		feat.setStart(r.getInt(1));
 		feat.setEnd(r.getInt(2));
-		feat.setScore(r.getFloat(3));
-		feat.setName(r.getString(4));
-		feat.setStrand(r.getInt(5));
-		feat.setAttributes(r.getString(6));
+		try {
+			feat.setScore(r.getFloat(3));
+		} catch (SQLException e) {}
+		try {
+			feat.setName(r.getString(4));
+		} catch (SQLException e) {}
+		try {
+			feat.setStrand(r.getInt(5));
+		} catch (SQLException e) {}
+		try {
+			feat.setAttributes(r.getString(6));
+		} catch (SQLException e) {}
 		return feat;
 	}
 	public BioSQLiteQualitativeExt getNextExtendedQualitativeFeature(ResultSet r,String chr) throws SQLException{
@@ -380,8 +388,8 @@ public class SQLiteAccess extends SQLiteParent{
 		r.close();
 		return types;
 	}
-	
-	
+
+
 
 
 }

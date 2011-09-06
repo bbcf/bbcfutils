@@ -29,12 +29,12 @@ public class Histo {
 		ArrayParam ar = new ArrayParam(i,10000,url);
 		HistogramMeta hm = new HistogramMeta(threshold, ar);
 		histogramMeta.add(hm);
-//		int megathreshold = threshold*100;
-//		int im = (int) Math.ceil(chrLength/megathreshold); 
-//		String urlm = ressourceUrl+"/"+outputName+"/"+chr+"/hist-"+megathreshold+"-{chunk}.json";
-//		ArrayParam arm = new ArrayParam(im,10000,urlm);
-//		HistogramMeta hmm = new HistogramMeta(threshold, arm);
-//		histogramMeta.add(hmm);
+		//		int megathreshold = threshold*100;
+		//		int im = (int) Math.ceil(chrLength/megathreshold); 
+		//		String urlm = ressourceUrl+"/"+outputName+"/"+chr+"/hist-"+megathreshold+"-{chunk}.json";
+		//		ArrayParam arm = new ArrayParam(im,10000,urlm);
+		//		HistogramMeta hmm = new HistogramMeta(threshold, arm);
+		//		histogramMeta.add(hmm);
 		trackData.setHistogramMeta(histogramMeta);
 		return trackData;
 	}
@@ -180,11 +180,13 @@ public class Histo {
 						max = k;
 					}
 				}
-				mean = mean/baseArray.size();
-				stat.setBases(base);
-				stat.setMax(max);
-				stat.setMean(mean);
-				stats.add(stat);
+				try{
+					mean = mean/baseArray.size();
+					stat.setBases(base);
+					stat.setMax(max);
+					stat.setMean(mean);
+					stats.add(stat);
+				} catch(ArithmeticException e){}
 			} else {
 				break;
 			}
