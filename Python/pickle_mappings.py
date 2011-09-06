@@ -14,9 +14,7 @@ trans_in_gene is a dictionary      {gene ID: [transcripts IDs]};
 exons_in_trans is a dictionary     {transcript ID: [exons IDs]}.
 """
 import cogent.db.ensembl as ensembl
-from numpy import *
-import pickle, os, sys, urllib, time, random, math, numpy, getopt
-from numpy.linalg import pinv
+import pickle, os, sys, urllib, getopt
 
 usage = """Usage: pickle_mappings.py [-h] [-o output.pickle] [-r: ensembl_release] species
 >>> pickle_mappings.py -o maptest -r 63 human
@@ -78,7 +76,7 @@ def main(argv=None):
 
     try:
         try:
-            opts, args = getopt.getopt(argv, "ho:r:", ["help","output","release"])
+            opts, args = getopt.getopt(argv, "ho:r:", ["help","output=","release="])
         except getopt.error, msg:
             raise Usage(msg)
         
