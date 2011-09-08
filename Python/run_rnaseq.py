@@ -4,10 +4,9 @@ A High-throughput RNA-seq analysis workflow.
 
 """
 import os, sys, json, getopt
-from bbcflib import rnaseq, frontend, common, mapseq, genrep
+from bbcflib import rnaseq, frontend, common, mapseq, genrep, email
 from bein.util import use_pickle, unique_filename_in
 from bein import program, execution, MiniLIMS
-from bbcflib.mapseq import get_fastq_files, get_bam_wig_files
 
 usage = """run_rnaseq.py [-h] [-u via] [-w wdir] [-k job_key] [-c config_file] [-d minilims] [-m minilims] [-t target]
 E.g. >>> python run_rnaseq.py -u lsf -c jobbamtest.txt -m archive/RNAseq_full -d rnaseq
@@ -41,7 +40,7 @@ def results_to_json(lims, exid):
 def main(argv=None):
     via = "lsf"
     limspath = None
-    ms_limspath = None
+    ms_limspath = "/data/htsstation/mapseq/mapseq_minilims"
     hts_key = None
     working_dir = os.getcwd()
     bam_files = None
@@ -103,7 +102,8 @@ def main(argv=None):
         mapseq_url = None
         if 'hts_mapseq' in gl:
             mapseq_url = gl['hts_mapseq']['url']
-        g_rep = genrep.GenRep( gl['genrep_url'], gl.get('bwt_root'), intype=1 ) #intype is for mapping on the exons
+        g_rep = genrep.GenRep( gl['genrep_url'], gl.get('bwt_root'), intype=1 )
+            #intype is for mapping on the exons (intype=1) or transcriptome (intype=2)
         assembly = g_rep.assembly(assembly_id)
         job.options['ucsc_bigwig'] = job.options.get('ucsc_bigwig') or True
         job.options['gdv_project'] = job.options.get('gdv_project') or False
@@ -111,7 +111,7 @@ def main(argv=None):
 
 
         # Program body #
-        with execution(M) as ex:
+        with execution(M, description=hts_key, remote_working_directory=working_dir ) as ex:
             if ms_limspath:
                 print "Loading BAM files..."
                 (bam_files, job) = mapseq.get_bam_wig_files(ex, job, minilims=ms_limspath, hts_url=mapseq_url,
