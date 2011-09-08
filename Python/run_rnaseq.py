@@ -9,13 +9,14 @@ from bein.util import use_pickle, unique_filename_in
 from bein import program, execution, MiniLIMS
 
 usage = """run_rnaseq.py [-h] [-u via] [-w wdir] [-k job_key] [-c config_file] [-d minilims] [-m minilims] [-t target]
-E.g. >>> python run_rnaseq.py -u lsf -c jobbamtest.txt -m archive/RNAseq_full -d rnaseq
+E.g. >>> python run_rnaseq.py -u lsf -c config_files/jobbamtest.txt -m archive/RNAseq_full -d rnaseq
 
 -h           Print this message and exit
 -u via       Run executions using method 'via' (can be 'local' or 'lsf')
 -w wdir      Create execution working directories in wdir
 -d minilims  MiniLIMS where RNAseq executions and files will be stored.
 -m minilims  MiniLIMS where a previous Mapseq execution and files has been stored.
+Set it to None to align de novo from read files.
 -k job_key   Alphanumeric key specifying the job
 -c file      Config file
 -t target    Target features, inside of quotes, separated by spaces. E.g. 'genes exons transcripts'
@@ -72,7 +73,7 @@ def main(argv=None):
                 limspath = a
             elif o in ("-m", "--mapseq_minilims"):
                 ms_limspath = a
-                bam_files = True
+		if ms_limspath == 'None': ms_limspath = None
             elif o in ("-k", "--key"):
                 hts_key = a
             elif o in ("-c", "--config"):
@@ -88,6 +89,7 @@ def main(argv=None):
         if target: target = target.split(" ")
         
 
+        # Rna-seq job configuration
         M = MiniLIMS(limspath)
         if hts_key:
             gl = use_pickle( M, "global variables" )
@@ -96,18 +98,21 @@ def main(argv=None):
             [M.delete_execution(x) for x in M.search_executions(with_description=hts_key,fails=True)]
         elif os.path.exists(config_file):
             (job,gl) = frontend.parseConfig( config_file )
+            hts_key = "No job description"
         else: raise ValueError("Need either a job key (-k) or a configuration file (-c).")
+            
+        job.options['ucsc_bigwig'] = job.options.get('ucsc_bigwig') or True
+        job.options['gdv_project'] = job.options.get('gdv_project') or False
+        job.options['discard_pcr_duplicates'] = job.options.get('discard_pcr_duplicates') or False
         assembly_id = job.assembly_id
-
-        mapseq_url = None
-        if 'hts_mapseq' in gl:
-            mapseq_url = gl['hts_mapseq']['url']
         g_rep = genrep.GenRep( gl['genrep_url'], gl.get('bwt_root'), intype=1 )
             #intype is for mapping on the exons (intype=1) or transcriptome (intype=2)
         assembly = g_rep.assembly(assembly_id)
-        job.options['ucsc_bigwig'] = job.options.get('ucsc_bigwig') or True
-        job.options['gdv_project'] = job.options.get('gdv_project') or False
-        job.options['discard_pcr_duplicates'] = job.options.get('discard_pcr_duplicates') or False            
+
+        # Retrieve mapseq output
+        mapseq_url = None
+        if 'hts_mapseq' in gl:
+            mapseq_url = gl['hts_mapseq']['url']
 
 
         # Program body #
@@ -135,7 +140,7 @@ def main(argv=None):
         allfiles = common.get_files(ex.id, M)
         if 'gdv_project' in job.options and 'sql' in allfiles:
             allfiles['url'] = {job.options['gdv_project']['public_url']: 'GDV view'}
-            download_url = gl['hts_chipseq']['download']
+            download_url = gl['hts_rnapseq']['download']
             [gdv.add_gdv_track( gl['gdv']['key'], gl['gdv']['email'],
                                 job.options['gdv_project']['project_id'],
                                 url=download_url+str(k), 
@@ -146,7 +151,7 @@ def main(argv=None):
         if 'email' in gl:
             r = email.EmailReport( sender=gl['email']['sender'],
                                    to=str(job.email),
-                                   subject="Chipseq job "+str(job.description),
+                                   subject="RNA-seq job "+str(job.description),
                                    smtp_server=gl['email']['smtp'] )
             r.appendBody('''
 Your RNA-seq job is finished. \n
