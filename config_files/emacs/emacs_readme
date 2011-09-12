@@ -1,0 +1,14 @@
+-- Aquamacs
+Mac users may prefer to use the more user-friendly Aquamacs - Emacs for OSX - http://aquamacs.org/
+Aquamacs FAQ: http://www.emacswiki.org/emacs/AquamacsFAQ#toc15
+Aquamacs config: http://www.emacswiki.org/emacs/CustomizeAquamacs
+The Aquamacs configuration files are situated in /Users/user_name/Library/Preferences/Aquamacs Emacs
+
+-- Emacs
+A tutorial to configure your Emacs:
+http://www.siteduzero.com/tutoriel-3-38330-votre-premier-emacs-la-configuration-d-emacs-pour-les-zeros.html
+Commands list (useful to configure shortcuts): http://www.cs.rutgers.edu/LCSR-Computing/some-docs/emacs-chart.html
+Emacs native shortcuts: http://lpn.rnbhq.org/tools/xemacs/emacs_ref.html
+
+-- Python mode
+The python-mode.el module https://launchpad.net/python-mode is usually preferred to the native Python mode.
