@@ -16,7 +16,7 @@ exons_in_trans is a dictionary     {transcript ID: [exons IDs]}.
 import cogent.db.ensembl as ensembl
 import pickle, os, sys, urllib, getopt
 
-usage = """Usage: pickle_mappings.py [-h] [-o output.pickle] [-r: ensembl_release] species
+usage = """Usage: pickle_mappings.py [-h] [-o output.pickle] [-r ensembl_release] species
 >>> pickle_mappings.py -o maptest -r 63 human
 
 species: 
@@ -56,17 +56,18 @@ def generate_mappings(species='human',ensembl_release=63):
     for g in gene_generator:
         #k+=1
         #if k>10: break;
-        gid = g.StableId
+        gid = str(g.StableId)
         gene_ids.append(gid)
-        gene_names[gid] = g.Symbol
-        trans_in_gene[gid] = [t.StableId for t in g.Transcripts]
+        gene_names[gid] = str(g.Symbol)
+        trans_in_gene[gid] = [str(t.StableId) for t in g.Transcripts]
         allexons = []
         for t in g.Transcripts:
             allexons.extend(t.Exons)
-            transcript_mapping[t.StableId] = gid
-            exons_in_trans[t.StableId] = [e.StableId for e in t.Exons]
+            transcript_mapping[str(t.StableId)] = gid
+            exons_in_trans[str(t.StableId)] = [str(e.StableId) for e in t.Exons]
         for e in allexons:
-            exon_mapping[e.StableId] = ([t.StableId for t in g.Transcripts if e.StableId in exons_in_trans[t.StableId]], gid)
+            exon_mapping[str(e.StableId)] = ([str(t.StableId) for t in g.Transcripts
+                                            if e.StableId in exons_in_trans[t.StableId]], gid)
     return (gene_ids, gene_names, transcript_mapping, exon_mapping, trans_in_gene, exons_in_trans)
 
 
