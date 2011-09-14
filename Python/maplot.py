@@ -240,6 +240,7 @@ def MAplot(dataset, annotate=None, mode="normal", deg=4, bins=30, assembly_id=No
                             "get_links/" + str(assembly_id) + ".json?gene_name=%3CName%3E&md5=" + md5)
             jsdata = jsdata + "var url_template = " + url_template.read() + ";"
         else: jsdata = jsdata + "var url_template = null;"
+        print jsdata
 
         # - export
         jsname = unique_filename_in()+".js"
