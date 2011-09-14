@@ -240,16 +240,9 @@ def MAplot(dataset, annotate=None, mode="normal", deg=4, bins=30, assembly_id=No
                             "get_links/" + str(assembly_id) + ".json?gene_name=%3CName%3E&md5=" + md5)
             jsdata = jsdata + "var url_template = " + url_template.read() + ";"
         else: jsdata = jsdata + "var url_template = null;"
-        print jsdata
+        print print >> sys.stdout, jsdata
 
-        # - export
-        jsname = unique_filename_in()+".js"
-        jsname = "data2.txt"
-        with open(jsname,"w") as js:
-            js.write(jsdata)
-    else: jsname = None
-
-    return figname, jsname
+    return figname
 
 
 #----------------------------------------------------------#
@@ -383,15 +376,14 @@ def main(argv=None):
         if limspath:
             M = MiniLIMS(limspath)
             with execution(M) as ex:
-                figname, jsname = MAplot(args, mode=mode, deg=deg, bins=bins, assembly_id=assembly_id,
+                figname = MAplot(args, mode=mode, deg=deg, bins=bins, assembly_id=assembly_id,
                                          annotate=annotate, quantiles=quantiles)
                 if figname: ex.add(figname, description="png:MAplot of data")
-                if jsname: ex.add(jsname, description="json:output for JavaScript")
             results_to_json(M, ex.id)
         else:
-            figname, jsname = MAplot(args, mode=mode, deg=deg, bins=bins, assembly_id=assembly_id,
+            figname = MAplot(args, mode=mode, deg=deg, bins=bins, assembly_id=assembly_id,
                                      annotate=annotate, quantiles=quantiles)
-            print "png:", figname, "; json:", jsname
+            print "png:", figname
         # End of program body #
 
         sys.exit(0)
