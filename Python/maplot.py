@@ -16,8 +16,8 @@ from scipy.interpolate import UnivariateSpline
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 
-usage = """maplot.py [-h] [-m mode] [-d deg] [-b bins] [-a aid]
-                     [-q quantiles] [-a annotate] data_1 .. data_n
+usage = """maplot.py [-h] [-m mode] [-f format] [-d deg] [-b bins] [-a aid]
+                     [-q quantiles] [-n annotate] [--xmin --xmax --ymin --ymax] data_1 .. data_n
 
 Creates an `MA-plot` to compare transcription levels of a set of genes
 (or other features) in two different conditions.
