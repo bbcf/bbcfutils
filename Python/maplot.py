@@ -11,17 +11,12 @@ import sys, os, pickle, json, pysam, urllib, math, time
 import numpy
 import csv
 import getopt
-from bein import *
-from bein.util import unique_filename_in
 from scipy import stats
 from scipy.interpolate import UnivariateSpline
 from scipy.optimize import curve_fit
-from bbcflib.common import timer, results_to_json
-import matplotlib
-matplotlib.use('Agg', warn=False) #force backend (trying to avoid problems with -X ssh sessions)
 import matplotlib.pyplot as plt
 
-usage = """maplot.py [-h] [-l limspath] [-u via] [-m mode] [-d deg] [-b bins] [-a aid]
+usage = """maplot.py [-h] [-m mode] [-d deg] [-b bins] [-a aid]
                      [-q quantiles] [-a annotate] data_1 .. data_n
 
 Creates an `MA-plot` to compare transcription levels of a set of genes
@@ -33,29 +28,35 @@ Creates an `MA-plot` to compare transcription levels of a set of genes
 containing enough information to reconstruct the plot using Javascript.
 
 Options:
--h, --help   print this message and exit.
--l, --lims   name of or path to the bein's MiniLIMS to receive output files.
--u  --via    protocol, may be 'local' or 'lsf'.
--m, --mode   'normal' - static .pgn output -, 'interactive' - clic to display gene names,
-             or 'json' - .json output to stdout for Javascript web interface.
--d, --deg    degree of the interpolant percentile splines.
--b, --bins   number of divisions of the x axis to calculate percentiles.
--a, --aid    identifier for the Genrep assembly (e.g. 'hg19') - used to add more information
-             about features into the json output
--q, --quantiles   if other than True, quantile splines wont't be drawn. Thus may
+-h, --help    Print this message and exit.
+-m, --mode    Display mode: 'normal' for static .pgn output, 'interactive' - clic to display
+              gene names, or 'json' - .json output to stdout for Javascript web interface.
+-f, --format  Data type: 'counts' for raw count data (default), 'rpkm' for normalized data.
+-d, --deg     Degree of the interpolant percentile splines.
+-b, --bins    Number of divisions of the x axis to calculate percentiles.
+-a, --aid     Identifier for the Genrep assembly (e.g. 'hg19') - used to add more information
+              about features into the json output
+-q, --quantiles   If other than True, quantile splines wont't be drawn. Thus may
                   improve speed and lisibility in some cases.
--n, --annotate    indication of which datasets to annotate (if 'normal' mode). Must be a
+-n, --annotate    Indication of which datasets to annotate (if 'normal' mode). Must be a
                   binary string of the same lenght as the number of datasets, 1 indicating
                   to annotate the corresponding set, 0 not to annotate. E.g. For a list of
                   datasets d1,d2,d3, if you want to annotate only d3, type --annotate 001.
+--xmin        Minimum x value to be displayed on the output graph.
+--xmax        Maximum x value to be displayed on the output graph.
 """
 
 class Usage(Exception):
     def __init__(self,  msg):
         self.msg = msg
 
-@timer
-def MAplot(dataset, annotate=None, mode="normal", deg=4, bins=30, assembly_id=None, quantiles=True):
+def unique_filename(len=20):
+    import string
+    import random
+    return "".join([random.choice(string.letters+string.digits) for x in range(len)])
+
+def MAplot(dataset, annotate=None, mode="normal", data_format="counts", xrange=[None,None],
+           deg=4, bins=30, assembly_id=None, quantiles=True):
     """
     Creates an "MA-plot" to compare transcription levels of a set of genes
     in two different conditions. It returns the name of the .png file produced,
@@ -87,12 +88,15 @@ def MAplot(dataset, annotate=None, mode="normal", deg=4, bins=30, assembly_id=No
                 print """\n Each line of the CSV file must be of the form \n
                          Feature_name    Expression_cond1    Expression_cond2 \n
                          Accepted delimiters: (space) , : - \\t    \n"""
+            if data_format == "counts": lower = 1; upper = 1e8
+            elif data_format == "rpkm": lower = 0; upper = 1e5
+            else: lower = 1e-20; upper = 1e20; print "else"
             csvreader = csv.reader(f, delimiter=delimiter, quoting=csv.QUOTE_NONE)
             n=[]; m=[]; r=[]; p=[]
             for row in csvreader:
                 #numpy.seterr(all='raise') # testing
                 c1 = float(row[1]); c2 = float(row[2])
-                if c1>=1 and c2>=1 and c1<=10e8 and c2<=10e8:
+                if (c1 > lower and c2 > lower) and (c1 < upper and c2 < upper):
                     """ Counts of 1 may become slightly inferior after normalization processes,
                     thus features with count 1 may be excluded - they shouldn't matter anyway.
                     Another threshold of 10^8 was added in case operations on counts suffered
@@ -126,10 +130,14 @@ def MAplot(dataset, annotate=None, mode="normal", deg=4, bins=30, assembly_id=No
     # Lines (best fit of percentiles)
     if quantiles:
         # Create bins
-        """ If counts < (2,3), their mean < log10(sqrt(2*3)). You may want to
-        modify this value to obtaine nicer splines for your data. """
-        meaningless = math.log10(math.sqrt(6))
-        intervals = numpy.linspace(meaningless, xmax, bins+1) #xmin?
+        if data_format == 'counts': xmin = math.log10(math.sqrt(6))
+             # If counts < (2,3), then their mean < log10(sqrt(2*3)). You may want to
+             # modify this value to obtaine nicer splines for your data. """
+        elif data_format == 'rpkm': xmax = 1
+             # 1 may be a bad value, find a better one
+        if xrange[0]: xmin = xrange[0]
+        if xrange[1]: xmax = xrange[1]
+        intervals = numpy.linspace(xmin, xmax, bins+1)
 
         points_in = []
         for i in range(len(intervals)-2,-1,-1): #from l-1 to 0, decreasing
@@ -142,12 +150,15 @@ def MAplot(dataset, annotate=None, mode="normal", deg=4, bins=30, assembly_id=No
         x = intervals[:-1]+(intervals[1:]-intervals[:-1])/2. #the middle point of each bin
 
         # Compute percentiles in each bin
-        spline_annotes=[]; spline_coords={};
-        percentiles = [1,5,25,50,75,90,99]
+        spline_annotes=[]; spline_coords={}; extremes=[]
+        percentiles = [1,5,25,50,75,95,99]
         for k in percentiles:
             h=[]
             for b in range(bins):
-                h.append( stats.scoreatpercentile([p[2] for p in points_in[b]], k) )
+                score = stats.scoreatpercentile([p[2] for p in points_in[b]], k)
+                h.append(score)
+                if k==1: extremes.extend([p for p in points_in[b] if p[2] < score])
+                if k==99: extremes.extend([p for p in points_in[b] if p[2] > score])
 
             #xs = numpy.concatenate((x,[4])) # add a factice point (10,0) - corresponding to zero
             #hs = numpy.concatenate((h,[0]))  # features with expression level of 10^10.
@@ -159,6 +170,12 @@ def MAplot(dataset, annotate=None, mode="normal", deg=4, bins=30, assembly_id=No
             #ax.plot(x, h, "o", color="blue") # testing
             spline_annotes.append((k,x_spline[0],y_spline[0])) #quantile percentages
             spline_coords[k] = zip(x_spline,y_spline)
+            
+        with open("extremes_file","w") as f:
+            csvwriter = csv.writer(f, delimiter="\t")
+            csvwriter.writerow(["Name","log10Mean","log2Ratio"])
+            for p in extremes:
+                csvwriter.writerow([p[0],p[1],p[2]])
 
         # Annotation of splines (percentage)
         for sa in spline_annotes:
@@ -174,6 +191,7 @@ def MAplot(dataset, annotate=None, mode="normal", deg=4, bins=30, assembly_id=No
         af = AnnoteFinder( means, ratios, names )
         plt.connect('button_press_event', af)
         plt.draw()
+        print "mode=",mode, fig
         plt.show()
     elif mode == "normal" or mode == "json":
         for data,annote in zip(dataset,annotate):
@@ -188,7 +206,7 @@ def MAplot(dataset, annotate=None, mode="normal", deg=4, bins=30, assembly_id=No
     ax.set_ylabel("Log2 of x1/x2")
     plt.xlim([xmin-0.1*xlen,xmax+0.1*xlen])
     plt.ylim([ymin-0.1*ylen,ymax+0.1*ylen])
-    figname = unique_filename_in()+".png"
+    figname = unique_filename()+".png"
     fig.savefig(figname)
 
 
@@ -322,21 +340,22 @@ class AnnoteFinder:
 
 
 def main(argv=None):
-    limspath = None
-    via = "lsf"
     mode = "normal"
     deg = 4
     bins = 30
     assembly_id = None
     annotate = None
     quantiles = 'True'
+    data_format = 'counts'
+    xmin = None; xmax = None; xrange = [None,None]
 
     if argv is None:
         argv = sys.argv
     try:
         try:
-            opts,args = getopt.getopt(sys.argv[1:],"hl:u:m:d:b:a:n:q:",
-                         ["help","lims=","via=","mode=","deg=","bins=","aid=","annotate=","quantiles="])
+            opts,args = getopt.getopt(sys.argv[1:],"hm:f:d:b:a:n:q:",
+                         ["help","mode=","format=","deg=","bins=","aid=",
+                           "annotate=","quantiles=","xmin=","xmax="])
         except getopt.error, msg:
             raise Usage(msg)
         for o, a in opts:
@@ -344,16 +363,13 @@ def main(argv=None):
                 print __doc__
                 print usage
                 sys.exit(0)
-            elif o in ("-l", "--lims"):
-                limspath = a
-            elif o in ("-u", "--via"):
-                if a=="local": via = "local"
-                elif a=="lsf": via = "lsf"
-                else: raise Usage("Via (-u) can only be \"local\" or \"lsf\", got %s." % (a,))
             elif o in ("-m", "--mode"):
                 if a=="interactive": mode = "interactive"
-                if a=="json": mode = "json"
+                elif a=="json": mode = "json"
                 else: mode = "normal"
+            elif o in ("-f", "--format"):
+                if a=="rpkm": data_format = "rpkm" 
+                else: data_format = "counts"
             elif o in ("-d", "--deg"):
                 deg = int(a)
             elif o in ("-b", "--bins"):
@@ -364,6 +380,10 @@ def main(argv=None):
                 annotate = a
             elif o in ("-q", "--quantiles"):
                 quantiles = a
+            elif o in ("--xmin"):
+                xmin = a
+            elif o in ("--xmax"):
+                xmax = a
             else: raise Usage("Unhandled option: " + o)
 
         if len(args) < 1:
@@ -371,20 +391,13 @@ def main(argv=None):
 
         if annotate: annotate = [eval(a) for a in annotate] # 0100101 -> [0,1,0,0,1,0,1]
         if quantiles != 'True': quantiles = False
+        if xmin or xmax: xrange = [xmin,xmax]
         args = [os.path.abspath(a) for a in args]
 
         # Program body #
-        if limspath:
-            M = MiniLIMS(limspath)
-            with execution(M) as ex:
-                figname = MAplot(args, mode=mode, deg=deg, bins=bins, assembly_id=assembly_id,
-                                         annotate=annotate, quantiles=quantiles)
-                if figname: ex.add(figname, description="png:MAplot of data")
-            results_to_json(M, ex.id)
-        else:
-            figname = MAplot(args, mode=mode, deg=deg, bins=bins, assembly_id=assembly_id,
-                                     annotate=annotate, quantiles=quantiles)
-            print "png:", figname
+        figname = MAplot(args, mode=mode, data_format=data_format, xrange=xrange, deg=deg, bins=bins,
+                         assembly_id=assembly_id, annotate=annotate, quantiles=quantiles)
+        print "png:", figname
         # End of program body #
 
         sys.exit(0)
