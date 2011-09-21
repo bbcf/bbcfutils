@@ -43,7 +43,9 @@ Options:
                   to annotate the corresponding set, 0 not to annotate. E.g. For a list of
                   datasets d1,d2,d3, if you want to annotate only d3, type --annotate 001.
 --xmin        Minimum x value to be displayed on the output graph.
---xmax        Maximum x value to be displayed on the output graph.
+--xmax        Maximum x ''
+--ymin        Minimum y ''
+--ymax        Maximum y ''.
 """
 
 class Usage(Exception):
@@ -55,7 +57,7 @@ def unique_filename(len=20):
     import random
     return "".join([random.choice(string.letters+string.digits) for x in range(len)])
 
-def MAplot(dataset, annotate=None, mode="normal", data_format="counts", xrange=[None,None],
+def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[None,None,None,None],
            deg=4, bins=30, assembly_id=None, quantiles=True):
     """
     Creates an "MA-plot" to compare transcription levels of a set of genes
@@ -112,7 +114,6 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", xrange=[
         names.extend(n); means.extend(m); ratios.extend(r); pvals.extend(p)
     points = zip(names, means, ratios, pvals)
     xmin = min(means); xmax = max(means); ymin = min(ratios); ymax = max(ratios)
-    xlen = abs(xmax-xmin); ylen = abs(ymax-ymin)
 
     # Figure initialization
     fig = plt.figure(figsize=[14,9])
@@ -135,8 +136,6 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", xrange=[
              # modify this value to obtaine nicer splines for your data. """
         elif data_format == 'rpkm': xmax = 1
              # 1 may be a bad value, find a better one
-        if xrange[0]: xmin = xrange[0]
-        if xrange[1]: xmax = xrange[1]
         intervals = numpy.linspace(xmin, xmax, bins+1)
 
         points_in = []
@@ -171,7 +170,7 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", xrange=[
             spline_annotes.append((k,x_spline[0],y_spline[0])) #quantile percentages
             spline_coords[k] = zip(x_spline,y_spline)
             
-        with open("extremes_file","w") as f:
+        with open("extremes_ratios","w") as f:
             csvwriter = csv.writer(f, delimiter="\t")
             csvwriter.writerow(["Name","log10Mean","log2Ratio"])
             for p in extremes:
@@ -182,6 +181,17 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", xrange=[
             ax.annotate(str(sa[0])+"%", xy=(sa[1],sa[2]), xytext=(-33,-5), textcoords='offset points',
                     bbox=dict(facecolor="white",edgecolor=None,boxstyle="square,pad=.4"))
 
+    # Decoration
+    ax.set_xlabel("Log10 of sqrt(x1*x2)")
+    ax.set_ylabel("Log2 of x1/x2")
+    if limits[0]: xmin = float(limits[0])
+    if limits[1]: xmax = float(limits[1])
+    if limits[2]: ymin = float(limits[2])
+    if limits[3]: ymax = float(limits[3])
+    xlen = abs(xmax-xmin); ylen = abs(ymax-ymin)
+    plt.xlim([xmin-0.1*xlen,xmax+0.1*xlen])
+    plt.ylim([ymin-0.1*ylen,ymax+0.1*ylen])
+
     # Annotation of points
     annotes={}
     if not annotate:
@@ -191,7 +201,7 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", xrange=[
         af = AnnoteFinder( means, ratios, names )
         plt.connect('button_press_event', af)
         plt.draw()
-        print "mode=",mode, fig
+        print "mode =",mode
         plt.show()
     elif mode == "normal" or mode == "json":
         for data,annote in zip(dataset,annotate):
@@ -202,13 +212,8 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", xrange=[
                     annotes[data].append(p[0])
 
     # Output figure
-    ax.set_xlabel("Log10 of sqrt(x1*x2)")
-    ax.set_ylabel("Log2 of x1/x2")
-    plt.xlim([xmin-0.1*xlen,xmax+0.1*xlen])
-    plt.ylim([ymin-0.1*ylen,ymax+0.1*ylen])
     figname = unique_filename()+".png"
     fig.savefig(figname)
-
 
     # Output for Javascript
     if mode == "json":
@@ -347,7 +352,7 @@ def main(argv=None):
     annotate = None
     quantiles = 'True'
     data_format = 'counts'
-    xmin = None; xmax = None; xrange = [None,None]
+    xmin = None; xmax = None; ymin = None; ymax = None; limits = [None,None,None,None]
 
     if argv is None:
         argv = sys.argv
@@ -355,7 +360,7 @@ def main(argv=None):
         try:
             opts,args = getopt.getopt(sys.argv[1:],"hm:f:d:b:a:n:q:",
                          ["help","mode=","format=","deg=","bins=","aid=",
-                           "annotate=","quantiles=","xmin=","xmax="])
+                          "annotate=","quantiles=","xmin=","xmax=","ymin=","ymax="])
         except getopt.error, msg:
             raise Usage(msg)
         for o, a in opts:
@@ -384,6 +389,10 @@ def main(argv=None):
                 xmin = a
             elif o in ("--xmax"):
                 xmax = a
+            elif o in ("--ymin"):
+                ymin = a
+            elif o in ("--ymax"):
+                ymax = a
             else: raise Usage("Unhandled option: " + o)
 
         if len(args) < 1:
@@ -391,11 +400,14 @@ def main(argv=None):
 
         if annotate: annotate = [eval(a) for a in annotate] # 0100101 -> [0,1,0,0,1,0,1]
         if quantiles != 'True': quantiles = False
-        if xmin or xmax: xrange = [xmin,xmax]
+        if xmin: limits[0] = xmin
+        if xmax: limits[1] = xmax
+        if ymin: limits[2] = ymin
+        if ymax: limits[3] = ymax
         args = [os.path.abspath(a) for a in args]
 
         # Program body #
-        figname = MAplot(args, mode=mode, data_format=data_format, xrange=xrange, deg=deg, bins=bins,
+        figname = MAplot(args, mode=mode, data_format=data_format, limits=limits, deg=deg, bins=bins,
                          assembly_id=assembly_id, annotate=annotate, quantiles=quantiles)
         print "png:", figname
         # End of program body #
