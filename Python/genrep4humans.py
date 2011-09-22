@@ -8,16 +8,17 @@ from bbcflib.common import normalize_url
 import sys, getopt, os, re
 
 usage = """genrep4humans.py [-h] [-l] [-f] [-b] -a [-t] [-r] [-u]
--h           Print this message and exit
--l           list available assemblies
--f           get path to fasta, or extract region to fasta (ex: 'chr2:2-1356')
--b           get path prefix to bowtie indexes
--s           genome stats
--a           assembly (name or id)
--t           data type (0=genome, 1=exome, 2=transcriptome, default 0)
--o           output file (default standard output)
--r           genrep root directory (default: '/db/genrep/')
--u           url to genrep (default: 'http://bbcftools.vital-it.ch/genrep/')
+-h --help     print this message and exit
+-l --list     list available assemblies
+-f --fasta    get path to fasta
+-b --bowtie   get path prefix to bowtie indexes
+-s --stats    genome stats
+-a --assembly assembly (name or id)
+-r --regions  extract region to fasta (ex: 'chr2:2-1356;chr1:10-45')
+-t --type     data type (0=genome, 1=exome, 2=transcriptome, default 0)
+-o --output   output file (default standard output)
+-r --root     genrep root directory (default: '/db/genrep/')
+-u --url      url to genrep (default: 'http://bbcftools.vital-it.ch/genrep/')
 """
 
 class Usage(Exception):
@@ -34,16 +35,16 @@ def main(argv = None):
     stats = False
     list = False
     fout = sys.stdout
-    chr = None
+    regions = None
     start = None
     end = None
     if argv is None:
         argv = sys.argv
     try:
         try:
-            opts,args = getopt.getopt(sys.argv[1:],"hlf:bsa:t:o:r:u:",
-                                      ["help","list","fasta=","bowtie","stats",
-                                       "type=","assembly=","output=",
+            opts,args = getopt.getopt(sys.argv[1:],"hlfbsa:r:t:o:r:u:",
+                                      ["help","list","fasta","bowtie","stats",
+                                       "type=","assembly=","regions=","output=",
                                        "root=","url="])
         except getopt.error, msg:
             raise Usage(msg)
@@ -56,14 +57,17 @@ def main(argv = None):
                 list = True
             elif o in ("-f", "--fasta"):
                 fasta = True
-                if a:
-                    chr,start,end = re.search('(\S+):(\d+)\-(\d+)',a).groups()[0:3]
             elif o in ("-b", "--bowtie"):
                 bowtie = True
             elif o in ("-s", "--stats"):
                 stats = True
             elif o in ("-a", "--assembly"):
                 assembly_id = re.search('([._\-\w]+)',a).groups()[0]
+            elif o in ("-r", "--regions"):
+                regions = []
+                for x in a.split(";"):
+                    chr,start,end = re.search('(\S+):(\d+)\-(\d+)',x).groups()[0:3]
+                    regions.append([chr,int(start),int(end)])
             elif o in ("-t", "--type"):
                 intype = int(a)
             elif o in ("-o", "--output"):
@@ -76,27 +80,25 @@ def main(argv = None):
                 raise Usage("Unhandled option: " + o)
         g_rep = genrep.GenRep( url=genrep_url, root=genrep_root, intype=intype )
         if list:
-            fout.write("\n".join(g_rep.assemblies_available()))
+            fout.write("\n".join(g_rep.assemblies_available())+"\n")
         if assembly_id>0:
             assembly = g_rep.assembly( assembly_id )
         else:
             return 0
+        if regions:
+            seq = g_rep.fasta_from_regions(assembly.chromosomes,regions=regions,out={})[0]
+            for reg in regions:
+                fout.write(">"+assembly.name+"|"+reg[0]+":"+str(reg[1])+"-"+str(reg[2])+"\n")
+                fout.write(seq[reg[0]].pop(0)+"\n")
         if bowtie:
-            fout.write(">"+str(assembly.id)+":"+assembly.name+" bowtie index prefix")
-            fout.write(assembly.index_path)
+            fout.write(">"+str(assembly.id)+":"+assembly.name+" bowtie index prefix\n")
+            fout.write(assembly.index_path+"\n")
         if fasta:
-            if chr:
-                seq = g_rep.fasta_from_regions(assembly.chromosomes,
-                                               regions=[[chr,int(start),int(end)]],
-                                               out={})
-                fout.write(">"+assembly.name+"|"+chr+":"+start+"-"+end+"\n")
-                fout.write(seq[0].values()[0][0]+"\n")
-            else:
-                fout.write(">"+str(assembly.id)+":"+assembly.name+" fasta file")
-                fout.write(g_rep.fasta_path(assembly))
+            fout.write(">"+str(assembly.id)+":"+assembly.name+" fasta file\n")
+            fout.write(g_rep.fasta_path(assembly)+"\n")
         if stats:
             stats = g_rep.statistics(assembly,frequency=True)
-            fout.write("\n".join([k+":\t"+str(stats[k]) for k in sorted(stats.keys())]))
+            fout.write("\n".join([k+":\t"+str(stats[k]) for k in sorted(stats.keys())])+"\n")
         fout.close()
         return 0
     except Usage, err:
