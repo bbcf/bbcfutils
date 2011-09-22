@@ -84,9 +84,12 @@ def main(argv = None):
                         for loc,pwd in gl['lims']['passwd'].iteritems())
         else:
             dafl = None
-        job.options['compute_densities'] = job.options.get('compute_densities') or True
-        job.options['ucsc_bigwig'] = job.options.get('ucsc_bigwig') or True
-        job.options['create_gdv_project'] = job.options.get('create_gdv_project') or False
+        if not('compute_densities' in job.options):
+            job.options['compute_densities'] = True
+        if not('ucsc_bigwig' in job.options):
+            job.options['ucsc_bigwig'] = job.options['compute_densities']
+        if not('create_gdv_project' in job.options):
+            job.options['create_gdv_project'] = False
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
             job = get_fastq_files( job, ex.working_directory, dafl )
             mapped_files = map_groups( ex, job, ex.working_directory, assembly, {'via': via} )
