@@ -7,13 +7,11 @@ in a different color, and be annotated if requested.
 
 The class AnnoteFinder is used to create interactive - clickable - plots.
 """
-import sys, os, pickle, json, pysam, urllib, math, time
+import sys, os, pickle, json, urllib, math, time
 import numpy
 import csv
 import getopt
 from scipy import stats
-from scipy.interpolate import UnivariateSpline
-from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 
 usage = """maplot.py [-h] [-m mode] [-f format] [-d deg] [-b bins] [-a aid]
@@ -79,7 +77,7 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
 
     # Extract data from CSV
     if isinstance(dataset,str): dataset = [dataset]
-    names=[]; means=[]; ratios=[]; pvals=[]; points=[]; delimiter=None; groups={}
+    names=[]; means=[]; ratios=[]; pvals=[]; points=[]; delimiter=None; groups={}; counts={}
     for data in dataset:
         with open(data,'r') as f:
             header = f.readline()
@@ -104,6 +102,7 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
                     Another threshold of 10^8 was added in case operations on counts suffered
                     of numerical instability or bad conversions of NA values.
                     You may want to modify these values. """
+                    counts[row[0]] = (c1,c2)
                     n.append(row[0])
                     m.append(numpy.log10(numpy.sqrt(c1*c2)))
                     r.append(numpy.log2(c1/c2))
@@ -171,10 +170,10 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
             spline_coords[k] = zip(x_spline,y_spline)
             
         with open("extremes_ratios","w") as f:
-            csvwriter = csv.writer(f, delimiter="\t")
-            csvwriter.writerow(["Name","log10Mean","log2Ratio"])
+            c = csv.writer(f,delimiter="\t")
+            c.writerow(["Name","log10Mean","log2Fold","countsC1","countsC2"])
             for p in extremes:
-                csvwriter.writerow([p[0],p[1],p[2]])
+                c.writerow([p[0], str(p[1]), str(p[2]), str(counts[p[0]][0]), str(counts[p[0]][1])])
 
         # Annotation of splines (percentage)
         for sa in spline_annotes:
