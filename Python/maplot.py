@@ -56,7 +56,7 @@ def unique_filename(len=20):
     return "".join([random.choice(string.letters+string.digits) for x in range(len)])
 
 def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[None,None,None,None],
-           deg=4, bins=30, assembly_id=None, quantiles=True):
+           deg=3, bins=30, assembly_id=None, quantiles=True):
     """
     Creates an "MA-plot" to compare transcription levels of a set of genes
     in two different conditions. It returns the name of the .png file produced,
@@ -74,6 +74,19 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
     * *assembly_id*:  string of integer. If an assembly ID is given,
     the json output will provide links to information on genes.
     """
+    # Constants:
+    ## data extracted from the input file
+    accepted_counts_lower = 0.45
+    accepted_counts_upper = 1e8 #should not be
+    accepted_rpkm_lower = 0
+    accepted_rpkm_upper = 1e5
+    ## points considered for calculating splines
+    spline_counts_xmin = math.log10(math.sqrt(6)) #counts of 2,3 -> log(sqrt(2*3))
+    spline_counts_xmax = None
+    spline_rpkm_xmin = None
+    spline_rpkm_xmax = 1
+    ## x interval for plotting the splines
+    todo=True
 
     # Extract data from CSV
     if isinstance(dataset,str): dataset = [dataset]
@@ -88,8 +101,8 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
                 print """\n Each line of the CSV file must be of the form \n
                          Feature_name    Expression_cond1    Expression_cond2 \n
                          Accepted delimiters: (space) , : - \\t    \n"""
-            if data_format == "counts": lower = 1; upper = 1e8
-            elif data_format == "rpkm": lower = 0; upper = 1e5
+            if data_format == "counts": lower = accepted_counts_lower; upper = accepted_counts_upper
+            elif data_format == "rpkm": lower = accepted_rpkm_lower; upper = accepted_rpkm_upper
             else: lower = 1e-20; upper = 1e20; print "else"
             csvreader = csv.reader(f, delimiter=delimiter, quoting=csv.QUOTE_NONE)
             n=[]; m=[]; r=[]; p=[]
@@ -130,11 +143,11 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
     # Lines (best fit of percentiles)
     if quantiles:
         # Create bins
-        if data_format == 'counts': xmin = math.log10(math.sqrt(6))
-             # If counts < (2,3), then their mean < log10(sqrt(2*3)). You may want to
-             # modify this value to obtaine nicer splines for your data. """
-        elif data_format == 'rpkm': xmax = 1
-             # 1 may be a bad value, find a better one
+        # Consider only a subset of meaningful points for the splines
+        if data_format == 'counts':
+            xmin = spline_counts_xmin
+        elif data_format == 'rpkm':
+            xmax = spline_rpkm_xmax
         intervals = numpy.linspace(xmin, xmax, bins+1)
 
         points_in = []
