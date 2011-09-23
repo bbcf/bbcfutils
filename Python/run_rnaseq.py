@@ -16,7 +16,7 @@ E.g. >>> python run_rnaseq.py -u lsf -c config_files/jobbamtest.txt -m archive/R
 -w wdir      Create execution working directories in wdir
 -d minilims  MiniLIMS where RNAseq executions and files will be stored.
 -m minilims  MiniLIMS where a previous Mapseq execution and files has been stored.
-Set it to None to align de novo from read files.
+             Set it to None to align de novo from read files.
 -k job_key   Alphanumeric key specifying the job
 -c file      Config file
 -t target    Target features, inside of quotes, separated by spaces. E.g. 'genes exons transcripts'
@@ -46,6 +46,7 @@ def main(argv=None):
     working_dir = os.getcwd()
     bam_files = None
     target = None
+    map_args = None # {'bwt_args':["-n",str(3),"-p",str(4),"-l",str(50),"--chunkmbs",str(1024),"-m",str(5)]}
 
     if argv is None:
         argv = sys.argv
@@ -86,7 +87,7 @@ def main(argv=None):
             raise Usage("workflow.py takes no arguments without specifiers [-x arg].")
         if limspath == None:
             raise Usage("Must specify a MiniLIMS to attach to")
-        if target: target = target.split(" ")
+        if target: target = target.split()
         
 
         # Rna-seq job configuration
@@ -126,12 +127,12 @@ def main(argv=None):
                 print "Alignment..."
                 job = mapseq.get_fastq_files( job, ex.working_directory)
                 fastq_root = os.path.abspath(ex.working_directory)
-                bam_files = mapseq.map_groups(ex, job, fastq_root, assembly_or_dict = assembly)
+                bam_files = mapseq.map_groups(ex, job, fastq_root, assembly_or_dict=assembly, map_args=map_args)
                 print "Reads aligned."
-            print "Start workflow"
+            print "Starting"
             print "Current working directory:", ex.working_directory
             rnaseq.rnaseq_workflow(ex, job, assembly, bam_files,
-                            target=["genes","exons","transcripts"], via=via)
+                            target=target, via=via)
         # End of program body #
 
 
