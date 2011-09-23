@@ -3,11 +3,23 @@
 Command-line interface to genrep functionalities.
 
 """
-
 from bbcflib import genrep
 from bbcflib.common import normalize_url
 import sys, os, re
 import optparse
+
+opts = (("-l", "--list", "list available assemblies, or a chromosome table if an assembly is specified",
+         {'action': "store_true", 'default': False}),
+        ("-f", "--fasta", "get path to fasta", {'action': "store_true", 'default': False}),
+        ("-b", "--bowtie", "get path prefix to bowtie indexes", {'action': "store_true", 'default': False}),
+        ("-s", "--stats", "genome stats", {'action': "store_true", 'default': False}),
+        ("-i", "--intype", "0 for genome (default), 1 for exonome, 2 for transcriptome", {'type': "int", 'default': 0}),
+        ("-a", "--assembly", "assembly (name or id)", {'default': None}),
+        ("-t", "--regions", "extract regions to fasta (ex: 'chr2:2-1356,chr1:10-45')", {'default': None}),
+        ("-o", "--output", "output file (default standard output)", {'default': None}),
+        ("-r", "--root", "genrep root directory (default: '/db/genrep/')", {'default': '/db/genrep/'}),
+        ("-u", "--url", "url to genrep (default: 'http://bbcftools.vital-it.ch/genrep/')",
+         {'default': 'http://bbcftools.vital-it.ch/genrep/'}))
 
 class Usage(Exception):
     def __init__(self,  msg):
@@ -24,29 +36,10 @@ def _compact_key(key):
 def main():
     try:
         # Parse args
-        usage = "genrep4humans.py"
+        usage = "genrep4humans.py [OPTIONS]"
         parser = optparse.OptionParser(usage=usage, description="Command-line interface to genrep functionalities.")
-        
-        parser.add_option("-l","--list", action="store_true", default=False,
-                          help="list available assemblies, or a chromosome table if an assembly is specified")
-        parser.add_option("-f","--fasta", action="store_true", default=False,
-                          help="get path to fasta")
-        parser.add_option("-b","--bowtie", action="store_true", default=False,
-                          help="get path prefix to bowtie indexes")
-        parser.add_option("-s","--stats", action="store_true", default=False,
-                          help="genome stats")
-        parser.add_option("-i","--intype", type="int", default=0,
-                          help="0 for genome (default), 1 for exonome, 2 for transcriptome")
-        parser.add_option("-a","--assembly", default=None,
-                          help="assembly (name or id)")
-        parser.add_option("-t","--regions", default=None,
-                          help="extract region to fasta (ex: 'chr2:2-1356;chr1:10-45')")
-        parser.add_option("-o","--output", default=None,
-                          help="output file (default standard output)")
-        parser.add_option("-r","--root", default='/db/genrep/',
-                          help="genrep root directory (default: '/db/genrep/')")
-        parser.add_option("-u","--url", default='http://bbcftools.vital-it.ch/genrep/',
-                          help="url to genrep (default: 'http://bbcftools.vital-it.ch/genrep/')")
+        for opt in opts:
+            parser.add_option(opt[0],opt[1],help=opt[2],**opt[3])
 
         # Get variables
         (opt, args) = parser.parse_args()
@@ -60,7 +53,7 @@ def main():
             fout = sys.stdout
         if opt.regions:
             regions = []; start=None; end=None
-            for x in str(opt.regions).split(";"):
+            for x in str(opt.regions).split(","):
                 chrom,start,end = re.search('(\S+):(\d+)\-(\d+)',x).groups()[0:3]
                 regions.append([chrom,int(start),int(end)])
 
