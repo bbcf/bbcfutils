@@ -1,6 +1,6 @@
 #!/bin/env python
 """
-Interface to genrep functionalities.
+Command-line interface to genrep functionalities.
 
 """
 
@@ -13,14 +13,22 @@ class Usage(Exception):
     def __init__(self,  msg):
         self.msg = msg
 
+def _compact_key(key):
+    if key == None or isinstance(key,str):
+        return key
+    elif isinstance(key,tuple) and len(key)>2:
+        return str(key[0])+"_"+str(key[1])+"."+str(key[2])
+    else:
+        raise ValueError("Can't handle this chromosomes key ",key)
+
 def main():
     try:
         # Parse args
-        usage = "genrep4humans.py [-h] [-l] [-f] [-b] -a [-t] [-r] [-u]"
-        parser = optparse.OptionParser(usage=usage, description="Interface to genrep functionalities.")
+        usage = "genrep4humans.py"
+        parser = optparse.OptionParser(usage=usage, description="Command-line interface to genrep functionalities.")
         
         parser.add_option("-l","--list", action="store_true", default=False,
-                          help="list available assemblies")
+                          help="list available assemblies, or a chromosome table if an assembly is specified")
         parser.add_option("-f","--fasta", action="store_true", default=False,
                           help="get path to fasta")
         parser.add_option("-b","--bowtie", action="store_true", default=False,
@@ -42,31 +50,39 @@ def main():
 
         # Get variables
         (opt, args) = parser.parse_args()
-        assembly_id = re.search('([._\-\w]+)', str(opt.assembly)).groups()[0]
+        if opt.assembly:
+            assembly_id = re.search('([._\-\w]+)', str(opt.assembly)).groups()[0]
         genrep_root = os.path.abspath(opt.root)
         genrep_url = normalize_url(opt.url)
         if opt.output:
             fout = open(re.search('([._\-\w]+)', str(opt.output)).groups()[0], 'w')
-        else: fout = sys.stdout
+        else: 
+            fout = sys.stdout
         if opt.regions:
             regions = []; start=None; end=None
             for x in str(opt.regions).split(";"):
-                chr,start,end = re.search('(\S+):(\d+)\-(\d+)',x).groups()[0:3]
-                regions.append([chr,int(start),int(end)])
+                chrom,start,end = re.search('(\S+):(\d+)\-(\d+)',x).groups()[0:3]
+                regions.append([chrom,int(start),int(end)])
 
         # Program body
         g_rep = genrep.GenRep(url=genrep_url, root=genrep_root, intype=opt.intype)
-        if opt.list:
-            fout.write("\n".join(g_rep.assemblies_available())+"\n")
         if opt.assembly:
             assembly = g_rep.assembly(assembly_id)
-        else:
-            sys.exit(0)
+        if opt.list:
+            if opt.assembly:
+                table = ["\t".join((_compact_key(k),v['name'],str(v['length'])))
+                         for k,v in assembly.chromosomes.iteritems()]
+                fout.write("\n".join(table)+"\n")
+            else:
+                fout.write("\n".join(g_rep.assemblies_available())+"\n")
+            return 0
+        if not(opt.assembly):
+            return 0
         if opt.regions:
             seq = g_rep.fasta_from_regions(assembly.chromosomes, regions=regions, out={})[0]
             for reg in regions:
-                write(">"+assembly.name+"|"+reg[0]+":"+str(reg[1])+"-"+str(reg[2])+"\n")
-                write(seq[reg[0]].pop(0)+"\n")
+                fout.write(">"+assembly.name+"|"+reg[0]+":"+str(reg[1])+"-"+str(reg[2])+"\n")
+                fout.write(seq[reg[0]].pop(0)+"\n")
         if opt.bowtie:
             fout.write(">"+str(assembly.id)+":"+assembly.name+" bowtie index prefix\n")
             fout.write(assembly.index_path+"\n")
