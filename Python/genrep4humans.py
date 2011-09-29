@@ -6,14 +6,14 @@ Command-line interface to genrep functionalities.
 from bbcflib import genrep
 from bbcflib.common import normalize_url
 import sys, os, re
-import optparse
+import argparse
 
 opts = (("-l", "--list", "list available assemblies, or a chromosome table if an assembly is specified",
          {'action': "store_true", 'default': False}),
         ("-f", "--fasta", "get path to fasta", {'action': "store_true", 'default': False}),
         ("-b", "--bowtie", "get path prefix to bowtie indexes", {'action': "store_true", 'default': False}),
         ("-s", "--stats", "genome stats", {'action': "store_true", 'default': False}),
-        ("-i", "--intype", "0 for genome (default), 1 for exonome, 2 for transcriptome", {'type': "int", 'default': 0}),
+        ("-i", "--intype", "0 for genome (default), 1 for exonome, 2 for transcriptome", {'type': int, 'default': 0}),
         ("-a", "--assembly", "assembly (name or id)", {'default': None}),
         ("-t", "--regions", "extract regions to fasta (ex: 'chr2:2-1356,chr1:10-45')", {'default': None}),
         ("-o", "--output", "output file (default standard output)", {'default': None}),
@@ -37,52 +37,65 @@ def main():
     try:
         # Parse args
         usage = "genrep4humans.py [OPTIONS]"
-        parser = optparse.OptionParser(usage=usage, description="Command-line interface to genrep functionalities.")
+        parser = argparse.ArgumentParser(usage=usage, description="Command-line interface to genrep functionalities.")
         for opt in opts:
-            parser.add_option(opt[0],opt[1],help=opt[2],**opt[3])
-
+            parser.add_argument(opt[0],opt[1],help=opt[2],**opt[3])
+        
         # Get variables
-        (opt, args) = parser.parse_args()
-        if opt.assembly:
-            assembly_id = re.search('([._\-\w]+)', str(opt.assembly)).groups()[0]
-        genrep_root = os.path.abspath(opt.root)
-        genrep_url = normalize_url(opt.url)
-        if opt.output:
-            fout = open(re.search('([._\-\w]+)', str(opt.output)).groups()[0], 'w')
+        namespace = parser.parse_args()
+
+        # configure assembly
+        if namespace.assembly:
+            assembly_id = re.search('([._\-\w]+)', str(namespace.assembly)).groups()[0]
+        genrep_root = os.path.abspath(namespace.root)
+        genrep_url = normalize_url(namespace.url)
+        
+        # conf output
+        if namespace.output:
+            fout = open(re.search('([._\-\w]+)', str(namespace.output)).groups()[0], 'w')
         else: 
             fout = sys.stdout
-        if opt.regions:
+
+        # conf regions
+        if namespace.regions:
             regions = []; start=None; end=None
-            for x in str(opt.regions).split(","):
+            for x in str(namespace.regions).split(","):
                 chrom,start,end = re.search('(\S+):(\d+)\-(\d+)',x).groups()[0:3]
                 regions.append([chrom,int(start),int(end)])
 
+
+
         # Program body
-        g_rep = genrep.GenRep(url=genrep_url, root=genrep_root, intype=opt.intype)
-        if opt.assembly:
+        g_rep = genrep.GenRep(url=genrep_url, root=genrep_root, intype=namespace.intype)
+        if namespace.assembly:
             assembly = g_rep.assembly(assembly_id)
-        if opt.list:
-            if opt.assembly:
+        
+        if namespace.list:
+            if namespace.assembly:
                 table = ["\t".join((_compact_key(k),v['name'],str(v['length'])))
                          for k,v in assembly.chromosomes.iteritems()]
                 fout.write("\n".join(table)+"\n")
             else:
                 fout.write("\n".join(g_rep.assemblies_available())+"\n")
             return 0
-        if not(opt.assembly):
+        if not(namespace.assembly):
             return 0
-        if opt.regions:
+        
+        if namespace.regions:
             seq = g_rep.fasta_from_regions(assembly.chromosomes, regions=regions, out={})[0]
             for reg in regions:
                 fout.write(">"+assembly.name+"|"+reg[0]+":"+str(reg[1])+"-"+str(reg[2])+"\n")
                 fout.write(seq[reg[0]].pop(0)+"\n")
-        if opt.bowtie:
+        
+        if namespace.bowtie:
             fout.write(">"+str(assembly.id)+":"+assembly.name+" bowtie index prefix\n")
             fout.write(assembly.index_path+"\n")
-        if opt.fasta:
+        
+        if namespace.fasta:
             fout.write(">"+str(assembly.id)+":"+assembly.name+" fasta file\n")
             fout.write(g_rep.fasta_path(assembly)+"\n")
-        if opt.stats:
+        
+        if namespace.stats:
             stats = g_rep.statistics(assembly,frequency=True)
             fout.write("\n".join([k+":\t"+str(stats[k]) for k in sorted(stats.keys())])+"\n")
         fout.close()
