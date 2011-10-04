@@ -82,7 +82,7 @@ def main(argv = None):
         if 'hts_mapseq' in gl:
         	mapseq_url = gl['hts_mapseq']['url']
         job.options['ucsc_bigwig'] = True
-        g_rep = genrep.GenRep( gl["genrep_url"], gl.get("bwt_root") )
+	g_rep = genrep.GenRep( gl["genrep_url"], gl.get("bwt_root") )
 	assembly = g_rep.assembly( job.assembly_id )
 	primers_file='/scratch/cluster/monthly/htsstation/4cseq/'+str(job.id)+'/primers.fa'
 	primers_dict=c4seq.loadPrimers(primers_file)
