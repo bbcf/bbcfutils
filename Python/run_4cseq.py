@@ -92,23 +92,25 @@ def main(argv = None):
                                            mapseq_files, mapseq_url,  
                                            gl['script_path'])
         allfiles = common.get_files( ex.id, M )
-        job.options['gdv_project'] = job.options.get('gdv_project') or True
-        if 'gdv_project' in job.options and 'sql' in allfiles:
-            allfiles['url'] = {job.options['gdv_project']['public_url']: 'GDV view'}
-            download_url = gl['hts_4cseq']['download']
-            if job.options['gdv_project']:
-                    gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
-                                                          job.description,
-                                                          assembly.nr_assembly_id,
-                                                          gdv_url=gl['gdv']['url'], public=True )
-                    add_pickle( ex, gdv_project, description='py:gdv_json' )
-                    
-            [gdv.add_gdv_track( gl['gdv']['key'], gl['gdv']['email'],
-                                 job.options['gdv_project']['project_id'],
-                                 url=download_url+str(k), 
-                                 name = re.sub('\.sql','',str(f)),
-                                 gdv_url=gl['gdv']['url']) 
-             for k,f in allfiles['sql'].iteritems()]
+        
+        #job.options['gdv_project'] = job.options.get('gdv_project') or True
+     	if 'gdv_project' not in job.options:
+              	gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
+                                                         job.description,
+                                                         assembly.nr_assembly_id,
+                                                         gdv_url=gl['gdv']['url'], public=True )
+                add_pickle( ex, gdv_project, description='py:gdv_json' )
+	else:
+                gdv_project = job.options['gdv_project']
+        if 'sql' in allfiles:
+                allfiles['url'] = {gdv_project['public_url']: 'GDV view'}
+                download_url = gl['hts_4cseq']['download']
+                [gdv.add_gdv_track( gl['gdv']['key'], gl['gdv']['email'],
+                                gdv_project['project_id'],
+                                url=download_url+str(k), 
+                                name = re.sub('\.sql','',str(f)),
+                                gdv_url=gl['gdv']['url']) 
+                 for k,f in allfiles['sql'].iteritems()]
         print json.dumps(allfiles)
 
         if 'email' in gl:
