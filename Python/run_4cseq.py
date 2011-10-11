@@ -93,15 +93,11 @@ def main(argv = None):
                                            gl['script_path'])
         allfiles = common.get_files( ex.id, M )
         
-        #job.options['gdv_project'] = job.options.get('gdv_project') or True
-     	if 'gdv_project' not in job.options:
-              	gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
-                                                         job.description,
-                                                         assembly.nr_assembly_id,
-                                                         gdv_url=gl['gdv']['url'], public=True )
-                add_pickle( ex, gdv_project, description='py:gdv_json' )
-	else:
-                gdv_project = job.options['gdv_project']
+        gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
+                                                job.description,
+                                                assembly.nr_assembly_id,
+                                                gdv_url=gl['gdv']['url'], public=True )
+        #add_pickle( ex, gdv_project, description='py:gdv_json' )
         if 'sql' in allfiles:
                 allfiles['url'] = {gdv_project['public_url']: 'GDV view'}
                 download_url = gl['hts_4cseq']['download']
