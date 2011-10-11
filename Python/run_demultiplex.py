@@ -82,8 +82,37 @@ def main(argv = None):
         allfiles = common.get_files( ex.id, M )
         print json.dumps(allfiles)
 
+        if 'gdv_project' in job.options and 'sql' in allfiles:
+            allfiles['url'] = {job.options['gdv_project']['public_url']: 'GDV view'}
+            download_url = gl['hts_chipseq']['download']
+            [gdv.add_gdv_track( gl['gdv']['key'], gl['gdv']['email'],
+                                job.options['gdv_project']['project_id'],
+                                url=download_url+str(k), 
+                                name = re.sub('\.sql','',str(f)),
+                                gdv_url=gl['gdv']['url'] ) 
+             for k,f in allfiles['sql'].iteritems()]
+        print json.dumps(allfiles)
+        if 'email' in gl:
+            r = email.EmailReport( sender=gl['email']['sender'],
+                                   to=str(job.email),
+                                   subject="Chipseq job "+str(job.description),
+                                   smtp_server=gl['email']['smtp'] )
+            r.appendBody('''
+Your chip-seq job is finished.
 
-    if __name__ == '__main__':
-	sys.exit(main())
+The description was: 
+'''+str(job.description)+'''
+and its unique key is '''+hts_key+'''.
 
+You can retrieve the results at this url:
+'''+gl['hts_chipseq']['url']+"jobs/"+hts_key+"/get_results")
+            r.send()
+        return 0
+    except Usage, err:
+        print >>sys.stderr, err.msg
+        print >>sys.stderr, usage
+        return 2
+    
+if __name__ == '__main__':
+    sys.exit(main())
 
