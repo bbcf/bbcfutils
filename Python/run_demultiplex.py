@@ -78,7 +78,7 @@ def main(argv = None):
             raise ValueError("Need either a job key (-k) or a configuration file (-c).")
         job.options['ucsc_bigwig'] = True
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
-	    demultiplex_files = demultiplex.workflow_groups( ex, job, gl['script_path'])
+            demultiplex_files = demultiplex.workflow_groups( ex, job, gl['script_path'])
         allfiles = common.get_files( ex.id, M )
         print json.dumps(allfiles)
         gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
