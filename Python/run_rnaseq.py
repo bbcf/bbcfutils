@@ -18,7 +18,7 @@ def main():
     map_args = None # {'bwt_args':["-n",str(3),"-p",str(4),"-d",str(50),"--chunkmbs",str(1024),"-m",str(5)]}
 
     opts = (("-v", "--via", "Run executions using method 'via' (can be 'local' or 'lsf')", {'default': "lsf"}),
-            ("-k", "--key", "Alphanumeric key specifying the job", {'action': "store_true", 'default': None}),
+            ("-k", "--key", "Alphanumeric key specifying the job", {'default': None}),
             ("-d", "--minilims", "MiniLIMS where RNAseq executions and files will be stored.", {'default': None}),
             ("-m", "--mapseq-minilims", "MiniLIMS where a previous Mapseq execution and files has been stored. \
                                      Set it to None to align de novo from read files.",
@@ -39,7 +39,7 @@ def main():
         (opt, args) = parser.parse_args()
 
         if os.path.exists(opt.wdir): os.chdir(opt.wdir)
-        else: parser.error("Working directory '%s' does not exist." % a)
+        else: parser.error("Working directory '%s' does not exist." % opt.wdir)
         if not opt.minilims: parser.error("Must specify a MiniLIMS to attach to")
         if opt.pileup_level: pileup_level = opt.pileup_level.split(',')
 
