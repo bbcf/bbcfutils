@@ -83,7 +83,7 @@ def main(argv = None):
         	mapseq_url = gl['hts_mapseq']['url']
         job.options['ucsc_bigwig'] = True
 	g_rep = genrep.GenRep( gl["genrep_url"], gl.get("bwt_root") )
-	#assembly = g_rep.assembly( job.assembly_id )
+	assembly = g_rep.assembly( job.assembly_id )
 	primers_file='/scratch/cluster/monthly/htsstation/4cseq/'+str(job.id)+'/primers.fa'
 	primers_dict=c4seq.loadPrimers(primers_file)
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
@@ -93,11 +93,11 @@ def main(argv = None):
                                            gl['script_path'])
         allfiles = common.get_files( ex.id, M )
         
-        #gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
-        #                                        job.description,
-        #                                        assembly.nr_assembly_id,
-        #                                        gdv_url=gl['gdv']['url'], public=True )
-        #add_pickle( ex, gdv_project, description='py:gdv_json' )
+        gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
+                                                job.description,
+                                                assembly.nr_assembly_id,
+                                                gdv_url=gl['gdv']['url'], public=True )
+        add_pickle( ex, gdv_project, description='py:gdv_json' )
         if 'sql' in allfiles:
                 allfiles['url'] = {gdv_project['public_url']: 'GDV view'}
                 download_url = gl['hts_4cseq']['download']
