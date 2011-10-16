@@ -7,87 +7,65 @@ in a different color, and be annotated if requested.
 
 The class AnnoteFinder is used to create interactive - clickable - plots.
 """
-import sys, os, pickle, json, urllib, math, time
+
+import sys, os, pickle, json, urllib, math, time, csv, optparse
 import numpy
-import csv
-import getopt
 from scipy import stats
 import matplotlib.pyplot as plt
-
-usage = """maplot.py [-h] [-m mode] [-f format] [-d deg] [-b bins] [-a aid]
-                     [-q quantiles] [-n annotate] [--xmin --xmax --ymin --ymax] data_1 .. data_n
-
-Creates an `MA-plot` to compare transcription levels of a set of genes
-(or other features) in two different conditions.
-
-**Input**: CSV files with rows of the form
-(feature_name, expression_in_condition1, expression_in_condition2).
-**Output**: (str,str) - the name of the .png file produced, and the name of a json
-containing enough information to reconstruct the plot using Javascript.
-
-Options:
--h, --help    Print this message and exit.
--m, --mode    Display mode: 'normal' for static .pgn output, 'interactive' - clic to display
-              gene names, or 'json' - .json output to stdout for Javascript web interface.
--f, --format  Data type: 'counts' for raw count data (default), 'rpkm' for normalized data.
--d, --deg     Degree of the interpolant percentile splines.
--b, --bins    Number of divisions of the x axis to calculate percentiles.
--a, --aid     Identifier for the Genrep assembly (e.g. 'hg19') - used to add more information
-              about features into the json output
--q, --quantiles   If other than True, quantile splines wont't be drawn. Thus may
-                  improve speed and lisibility in some cases.
--n, --annotate    Indication of which datasets to annotate (if 'normal' mode). Must be a
-                  binary string of the same lenght as the number of datasets, 1 indicating
-                  to annotate the corresponding set, 0 not to annotate. E.g. For a list of
-                  datasets d1,d2,d3, if you want to annotate only d3, type --annotate 001.
---xmin        Minimum x value to be displayed on the output graph.
---xmax        Maximum x ''
---ymin        Minimum y ''
---ymax        Maximum y ''.
-"""
 
 class Usage(Exception):
     def __init__(self,  msg):
         self.msg = msg
 
-def unique_filename(len=20):
+def rstring(len=20):
     import string
     import random
     return "".join([random.choice(string.letters+string.digits) for x in range(len)])
 
 def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[None,None,None,None],
-           deg=3, bins=30, assembly_id=None, quantiles=True):
+           slimits=[None,None], deg=3, bins=30, assembly_id=None, quantiles=True):
     """
     Creates an "MA-plot" to compare transcription levels of a set of genes
     in two different conditions. It returns the name of the .png file produced,
     and the name of a json containing enough information to reconstruct the plot using Javascript.
 
-    * *data*:  list or string, containing names of CSV files with rows of
-    the form (feature_name, mean_expression, fold_change)
-    * *mode*:  string, display mode:
-    - if `interactive`, click on a point to display its name
-    - if `normal`, name of genes over 99%/under 1% quantile are displayed
-    - if `json`, a .json file is produced that allows to reproduce th graph
+    :param dataset: list or string, containing names of CSV files with rows of
+    the form (feature_name, sample1, sample2, ...)
+    :param mode: string, display mode:
+    * If `normal` (default), name of genes over 99%/under 1% quantile are displayed.
+    * If `interactive`, click on a point to display its name.
+    * If `json`, a .json file is produced that allows to reproduce th graph
     in a web interface using Javascript.
-    * *deg*:  int, the degree of the interpolating polynomial splines
-    * *bins*:  int, the number of divisions of the x axis for quantiles estimation
-    * *assembly_id*:  string of integer. If an assembly ID is given,
+    :param data_format: `counts` (default) or `rpkm`.
+    :param deg: int, the degree of the interpolating polynomial splines
+    :param bins: int, the number of divisions of the x axis for quantiles estimation
+    :param assembly_id: string of integer. If an assembly ID is given,
     the json output will provide links to information on genes.
     """
     # Constants:
     ## data extracted from the input file
-    accepted_counts_lower = 0.45
-    accepted_counts_upper = 1e8 #should not be
-    accepted_rpkm_lower = 0
-    accepted_rpkm_upper = 1e5
-    ## points considered for calculating splines
-    spline_counts_xmin = math.log10(math.sqrt(6)) #counts of 2,3 -> log(sqrt(2*3))
-    spline_counts_xmax = None
-    spline_rpkm_xmin = None
-    spline_rpkm_xmax = 1
-    ## x interval for plotting the splines
-    todo=True
-
+    if data_format == "counts":
+        lower = 0.45
+        upper = 1e9 #should not be
+        spline_xmin = math.log10(math.sqrt(6)) #counts of 2,3 -> log(sqrt(2*3))
+        spline_xmax = None
+    elif data_format == "rpkm":
+        lower = 0
+        upper = 1e5
+        spline_rpkm_xmin = None
+        spline_rpkm_xmax = 1
+    else:
+        lower = 1e-20; upper = 1e20; print "else"
+    ## limits of the figure
+    if limits[0]: xmin = float(limits[0])
+    if limits[1]: xmax = float(limits[1])
+    if limits[2]: ymin = float(limits[2])
+    if limits[3]: ymax = float(limits[3])
+    if slimits[0]: smin = float(slimits[0])
+    if slimits[1]: smax = float(slimits[1])
+    ## others
+    min_pts_per_bin = 20
+        
     # Extract data from CSV
     if isinstance(dataset,str): dataset = [dataset]
     names=[]; means=[]; ratios=[]; pvals=[]; points=[]; delimiter=None; groups={}; counts={}
@@ -95,15 +73,12 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
         with open(data,'r') as f:
             header = f.readline()
             for d in ['\t',',',' ',':','-']:
-                if len(header.split(d)) in [3,4]:
+                if len(header.split(d)) > 1: #to change
                     delimiter = d; break;
             if not delimiter:
                 print """\n Each line of the CSV file must be of the form \n
                          Feature_name    Expression_cond1    Expression_cond2 \n
                          Accepted delimiters: (space) , : - \\t    \n"""
-            if data_format == "counts": lower = accepted_counts_lower; upper = accepted_counts_upper
-            elif data_format == "rpkm": lower = accepted_rpkm_lower; upper = accepted_rpkm_upper
-            else: lower = 1e-20; upper = 1e20; print "else"
             csvreader = csv.reader(f, delimiter=delimiter, quoting=csv.QUOTE_NONE)
             n=[]; m=[]; r=[]; p=[]
             for row in csvreader:
@@ -142,10 +117,9 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
 
     # Lines (best fit of percentiles)
     if quantiles:
-        # Create bins
-        # Consider only a subset of meaningful points for the splines
+        # Create bins; consider only a subset of meaningful points for the splines.
         if data_format == 'counts':
-            xmin = spline_counts_xmin
+            xmin = spline_xmin
         elif data_format == 'rpkm':
             xmax = spline_rpkm_xmax
         intervals = numpy.linspace(xmin, xmax, bins+1)
@@ -153,7 +127,7 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
         points_in = []
         for i in range(len(intervals)-2,-1,-1): #from l-1 to 0, decreasing
             p_in_i = [p for p in points if p[1]>=intervals[i] and p[1]<intervals[i+1]]
-            if len(p_in_i) < 10:
+            if len(p_in_i) < min_pts_per_bin:
                 intervals = numpy.delete(intervals,i); bins-=1
             else:
                 points_in.append(p_in_i)
@@ -182,7 +156,7 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
             spline_annotes.append((k,x_spline[0],y_spline[0])) #quantile percentages
             spline_coords[k] = zip(x_spline,y_spline)
             
-        with open("extremes_ratios","w") as f:
+        with open("extremes_ratios"+rstring(5),"w") as f:
             c = csv.writer(f,delimiter="\t")
             c.writerow(["Name","log10Mean","log2Fold","countsC1","countsC2"])
             for p in extremes:
@@ -196,10 +170,6 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
     # Decoration
     ax.set_xlabel("Log10 of sqrt(x1*x2)")
     ax.set_ylabel("Log2 of x1/x2")
-    if limits[0]: xmin = float(limits[0])
-    if limits[1]: xmax = float(limits[1])
-    if limits[2]: ymin = float(limits[2])
-    if limits[3]: ymax = float(limits[3])
     xlen = abs(xmax-xmin); ylen = abs(ymax-ymin)
     plt.xlim([xmin-0.1*xlen,xmax+0.1*xlen])
     plt.ylim([ymin-0.1*ylen,ymax+0.1*ylen])
@@ -213,8 +183,8 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
         af = AnnoteFinder( means, ratios, names )
         plt.connect('button_press_event', af)
         plt.draw()
-        print "mode =",mode
         plt.show()
+        figname = None
     elif mode == "normal" or mode == "json":
         for data,annote in zip(dataset,annotate):
             if annote==1:
@@ -222,10 +192,8 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
                 for p in groups[data]:
                     ax.annotate(p[0], xy=(p[1],p[2]))
                     annotes[data].append(p[0])
-
-    # Output figure
-    figname = unique_filename()+".png"
-    fig.savefig(figname)
+        figname = rstring()+".png"
+        fig.savefig(figname)
 
     # Output for Javascript
     if mode == "json":
@@ -355,72 +323,82 @@ class AnnoteFinder:
 
 #---------------------------- MAIN ------------------------------#
 
+usage = """
 
-def main(argv=None):
-    mode = "normal"
-    deg = 4
-    bins = 30
-    assembly_id = None
-    annotate = None
-    quantiles = 'True'
-    data_format = 'counts'
-    xmin = None; xmax = None; ymin = None; ymax = None; limits = [None,None,None,None]
+maplot.py [-h] [-m --mode] [-f --format] [-d --deg] [-b --bins] [-a --assembly] 
+          [-q --noquantiles] [-n --annotate] [--xmin --xmax --ymin --ymax] [--smin --smax]
+          data_1 .. data_n
 
-    if argv is None:
-        argv = sys.argv
-    try:
-        try:
-            opts,args = getopt.getopt(sys.argv[1:],"hm:f:d:b:a:n:q:",
-                         ["help","mode=","format=","deg=","bins=","aid=",
-                          "annotate=","quantiles=","xmin=","xmax=","ymin=","ymax="])
-        except getopt.error, msg:
-            raise Usage(msg)
-        for o, a in opts:
-            if o in ("-h", "--help"):
-                print __doc__
-                print usage
-                sys.exit(0)
-            elif o in ("-m", "--mode"):
-                if a=="interactive": mode = "interactive"
-                elif a=="json": mode = "json"
-                else: mode = "normal"
-            elif o in ("-f", "--format"):
-                if a=="rpkm": data_format = "rpkm" 
-                else: data_format = "counts"
-            elif o in ("-d", "--deg"):
-                deg = int(a)
-            elif o in ("-b", "--bins"):
-                bins = int(a)
-            elif o in ("-a", "--aid"):
-                assembly_id = a
-            elif o in ("-n", "--annotate"):
-                annotate = a
-            elif o in ("-q", "--quantiles"):
-                quantiles = a
-            elif o in ("--xmin"):
-                xmin = a
-            elif o in ("--xmax"):
-                xmax = a
-            elif o in ("--ymin"):
-                ymin = a
-            elif o in ("--ymax"):
-                ymax = a
-            else: raise Usage("Unhandled option: " + o)
+**Input**: CSV files with rows of the form
+            (feature_name, expression_in_condition1, expression_in_condition2).
+**Output**: (str,str) - the name of the .png file produced,
+            and the name of a json containing enough information to reconstruct
+            the plot using Javascript. """
+            
+help = iter([
+"""Display mode: 'normal' for static .pgn output,
+'interactive' - clic to display gene names, or
+'json' - json output to stdout for Javascript web interface.""",
+"""Data type: 'counts' for raw count data (default), 'rpkm' for normalized data.""",
+"""Degree of the interpolant percentile splines.""",
+"""Number of divisions of the x axis to calculate percentiles.""",
+"""Identifier for the Genrep assembly (e.g. 'hg19') used to add more 
+information about features into the json output.""",
+"""Don't draw quantile splines. This may improve speed and lisibility in some cases.""",
+"""Indication of which datasets to annotate (if 'normal' mode).
+Must be a binary string of the same lenght as the number of datasets, \
+1 indicating to annotate the corresponding set, 0 not to annotate. \
+E.g. For a list of datasets d1,d2,d3, if you want to annotate only d3, \
+type --annotate 001.""",
+"""Minimum x value to be displayed on the output graph.""",
+"""Maximum x value to be displayed on the output graph.""",
+"""Minimum y value to be displayed on the output graph.""",
+"""Maximum y value to be displayed on the output graph.""",
+"""Left bound to draw splines.""",
+"""Right bound to draw splines."""
+])
 
-        if len(args) < 1:
-            raise Usage("maplot.py needs at least one argument (CSV file).")
+def main():
+    limits = [None,None,None,None]; slimits = [None,None]
 
-        if annotate: annotate = [eval(a) for a in annotate] # 0100101 -> [0,1,0,0,1,0,1]
-        if quantiles != 'True': quantiles = False
-        if xmin: limits[0] = xmin
-        if xmax: limits[1] = xmax
-        if ymin: limits[2] = ymin
-        if ymax: limits[3] = ymax
+    try:    
+        parser = optparse.OptionParser(usage=usage, description="Creates an `MA-plot` to \
+                                       compare transcription levels of a set of genes \
+                                       (or other features) in two different conditions.")
+
+        parser.add_option("-m", "--mode", default='normal', help = help.next())
+        parser.add_option("-f", "--format", default='counts', help = help.next())
+        parser.add_option("-d", "--deg", default=4, type="int", help = help.next())
+        parser.add_option("-b", "--bins", default=30, type="int", help = help.next())
+        parser.add_option("-a", "--assembly", default=None, help = help.next())
+        parser.add_option("-q", "--noquantiles", default=True, action= "store_false", help = help.next())
+        parser.add_option("-n", "--annotate", default=None, help = help.next())
+        parser.add_option("--xmin", default=None, type=float, help = help.next())
+        parser.add_option("--xmax", default=None, type=float, help = help.next())
+        parser.add_option("--ymin", default=None, type=float, help = help.next())
+        parser.add_option("--ymax", default=None, type=float, help = help.next())
+        parser.add_option("--smin", default=None, type=float, help = help.next())
+        parser.add_option("--smax", default=None, type=float, help = help.next())
+                                       
+        (opt, args) = parser.parse_args()
         args = [os.path.abspath(a) for a in args]
+        
+        if opt.mode not in ["normal","interactive","json"]:
+            parser.error("--mode must be one of 'normal','interactive', or 'json'.")
+        if opt.format not in ["counts","rpkm"]:
+            parser.error("--format must be one of 'counts' or 'rpkm'.")
+        if opt.annotate: annotate = [eval(a) for a in annotate] # 0100101 -> [0,1,0,0,1,0,1]
+        if opt.xmin: limits[0] = xmin
+        if opt.xmax: limits[1] = xmax
+        if opt.ymin: limits[2] = ymin
+        if opt.ymax: limits[3] = ymax
+        if opt.smin: slimits[0] = ymax
+        if opt.smax: slimits[1] = ymax
 
         # Program body #
-        figname = MAplot(args, mode=mode, data_format=data_format, limits=limits, deg=deg, bins=bins,
-                         assembly_id=assembly_id, annotate=annotate, quantiles=quantiles)
+        figname = MAplot(args, mode=opt.mode, data_format=opt.format, limits=limits, 
+                         deg=opt.deg, bins=opt.bins, assembly_id=opt.assembly, 
+                         annotate=opt.annotate, quantiles=opt.noquantiles)
         print "png:", figname
         # End of program body #
 
