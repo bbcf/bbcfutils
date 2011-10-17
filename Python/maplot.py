@@ -47,7 +47,7 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
     if data_format == "counts":
         lower = 0.45
         upper = 1e9 #should not be
-        spline_xmin = math.log10(math.sqrt(6)) #counts of 2,3 -> log(sqrt(2*3))
+        spline_xmin = math.log10(math.sqrt(20)) #counts of 2,3 -> log(sqrt(2*3))
         spline_xmax = None
     elif data_format == "rpkm":
         lower = 0
@@ -148,7 +148,14 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
             #xs = numpy.concatenate((x,[4])) # add a factice point (10,0) - corresponding to zero
             #hs = numpy.concatenate((h,[0]))  # features with expression level of 10^10.
             coeffs = numpy.polyfit(x, h, deg)
-            x_spline = numpy.array(numpy.linspace(x[0], 0.85*x[-1], 10*bins))
+            if slimits[0]:
+                smin = slimits[0]
+            else: smin = x[0]
+            if slimits[1]:
+                smax = slimits[1]
+            else:
+                smax =  0.85*x[-1]
+            x_spline = numpy.array(numpy.linspace(smin, smax, 10*bins))
             y_spline = numpy.polyval(coeffs, x_spline)
 
             ax.plot(x_spline, y_spline, "-", color="blue")
@@ -158,9 +165,9 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
 
         with open("extremes_ratios"+rstring(5),"w") as f:
             c = csv.writer(f,delimiter="\t")
-            c.writerow(["Name","log10Mean","log2Fold","countsC1","countsC2"])
+            c.writerow(["Name","countsC1","countsC2","log10Mean","log2Fold"])
             for p in extremes:
-                c.writerow([p[0], str(p[1]), str(p[2]), str(counts[p[0]][0]), str(counts[p[0]][1])])
+                c.writerow([p[0], str(counts[p[0]][0]), str(counts[p[0]][1]), str(p[1]), str(p[2])])
 
         # Annotation of splines (percentage)
         for sa in spline_annotes:
@@ -192,8 +199,11 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
                 for p in groups[data]:
                     ax.annotate(p[0], xy=(p[1],p[2]))
                     annotes[data].append(p[0])
+    if mode == "normal":
         figname = rstring()+".png"
         fig.savefig(figname)
+    if mode == "json":
+        figname = None
 
     # Output for Javascript
     if mode == "json":
@@ -360,6 +370,7 @@ type --annotate 001.""",
 
 def main():
     limits = [None,None,None,None]; slimits = [None,None]
+    annotate=None
 
     try:
         parser = optparse.OptionParser(usage=usage, description="Creates an `MA-plot` to \
@@ -373,12 +384,12 @@ def main():
         parser.add_option("-a", "--assembly", default=None, help = help.next())
         parser.add_option("-q", "--noquantiles", default=True, action= "store_false", help = help.next())
         parser.add_option("-n", "--annotate", default=None, help = help.next())
-        parser.add_option("--xmin", default=None, type=float, help = help.next())
-        parser.add_option("--xmax", default=None, type=float, help = help.next())
-        parser.add_option("--ymin", default=None, type=float, help = help.next())
-        parser.add_option("--ymax", default=None, type=float, help = help.next())
-        parser.add_option("--smin", default=None, type=float, help = help.next())
-        parser.add_option("--smax", default=None, type=float, help = help.next())
+        parser.add_option("--xmin", default=None, type="float", help = help.next())
+        parser.add_option("--xmax", default=None, type="float", help = help.next())
+        parser.add_option("--ymin", default=None, type="float", help = help.next())
+        parser.add_option("--ymax", default=None, type="float", help = help.next())
+        parser.add_option("--smin", default=None, type="float", help = help.next())
+        parser.add_option("--smax", default=None, type="float", help = help.next())
 
         (opt, args) = parser.parse_args()
         args = [os.path.abspath(a) for a in args]
@@ -387,18 +398,18 @@ def main():
             parser.error("--mode must be one of 'normal','interactive', or 'json'.")
         if opt.format not in ["counts","rpkm"]:
             parser.error("--format must be one of 'counts' or 'rpkm'.")
-        if opt.annotate: annotate = [eval(a) for a in annotate] # 0100101 -> [0,1,0,0,1,0,1]
+        if opt.annotate: annotate = [eval(a) for a in opt.annotate] # 0100101 -> [0,1,0,0,1,0,1]
         if opt.xmin: limits[0] = opt.xmin
         if opt.xmax: limits[1] = opt.xmax
         if opt.ymin: limits[2] = opt.ymin
         if opt.ymax: limits[3] = opt.ymax
-        if opt.smin: slimits[0] = opt.ymax
-        if opt.smax: slimits[1] = opt.ymax
+        if opt.smin: slimits[0] = opt.smin
+        if opt.smax: slimits[1] = opt.smax
 
         # Program body #
-        figname = MAplot(args, mode=opt.mode, data_format=opt.format, limits=limits,
+        figname = MAplot(args, mode=opt.mode, data_format=opt.format, limits=limits, slimits=slimits,
                          deg=opt.deg, bins=opt.bins, assembly_id=opt.assembly,
-                         annotate=opt.annotate, quantiles=opt.noquantiles)
+                         annotate=annotate, quantiles=opt.noquantiles)
         print "png:", figname
         # End of program body #
 
