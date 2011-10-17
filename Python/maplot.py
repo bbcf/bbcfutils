@@ -65,7 +65,7 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
     if slimits[1]: smax = float(slimits[1])
     ## others
     min_pts_per_bin = 20
-        
+
     # Extract data from CSV
     if isinstance(dataset,str): dataset = [dataset]
     names=[]; means=[]; ratios=[]; pvals=[]; points=[]; delimiter=None; groups={}; counts={}
@@ -155,7 +155,7 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
             #ax.plot(x, h, "o", color="blue") # testing
             spline_annotes.append((k,x_spline[0],y_spline[0])) #quantile percentages
             spline_coords[k] = zip(x_spline,y_spline)
-            
+
         with open("extremes_ratios"+rstring(5),"w") as f:
             c = csv.writer(f,delimiter="\t")
             c.writerow(["Name","log10Mean","log2Fold","countsC1","countsC2"])
@@ -325,7 +325,7 @@ class AnnoteFinder:
 
 usage = """
 
-maplot.py [-h] [-m --mode] [-f --format] [-d --deg] [-b --bins] [-a --assembly] 
+maplot.py [-h] [-m --mode] [-f --format] [-d --deg] [-b --bins] [-a --assembly]
           [-q --noquantiles] [-n --annotate] [--xmin --xmax --ymin --ymax] [--smin --smax]
           data_1 .. data_n
 
@@ -334,7 +334,7 @@ maplot.py [-h] [-m --mode] [-f --format] [-d --deg] [-b --bins] [-a --assembly]
 **Output**: (str,str) - the name of the .png file produced,
             and the name of a json containing enough information to reconstruct
             the plot using Javascript. """
-            
+
 help = iter([
 """Display mode: 'normal' for static .pgn output,
 'interactive' - clic to display gene names, or
@@ -342,7 +342,7 @@ help = iter([
 """Data type: 'counts' for raw count data (default), 'rpkm' for normalized data.""",
 """Degree of the interpolant percentile splines.""",
 """Number of divisions of the x axis to calculate percentiles.""",
-"""Identifier for the Genrep assembly (e.g. 'hg19') used to add more 
+"""Identifier for the Genrep assembly (e.g. 'hg19') used to add more
 information about features into the json output.""",
 """Don't draw quantile splines. This may improve speed and lisibility in some cases.""",
 """Indication of which datasets to annotate (if 'normal' mode).
@@ -361,7 +361,7 @@ type --annotate 001.""",
 def main():
     limits = [None,None,None,None]; slimits = [None,None]
 
-    try:    
+    try:
         parser = optparse.OptionParser(usage=usage, description="Creates an `MA-plot` to \
                                        compare transcription levels of a set of genes \
                                        (or other features) in two different conditions.")
@@ -379,25 +379,25 @@ def main():
         parser.add_option("--ymax", default=None, type=float, help = help.next())
         parser.add_option("--smin", default=None, type=float, help = help.next())
         parser.add_option("--smax", default=None, type=float, help = help.next())
-                                       
+
         (opt, args) = parser.parse_args()
         args = [os.path.abspath(a) for a in args]
-        
+
         if opt.mode not in ["normal","interactive","json"]:
             parser.error("--mode must be one of 'normal','interactive', or 'json'.")
         if opt.format not in ["counts","rpkm"]:
             parser.error("--format must be one of 'counts' or 'rpkm'.")
         if opt.annotate: annotate = [eval(a) for a in annotate] # 0100101 -> [0,1,0,0,1,0,1]
-        if opt.xmin: limits[0] = xmin
-        if opt.xmax: limits[1] = xmax
-        if opt.ymin: limits[2] = ymin
-        if opt.ymax: limits[3] = ymax
-        if opt.smin: slimits[0] = ymax
-        if opt.smax: slimits[1] = ymax
+        if opt.xmin: limits[0] = opt.xmin
+        if opt.xmax: limits[1] = opt.xmax
+        if opt.ymin: limits[2] = opt.ymin
+        if opt.ymax: limits[3] = opt.ymax
+        if opt.smin: slimits[0] = opt.ymax
+        if opt.smax: slimits[1] = opt.ymax
 
         # Program body #
-        figname = MAplot(args, mode=opt.mode, data_format=opt.format, limits=limits, 
-                         deg=opt.deg, bins=opt.bins, assembly_id=opt.assembly, 
+        figname = MAplot(args, mode=opt.mode, data_format=opt.format, limits=limits,
+                         deg=opt.deg, bins=opt.bins, assembly_id=opt.assembly,
                          annotate=opt.annotate, quantiles=opt.noquantiles)
         print "png:", figname
         # End of program body #
