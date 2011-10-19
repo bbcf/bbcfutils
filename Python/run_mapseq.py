@@ -99,7 +99,7 @@ def main(argv = None):
             pdf = add_pdf_stats( ex, mapped_files,
                                  dict((k,v['name']) for k,v in job.groups.iteritems()),
                                  gl.get('script_path') or '',
-                                 description=set_file_descr("mapping_report.pdf",'pdf',{'step': wrkflw_step, 'type':'pdf'}) )
+                                 description=set_file_descr("mapping_report.pdf",tag='pdf',step=wrkflw_step,type='pdf') )
             if job.options['compute_densities']:
                 wrkflw_step += 1
                 if not(job.options.get('read_extension')>0):
@@ -111,7 +111,7 @@ def main(argv = None):
                                                           job.description,  
                                                           assembly.nr_assembly_id,
                                                           gdv_url=gl['gdv']['url'], public=True )
-                    add_pickle( ex, gdv_project, description=set_file_descr("gdv_json",'py',{'step': wrkflw_step, 'type':'py', 'view':'admin'}) )
+                    add_pickle( ex, gdv_project, description=set_file_descr("gdv_json",tag='py',step=wrkflw_step, type='py', view='admin') )
         allfiles = get_files( ex.id, M )
         if job.options['create_gdv_project']:
             allfiles['url'] = {gdv_project['public_url']: 'GDV view'}
