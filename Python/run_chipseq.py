@@ -111,7 +111,7 @@ def main(argv = None):
                                    subject="Chipseq job "+str(job.description),
                                    smtp_server=gl['email']['smtp'] )
             r.appendBody('''
-Your chip-seq job is finished.
+Your chip-seq job has finished.
 
 The description was: 
 '''+str(job.description)+'''

@@ -91,7 +91,8 @@ def main(argv = None):
             job.options['ucsc_bigwig'] = job.options['compute_densities']
         if not('create_gdv_project' in job.options):
             job.options['create_gdv_project'] = False
-        global wrkflw_step = 1
+        global wrkflw_step
+        wrkflw_step = 1
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
             job = get_fastq_files( job, ex.working_directory, dafl )
             mapped_files = map_groups( ex, job, ex.working_directory, assembly, {'via': via} )
@@ -100,11 +101,11 @@ def main(argv = None):
                                  gl.get('script_path') or '',
                                  description=set_file_descr("mapping_report.pdf",'pdf',{'step': wrkflw_step, 'type':'pdf'}) )
             if job.options['compute_densities']:
-                wrkflw_step = 2
+                wrkflw_step += 1
                 if not(job.options.get('read_extension')>0):
                     job.options['read_extension'] = mapped_files.values()[0].values()[0]['stats']['read_length']
                 density_files = densities_groups( ex, job, mapped_files, assembly.chromosomes, via=via )
-                wrkflw_step = 3
+                wrkflw_step += 1
                 if job.options['create_gdv_project']:
                     gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
                                                           job.description,  
