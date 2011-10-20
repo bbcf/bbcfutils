@@ -29,29 +29,49 @@ write.table(data,"data.txt", sep=",", row.names=T, col.names=T, quote=F)
 ## Design matrix
 design = "design.txt"
 contrast = "contrast.txt"
-data = "data.txt"
+filename = "data.txt"
 
 #main <- function(data, design, contrast){
 
-  data <- read.table(data, header=T, row.names=1, sep=",")
+  data <- read.table(filename, header=T, row.names=1, sep=",")
   design <- read.table(design, header=T, row.names=1,  sep=",")
   design = as.data.frame(t(design))
+
+  features = rownames(data)
+  nfeat = length(features)
+  cond = rownames(design)
+  cov = colnames(design)
+  ncond = length(cond)
+  ncov = length(cov)
+
+  # Build the right part of the regression formula
+  f = cov[1]
+  for (c in cov[2:ncov]){ f = paste(f,"+",c) }
+
   for (i in 1:length(design)){ design[,i] = as.factor(design[,i]) }
+  estimate = matrix(,nfeat,ncov+1)
+  stderror = matrix(,nfeat,ncov+1)
+  zvalue = matrix(,nfeat,ncov+1)
+  pvalue = matrix(,nfeat,ncov+1)
 
   for (i in 1:length(data[,1])){ # for each feature
-    print(paste("Feature",i))
     Y = as.data.frame(t(data[i,]))
     g = cbind(Y,design)
-    cond = colnames(design)
-    f = cond[1]
-    for (c in cond[2:length(cond)]){
-      f = paste(as.name(f),"+",as.name(c))
-    }
-    f = formula(paste(colnames(Y)[1],"~",f))
+    ff = formula(paste(colnames(Y)[1],"~",f))
 
-    nbmodel = glm.nb(f, data=g)
-    print(summary(nbmodel))
+    nbmodel = glm.nb(ff, data=g)
+    summ = summary(nbmodel)
+    coef = as.data.frame(summ$coefficients)
+    estimate[i,] = coef$"Estimate"
+    stderror[i,] = coef$"Std. Error"
+    zvalue[i,] = coef$"z value"
+    pvalue[i,] = coef$"Pr(>|z|)"
   }
+
+  data$estimate = estimate
+  data$stderror = stderror
+  data$zvalue = zvalue
+  data$pvalue = pvalue
 
   ##contrast = glht(nbmodel, linfct=mcp(temp="Tukey"))
 
