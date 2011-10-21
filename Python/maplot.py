@@ -227,6 +227,11 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
                        "lines": {"show":True}, "color": rgb_to_hex((255,0,255)) })
 
         # - splines
+        splinelabels = {"id": "Spline labels",
+                        "data": [spline_coords[k][0] for k in percentiles],
+                        "points": {"show":False},
+                        "lines": {"show":False},
+                        "labels": ["1%","5%","25%","50%","75%","95%","99%"]}
         transparencies = iter([0.12, 0.18, 0.3, 0.3, 0.18, 0.12])
         percentiles.pop(percentiles.index(50))
         for i in percentiles:
@@ -234,11 +239,6 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
                            "data": spline_coords[i],
                            "lines": {"show":True, "lineWidth":0, "fill": transparencies.next()},
                            "color": rgb_to_hex((255,0,255)) })
-        splinelabels = {"id": "Spline labels",
-                        "data": [spline_coords[k][0] for k in percentiles],
-                        "points": {"show":False},
-                        "lines": {"show":False},
-                        "labels": ["1%","5%","25%","50%","75%","95%","99%"]}
         jsdata = "var data = " + json.dumps(jsdata) + ";\n" \
                  + "var splinelabels = " + json.dumps(splinelabels) + ";\n"
 
@@ -410,7 +410,7 @@ def main():
         figname = MAplot(args, mode=opt.mode, data_format=opt.format, limits=limits, slimits=slimits,
                          deg=opt.deg, bins=opt.bins, assembly_id=opt.assembly,
                          annotate=annotate, quantiles=opt.noquantiles)
-        print "png:", figname
+        if opt.mode == "normal": print "png:", figname
         # End of program body #
 
         sys.exit(0)
