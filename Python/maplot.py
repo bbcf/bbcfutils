@@ -31,19 +31,21 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
 
     :param dataset: list or string, containing names of CSV files with rows of
     the form (feature_name, sample1, sample2, ...)
+    :param annotate: in 'normal' mode, choose which for which datasets you want
+    points to be labeled. In a list, enter 1 to annotate, 0 not to annotate, in the
+    same order as datasets were entered. E.g. []
     :param mode: string, display mode:
-    * If `normal` (default), name of genes over 99%/under 1% quantile are displayed.
+    * If `normal`, name of genes over 99%/under 1% quantile are displayed.
     * If `interactive`, click on a point to display its name.
     * If `json`, a .json file is produced that allows to reproduce th graph
     in a web interface using Javascript.
-    :param data_format: `counts` (default) or `rpkm`.
+    :param data_format: `counts` or `rpkm`.
     :param deg: int, the degree of the interpolating polynomial splines
     :param bins: int, the number of divisions of the x axis for quantiles estimation
     :param assembly_id: string of integer. If an assembly ID is given,
     the json output will provide links to information on genes.
     """
     # Constants:
-    ## data extracted from the input file
     if data_format == "counts":
         lower = 0.45
         upper = 1e9 #should not be
@@ -52,19 +54,13 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
     elif data_format == "rpkm":
         lower = 0
         upper = 1e5
-        spline_rpkm_xmin = None
-        spline_rpkm_xmax = 1
+        spline_xmin = None
+        spline_xmax = 1
     else:
         lower = 1e-20; upper = 1e20; print "else"
-    ## limits of the figure
-    if limits[0]: xmin = float(limits[0])
-    if limits[1]: xmax = float(limits[1])
-    if limits[2]: ymin = float(limits[2])
-    if limits[3]: ymax = float(limits[3])
-    if slimits[0]: smin = float(slimits[0])
-    if slimits[1]: smax = float(slimits[1])
     ## others
     min_pts_per_bin = 20
+    extreme_ratios = False # print extremes ratios
 
     # Extract data from CSV
     if isinstance(dataset,str): dataset = [dataset]
@@ -77,7 +73,7 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
                     delimiter = d; break;
             if not delimiter:
                 print """\n Each line of the CSV file must be of the form \n
-                         Feature_name    Expression_cond1    Expression_cond2 \n
+                         Feature_name    Expression_cond1    Expression_cond2  ... \n
                          Accepted delimiters: (space) , : - \\t    \n"""
             csvreader = csv.reader(f, delimiter=delimiter, quoting=csv.QUOTE_NONE)
             n=[]; m=[]; r=[]; p=[]
@@ -85,11 +81,6 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
                 #numpy.seterr(all='raise') # testing
                 c1 = float(row[1]); c2 = float(row[2])
                 if (c1 > lower and c2 > lower) and (c1 < upper and c2 < upper):
-                    """ Counts of 1 may become slightly inferior after normalization processes,
-                    thus features with count 1 may be excluded - they shouldn't matter anyway.
-                    Another threshold of 10^8 was added in case operations on counts suffered
-                    of numerical instability or bad conversions of NA values.
-                    You may want to modify these values. """
                     counts[row[0]] = (c1,c2)
                     n.append(row[0])
                     m.append(numpy.log10(numpy.sqrt(c1*c2)))
@@ -117,12 +108,10 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
 
     # Lines (best fit of percentiles)
     if quantiles:
-        # Create bins; consider only a subset of meaningful points for the splines.
-        if data_format == 'counts':
-            xmin = spline_xmin
-        elif data_format == 'rpkm':
-            xmax = spline_rpkm_xmax
-        intervals = numpy.linspace(xmin, xmax, bins+1)
+        # Create bins; consider only a subset [spline_xmin, spline_xmax] of meaningful points.
+        spline_xmin = spline_xmin or xmin
+        spline_xmax = spline_xmax or xmax
+        intervals = numpy.linspace(spline_xmin, spline_xmax, bins+1)
 
         points_in = []
         for i in range(len(intervals)-2,-1,-1): #from l-1 to 0, decreasing
@@ -145,16 +134,9 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
                 if k==1: extremes.extend([p for p in points_in[b] if p[2] < score])
                 if k==99: extremes.extend([p for p in points_in[b] if p[2] > score])
 
-            #xs = numpy.concatenate((x,[4])) # add a factice point (10,0) - corresponding to zero
-            #hs = numpy.concatenate((h,[0]))  # features with expression level of 10^10.
             coeffs = numpy.polyfit(x, h, deg)
-            if slimits[0]:
-                smin = slimits[0]
-            else: smin = x[0]
-            if slimits[1]:
-                smax = slimits[1]
-            else:
-                smax =  0.85*x[-1]
+            smin = slimits[0] or x[0]
+            smax =  slimits[1] or 0.85*x[-1]
             x_spline = numpy.array(numpy.linspace(smin, smax, 10*bins))
             y_spline = numpy.polyval(coeffs, x_spline)
 
@@ -163,11 +145,12 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
             spline_annotes.append((k,x_spline[0],y_spline[0])) #quantile percentages
             spline_coords[k] = zip(x_spline,y_spline)
 
-        with open("extremes_ratios"+rstring(5),"w") as f:
-            c = csv.writer(f,delimiter="\t")
-            c.writerow(["Name","countsC1","countsC2","log10Mean","log2Fold"])
-            for p in extremes:
-                c.writerow([p[0], str(counts[p[0]][0]), str(counts[p[0]][1]), str(p[1]), str(p[2])])
+        if extreme_ratios:
+            with open("extremes_ratios"+rstring(5),"w") as f:
+                c = csv.writer(f,delimiter="\t")
+                c.writerow(["Name","countsC1","countsC2","log10Mean","log2Fold"])
+                for p in extremes:
+                    c.writerow([p[0], str(counts[p[0]][0]), str(counts[p[0]][1]), str(p[1]), str(p[2])])
 
         # Annotation of splines (percentage)
         for sa in spline_annotes:
@@ -177,6 +160,10 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
     # Decoration
     ax.set_xlabel("Log10 of sqrt(x1*x2)")
     ax.set_ylabel("Log2 of x1/x2")
+    if limits[0] is not None: xmin = limits[0]
+    if limits[1] is not None: xmax = limits[1]
+    if limits[2] is not None: ymin = limits[2]
+    if limits[3] is not None: ymax = limits[3]
     xlen = abs(xmax-xmin); ylen = abs(ymax-ymin)
     plt.xlim([xmin-0.1*xlen,xmax+0.1*xlen])
     plt.ylim([ymin-0.1*ylen,ymax+0.1*ylen])
@@ -369,9 +356,6 @@ type --annotate 001.""",
 ])
 
 def main():
-    limits = [None,None,None,None]; slimits = [None,None]
-    annotate=None
-
     try:
         parser = optparse.OptionParser(usage=usage, description="Creates an `MA-plot` to \
                                        compare transcription levels of a set of genes \
@@ -394,17 +378,15 @@ def main():
         (opt, args) = parser.parse_args()
         args = [os.path.abspath(a) for a in args]
 
+        annotate = None
         if opt.mode not in ["normal","interactive","json"]:
             parser.error("--mode must be one of 'normal','interactive', or 'json'.")
         if opt.format not in ["counts","rpkm"]:
             parser.error("--format must be one of 'counts' or 'rpkm'.")
         if opt.annotate: annotate = [eval(a) for a in opt.annotate] # 0100101 -> [0,1,0,0,1,0,1]
-        if opt.xmin: limits[0] = opt.xmin
-        if opt.xmax: limits[1] = opt.xmax
-        if opt.ymin: limits[2] = opt.ymin
-        if opt.ymax: limits[3] = opt.ymax
-        if opt.smin: slimits[0] = opt.smin
-        if opt.smax: slimits[1] = opt.smax
+        limits = [None or opt.xmin, None or opt.xmax, None or opt.ymin, None or opt.ymax]
+        slimits = [None or opt.smin, None or opt.smax]
+        print limits, slimits
 
         # Program body #
         figname = MAplot(args, mode=opt.mode, data_format=opt.format, limits=limits, slimits=slimits,
@@ -421,3 +403,4 @@ def main():
 
 if __name__ == '__main__':
     sys.exit(main())
+
