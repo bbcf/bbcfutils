@@ -386,7 +386,6 @@ def main():
         if opt.annotate: annotate = [eval(a) for a in opt.annotate] # 0100101 -> [0,1,0,0,1,0,1]
         limits = [None or opt.xmin, None or opt.xmax, None or opt.ymin, None or opt.ymax]
         slimits = [None or opt.smin, None or opt.smax]
-        print limits, slimits
 
         # Program body #
         figname = MAplot(args, mode=opt.mode, data_format=opt.format, limits=limits, slimits=slimits,
