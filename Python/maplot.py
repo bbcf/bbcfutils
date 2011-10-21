@@ -178,7 +178,6 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
         plt.connect('button_press_event', af)
         plt.draw()
         plt.show()
-        figname = None
     elif mode == "normal" or mode == "json":
         for data,annote in zip(dataset,annotate):
             if annote==1:
@@ -189,8 +188,7 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
     if mode == "normal":
         figname = rstring()+".png"
         fig.savefig(figname)
-    if mode == "json":
-        figname = None
+        print "png:", figname
 
     # Output for Javascript
     if mode == "json":
@@ -219,7 +217,7 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
                         "points": {"show":False},
                         "lines": {"show":False},
                         "labels": ["1%","5%","25%","50%","75%","95%","99%"]}
-        transparencies = iter([0.12, 0.18, 0.3, 0.3, 0.18, 0.12])
+        transparencies = iter([0.12, 0.2, 0.35, 0.35, 0.2, 0.12])
         percentiles.pop(percentiles.index(50))
         for i in percentiles:
             jsdata.append({"id": str(i)+" % Quantile",
@@ -243,7 +241,7 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
         else: jsdata = jsdata + "var url_template = null;"
         print >> sys.stdout, jsdata
 
-    return figname
+    return 0
 
 
 #----------------------------------------------------------#
@@ -388,10 +386,9 @@ def main():
         slimits = [None or opt.smin, None or opt.smax]
 
         # Program body #
-        figname = MAplot(args, mode=opt.mode, data_format=opt.format, limits=limits, slimits=slimits,
+        MAplot(args, mode=opt.mode, data_format=opt.format, limits=limits, slimits=slimits,
                          deg=opt.deg, bins=opt.bins, assembly_id=opt.assembly,
                          annotate=annotate, quantiles=opt.noquantiles)
-        if opt.mode == "normal": print "png:", figname
         # End of program body #
 
         sys.exit(0)
