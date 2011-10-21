@@ -4,13 +4,14 @@
 library(MASS)
 library(lattice)
 library(multcomp)
+library(limma)
 library(rjson)
 
 args=commandArgs(trailingOnly = TRUE)
 args
 set.seed(123)
 
-## Set a fake experiment dataset
+## Create a fake experiment dataset
 n = 30
 features = paste(rep("feat",n), seq(n), sep="")
 g1.1 = rnegbin(n, 200,2)
@@ -31,52 +32,61 @@ design = "design.txt"
 contrast = "contrast.txt"
 filename = "data.txt"
 
-#main <- function(data, design, contrast){
+#main <- function(filename, design, contrast){
 
   data <- read.table(filename, header=T, row.names=1, sep=",")
   design <- read.table(design, header=T, row.names=1,  sep=",")
   design = as.data.frame(t(design))
 
   features = rownames(data)
+  samples = rownames(design)
+  covar = colnames(design) # covariates
+
   nfeat = length(features)
-  cond = rownames(design)
-  cov = colnames(design)
-  ncond = length(cond)
-  ncov = length(cov)
+  nsamples = length(samples)
+  ncovar = length(covar)
+
+  # Determine groups
+  groups = unique(unlist(lapply(strsplit(samples,".",fixed=T), "[[", 1)))
 
   # Build the right part of the regression formula
-  f = cov[1]
-  for (c in cov[2:ncov]){ f = paste(f,"+",c) }
+  f = covar[1]
+  for (c in covar[2:ncovar]){ f = paste(f,"+",as.name(c)) }
 
-  for (i in 1:length(design)){ design[,i] = as.factor(design[,i]) }
-  estimate = matrix(,nfeat,ncov+1)
-  stderror = matrix(,nfeat,ncov+1)
-  zvalue = matrix(,nfeat,ncov+1)
-  pvalue = matrix(,nfeat,ncov+1)
+  for (i in 1:ncovar){ design[,i] = as.factor(design[,i]) }
+  estimate = matrix(,nfeat,ncovar+1)
+  stderror = matrix(,nfeat,ncovar+1)
+  zvalue = matrix(,nfeat,ncovar+1)
+  pvalue = matrix(,nfeat,ncovar+1)
 
-  for (i in 1:length(data[,1])){ # for each feature
+  for (i in 1:1){#nrow(data)){ # for each feature
     Y = as.data.frame(t(data[i,]))
     g = cbind(Y,design)
-    ff = formula(paste(colnames(Y)[1],"~",f))
+    regressionFormula = formula(paste(colnames(Y)[1],"~",f))
 
-    nbmodel = glm.nb(ff, data=g)
+    nbmodel = glm.nb(regressionFormula, data=g)
     summ = summary(nbmodel)
-    coef = as.data.frame(summ$coefficients)
-    estimate[i,] = coef$"Estimate"
-    stderror[i,] = coef$"Std. Error"
-    zvalue[i,] = coef$"z value"
-    pvalue[i,] = coef$"Pr(>|z|)"
+    coeff = as.data.frame(summ$coefficients)
+    estimate[i,] = coeff$"Estimate" # 'beta' coefficients of the regression
+    stderror[i,] = coeff$"Std. Error"
+    zvalue[i,] = coeff$"z value"
+    pvalue[i,] = coeff$"Pr(>|z|)"
+
+    contrast = contrMat(rep(nfeat,nsamples), type="Tukey")
+    test = glht(nbmodel, linfct=mcp(temp=contrast))
+    #contrast = glht(nbmodel, linfct=mcp(temp="Tukey"))
+    ## contrast <- read.table(contrast.file, header=F, sep="\t")
+    ## contrast.matrix <- data.matrix(contrast)
+
   }
 
-  data$estimate = estimate
-  data$stderror = stderror
-  data$zvalue = zvalue
-  data$pvalue = pvalue
-
-  ##contrast = glht(nbmodel, linfct=mcp(temp="Tukey"))
-
-  ## contrast <- read.table(contrast.file, header=F, sep="\t")
-  ## contrast.matrix <- data.matrix(contrast)
+  colnames(estimate) <- paste(rep("estimate",3),".",groups,sep="")
+  colnames(stderror) <- paste(rep("stderror",3),".",groups,sep="")
+  colnames(pvalue) <- paste(rep("pvalue",3),".",groups,sep="")
+  estimate = as.data.frame(estimate)
+  stderror = as.data.frame(stderror)
+  pvalue = as.data.frame(pvalue)
+  data = cbind(data, estimate, stderror, pvalue)
 
   #result = data.frame()
   #write.table(result, "ouput")
