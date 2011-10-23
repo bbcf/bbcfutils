@@ -113,13 +113,13 @@ inverse.solve = function(counts,
     if (mu <= len) stop("mu must be larger than len\n")
     par = c(mu,lambda)
     if (optimize) {
-        solved = solve.one(counts,par[1],par[2],len,1e-2,ktype)
+        solved = solve.one(counts,par[1],par[2],len,1e-3,ktype)
         O = order(sapply(solved$rtn,function(x)x$value))
-        npeaks = min(10,length(O))
+        npeaks = min(4,length(O))
         par = optim(par=par,fn=fit.score,counts=counts[O[1:npeaks]],
-          len=len,reg=1e-2,ktype=ktype,
-          gr=NULL,method='L-BFGS-B',lower=c(len+1,len+1),upper=c(1000,1000),
-          control=list(maxit=15,trace=4))$par
+          len=len,reg=1e-3,ktype=ktype,
+          gr=NULL,method='L-BFGS-B',lower=c(len+1,len+1),upper=c(600,600),
+          control=list(maxit=5,trace=4))$par
     }
     solved = solve.one(counts,par[1],par[2],len,regul,ktype)
     return(list(sol=solved$rtn,par=list(mu=par[1],lambda=par[2],len=len)))
