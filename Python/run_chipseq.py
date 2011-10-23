@@ -3,9 +3,10 @@
 A High-throughput ChIP-seq peak analysis workflow.
 
 """
-from bbcflib import genrep, frontend, email, gdv, common
+from bbcflib import genrep, frontend, email, gdv
 from bbcflib.mapseq import *
 from bbcflib.chipseq import *
+from bbcflib.common import get_files, set_file_descr
 import sys, getopt, os, json, re
 
 usage = """run_chipseq.py [-h] [-u via] [-w wdir] [-k job_key] [-c config_file] -d minilims
@@ -94,7 +95,7 @@ def main(argv = None):
             chipseq_files = workflow_groups( ex, job, mapped_files, assembly.chromosomes, 
                                              gl.get('script_path') or '', g_rep, via=via )
             
-        allfiles = common.get_files( ex.id, M )
+        allfiles = get_files( ex.id, M )
         if 'gdv_project' in job.options and 'sql' in allfiles:
             allfiles['url'] = {job.options['gdv_project']['public_url']: 'GDV view'}
             download_url = gl['hts_chipseq']['download']

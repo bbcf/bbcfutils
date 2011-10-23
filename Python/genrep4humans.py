@@ -8,6 +8,8 @@ from bbcflib.common import normalize_url
 import sys, os, re
 import optparse
 
+usage = "genrep4humans.py [OPTIONS]"
+descr = "Command-line interface to genrep functionalities."
 opts = (("-l", "--list", "list available assemblies, or a chromosome table if an assembly is specified",
          {'action': "store_true", 'default': False}),
         ("-f", "--fasta", "get path to fasta", {'action': "store_true", 'default': False}),
@@ -36,8 +38,7 @@ def _compact_key(key):
 def main():
     try:
         # Parse args
-        usage = "genrep4humans.py [OPTIONS]"
-        parser = optparse.OptionParser(usage=usage, description="Command-line interface to genrep functionalities.")
+        parser = optparse.OptionParser(usage=usage, description=descr)
         for opt in opts:
             parser.add_option(opt[0],opt[1],help=opt[2],**opt[3])
 

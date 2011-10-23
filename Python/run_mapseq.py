@@ -91,27 +91,24 @@ def main(argv = None):
             job.options['ucsc_bigwig'] = job.options['compute_densities']
         if not('create_gdv_project' in job.options):
             job.options['create_gdv_project'] = False
-        global wrkflw_step
-        wrkflw_step = 1
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
             job = get_fastq_files( job, ex.working_directory, dafl )
             mapped_files = map_groups( ex, job, ex.working_directory, assembly, {'via': via} )
-            pdf = add_pdf_stats( ex, mapped_files,
-                                 dict((k,v['name']) for k,v in job.groups.iteritems()),
-                                 gl.get('script_path') or '',
-                                 description=set_file_descr("mapping_report.pdf",tag='pdf',step=wrkflw_step,type='pdf') )
+            for k,v in job.groups.iteritems():
+                pdf = add_pdf_stats( ex, mapped_files,
+                                     {k:v['name']},
+                                     gl.get('script_path') or '',
+                                     description=set_file_descr(v['name']+"_mapping_report.pdf",groupId=k,step='stats',type='pdf') )
             if job.options['compute_densities']:
-                wrkflw_step += 1
                 if not(job.options.get('read_extension')>0):
                     job.options['read_extension'] = mapped_files.values()[0].values()[0]['stats']['read_length']
                 density_files = densities_groups( ex, job, mapped_files, assembly.chromosomes, via=via )
-                wrkflw_step += 1
                 if job.options['create_gdv_project']:
                     gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
                                                           job.description,  
                                                           assembly.nr_assembly_id,
                                                           gdv_url=gl['gdv']['url'], public=True )
-                    add_pickle( ex, gdv_project, description=set_file_descr("gdv_json",tag='py',step=wrkflw_step, type='py', view='admin') )
+                    add_pickle( ex, gdv_project, description=set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
         allfiles = get_files( ex.id, M )
         if job.options['create_gdv_project']:
             allfiles['url'] = {gdv_project['public_url']: 'GDV view'}
