@@ -35,6 +35,7 @@ filename = "data.txt"
 #main <- function(filename, design, contrast){
 
   data <- read.table(filename, header=T, row.names=1, sep=",")
+  contrast <- read.table(contrast.file, header=F, sep=",")
   design <- read.table(design, header=T, row.names=1,  sep=",")
   design = as.data.frame(t(design))
 
@@ -48,6 +49,7 @@ filename = "data.txt"
 
   # Determine groups
   groups = unique(unlist(lapply(strsplit(samples,".",fixed=T), "[[", 1)))
+  ngroups = length(groups)
 
   # Build the right part of the regression formula
   f = covar[1]
@@ -72,11 +74,9 @@ filename = "data.txt"
     zvalue[i,] = coeff$"z value"
     pvalue[i,] = coeff$"Pr(>|z|)"
 
-    contrast = contrMat(rep(nfeat,nsamples), type="Tukey")
+    contrast = contrMat(rep(nfeat,ngroups), type="Tukey")
     test = glht(nbmodel, linfct=mcp(temp=contrast))
-    #contrast = glht(nbmodel, linfct=mcp(temp="Tukey"))
-    ## contrast <- read.table(contrast.file, header=F, sep="\t")
-    ## contrast.matrix <- data.matrix(contrast)
+    ##     ## contrast.matrix <- data.matrix(contrast)
 
   }
 
