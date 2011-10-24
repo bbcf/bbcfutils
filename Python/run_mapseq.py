@@ -87,10 +87,21 @@ def main(argv = None):
             dafl = None
         if not('compute_densities' in job.options):
             job.options['compute_densities'] = True
+        elif isinstance(job.options['compute_densities'],str):
+            job.options['compute_densities'] = job.options['compute_densities'].lower() in ['1','true','t'] 
         if not('ucsc_bigwig' in job.options):
-            job.options['ucsc_bigwig'] = job.options['compute_densities']
+            job.options['ucsc_bigwig'] = True
+        elif isinstance(job.options['ucsc_bigwig'],str):
+            job.options['ucsc_bigwig'] = job.options['ucsc_bigwig'].lower() in ['1','true','t'] 
+        job.options['ucsc_bigwig'] = job.options['ucsc_bigwig'] and job.options['compute_densities']
         if not('create_gdv_project' in job.options):
             job.options['create_gdv_project'] = False
+        elif isinstance(job.options['create_gdv_project'],str):
+            job.options['create_gdv_project'] = job.options['create_gdv_project'].lower() in ['1','true','t'] 
+        if job.options.get('read_extension'):
+            job.options['read_extension'] = int(job.options['read_extension'])
+        if job.options.get('merge_strands'):
+            job.options['merge_strands'] = int(job.options['merge_strands'])
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
             job = get_fastq_files( job, ex.working_directory, dafl )
             mapped_files = map_groups( ex, job, ex.working_directory, assembly, {'via': via} )
