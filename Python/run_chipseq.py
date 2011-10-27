@@ -89,14 +89,18 @@ def main(argv = None):
         job.options['ucsc_bigwig'] = True
         g_rep = genrep.GenRep( gl["genrep_url"], gl.get("bwt_root") )
         assembly = g_rep.assembly( job.assembly_id )
+        logfile = open(hts_key+".log",'w')
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
+            logfile.write("Enter execution, fetch bam and wig files.\n");logfile.flush()
             (mapped_files, job) = get_bam_wig_files( ex, job, minilims=ms_limspath, hts_url=mapseq_url,
                                                      script_path=gl.get('script_path') or '', via=via )
+            logfile.write("Starting workflow.\n");logfile.flush()
             chipseq_files = workflow_groups( ex, job, mapped_files, assembly.chromosomes, 
                                              gl.get('script_path') or '', g_rep, via=via )
             
         allfiles = get_files( ex.id, M )
         if 'gdv_project' in job.options and 'sql' in allfiles:
+            logfile.write("Adding to GDV project.\n");logfile.flush()
             allfiles['url'] = {job.options['gdv_project']['public_url']: 'GDV view'}
             download_url = gl['hts_chipseq']['download']
             [gdv.add_gdv_track( gl['gdv']['key'], gl['gdv']['email'],
@@ -105,7 +109,10 @@ def main(argv = None):
                                 name = re.sub('\.sql','',str(f)),
                                 gdv_url=gl['gdv']['url'] ) 
              for k,f in allfiles['sql'].iteritems()]
+        logfile.close()
         print json.dumps(allfiles)
+        with open(hts_key+".done",'w') as done:
+            json.dump(allfiles,done)
         if 'email' in gl:
             r = email.EmailReport( sender=gl['email']['sender'],
                                    to=str(job.email),
