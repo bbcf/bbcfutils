@@ -80,7 +80,7 @@ def main(argv = None):
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
             demultiplex_files = demultiplex.workflow_groups( ex, job, gl['script_path'])
         allfiles = common.get_files( ex.id, M )
-        print json.dumps(allfiles)
+	
 #        gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
  #                                               job.description,
   #                                              assembly.nr_assembly_id,
@@ -95,6 +95,8 @@ def main(argv = None):
      #                           gdv_url=gl['gdv']['url'] ) 
      #        for k,f in allfiles['sql'].iteritems()]
         print json.dumps(allfiles)
+	with open(hts_key+".done",'w') as done:
+		json.dump(allfiles,done)
         if 'email' in gl:
             r = email.EmailReport( sender=gl['email']['sender'],
                                    to=str(job.email),

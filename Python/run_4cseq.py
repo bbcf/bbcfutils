@@ -108,6 +108,9 @@ def main(argv = None):
                                 gdv_url=gl['gdv']['url']) 
                  for k,f in allfiles['sql'].iteritems()]
         print json.dumps(allfiles)
+        with open(hts_key+".done",'w') as done:
+                json.dump(allfiles,done)
+
 
         if 'email' in gl:
             r = email.EmailReport( sender=gl['email']['sender'],
