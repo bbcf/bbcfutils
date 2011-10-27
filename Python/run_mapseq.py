@@ -102,23 +102,31 @@ def main(argv = None):
             job.options['read_extension'] = int(job.options['read_extension'])
         if job.options.get('merge_strands'):
             job.options['merge_strands'] = int(job.options['merge_strands'])
+        logfile = open(hts_key+".log",'w')
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
+            logfile.write("Enter execution, fetch fastq files.");logfile.flush()
             job = get_fastq_files( job, ex.working_directory, dafl )
+            logfile.write("Map reads.");logfile.flush()
             mapped_files = map_groups( ex, job, ex.working_directory, assembly, {'via': via} )
             for k,v in job.groups.iteritems():
+                logfile.write(str(k)+str(v['name'])+": make stats.");logfile.flush()
                 pdf = add_pdf_stats( ex, mapped_files,
                                      {k:v['name']},
                                      gl.get('script_path') or '',
                                      description=set_file_descr(v['name']+"_mapping_report.pdf",groupId=k,step='stats',type='pdf') )
             if job.options['compute_densities']:
+                logfile.write("computing densities.");logfile.flush()
                 if not(job.options.get('read_extension')>0):
                     job.options['read_extension'] = mapped_files.values()[0].values()[0]['stats']['read_length']
                 density_files = densities_groups( ex, job, mapped_files, assembly.chromosomes, via=via )
+                logfile.write("Finished computing densities.");logfile.flush()
                 if job.options['create_gdv_project']:
+                    logfile.write("Creating GDV project.");logfile.flush()
                     gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
                                                           job.description,  
                                                           assembly.nr_assembly_id,
                                                           gdv_url=gl['gdv']['url'], public=True )
+                    logfile.write("GDV project: "+str(gdv_project['project_id']));logfile.flush()
                     add_pickle( ex, gdv_project, description=set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
         allfiles = get_files( ex.id, M )
         if job.options['create_gdv_project']:
@@ -130,7 +138,10 @@ def main(argv = None):
                                 name = re.sub('\.sql','',str(f)),
                                 gdv_url=gl['gdv']['url'] ) 
              for k,f in allfiles['sql'].iteritems()]
+        logfile.close()
         print json.dumps(allfiles)
+        with open(hts_key+".done",'w') as done:
+            json.dump(allfiles,done)
         if 'email' in gl:
             r = email.EmailReport( sender=gl['email']['sender'],
                                    to=str(job.email),
