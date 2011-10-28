@@ -96,7 +96,7 @@ def main(argv = None):
                                                      script_path=gl.get('script_path') or '', via=via )
             logfile.write("Starting workflow.\n");logfile.flush()
             chipseq_files = workflow_groups( ex, job, mapped_files, assembly.chromosomes, 
-                                             gl.get('script_path') or '', g_rep, via=via )
+                                             gl.get('script_path') or '', g_rep, logfile=logfile, via=via )
             
         allfiles = get_files( ex.id, M )
         if 'gdv_project' in job.options and 'sql' in allfiles:
