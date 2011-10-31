@@ -104,7 +104,7 @@ def main():
             rnaseq.rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=pileup_level, via=opt.via)
         # End of program body #
 
-        common.results_to_json(M, ex.id)
+        #common.results_to_json(M, ex.id)
 
         # GDV
         allfiles = common.get_files(ex.id, M)
@@ -143,4 +143,5 @@ You can retrieve the results at this url:
 
 if __name__ == '__main__':
     sys.exit(main())
+
 
