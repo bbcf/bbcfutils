@@ -3,10 +3,10 @@
 A High-throughput ChIP-seq peak analysis workflow.
 
 """
-from bbcflib import genrep, frontend, email, gdv
-from bbcflib.mapseq import *
-from bbcflib.chipseq import *
+from bein.util import use_pickle, add_pickle
+from bbcflib import genrep, frontend, email, gdv, mapseq
 from bbcflib.common import get_files, set_file_descr
+from bbcflib.chipseq import *
 import sys, getopt, os, json, re
 
 usage = """run_chipseq.py [-h] [-u via] [-w wdir] [-k job_key] [-c config_file] -d minilims
@@ -92,7 +92,7 @@ def main(argv = None):
         logfile = open(hts_key+".log",'w')
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
             logfile.write("Enter execution, fetch bam and wig files.\n");logfile.flush()
-            (mapped_files, job) = get_bam_wig_files( ex, job, minilims=ms_limspath, hts_url=mapseq_url,
+            (mapped_files, job) = mapseq.get_bam_wig_files( ex, job, minilims=ms_limspath, hts_url=mapseq_url,
                                                      script_path=gl.get('script_path') or '', via=via )
             logfile.write("Starting workflow.\n");logfile.flush()
             chipseq_files = workflow_groups( ex, job, mapped_files, assembly.chromosomes, 
