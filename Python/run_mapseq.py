@@ -3,6 +3,7 @@
 A High-throughput sequencing data mapping workflow.
 
 """
+from bein.util import use_pickle, add_pickle
 from bbcflib import daflims, genrep, frontend, email, gdv
 from bbcflib.common import get_files, set_file_descr
 from bbcflib.mapseq import *
