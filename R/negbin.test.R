@@ -13,23 +13,19 @@ set.seed(123)
 
 ## Create a fake experiment dataset
 n = 30
+samples = c("g1.1","g1.2","g1.3","g2.1","g2.2","g2.3","g3.1","g3.2","g3.3")
+means1 = sample(100:200,30,replace=T); thetas1 = sample(1:10,30,replace=T)/10
+means2 = sample(500:600,30,replace=T); thetas2 = sample(5:15,30,replace=T)/10
+means3 = sample(700:900,30,replace=T); thetas3 = sample(10:20,30,replace=T)/10
 features = paste(rep("feat",n), seq(n), sep="")
-g1.1 = rnegbin(n, 200,2)
-g1.2 = rnegbin(n, 200,2)
-g1.3 = rnegbin(n, 200,2)
-g2.1 = rnegbin(n, 100,0.2)
-g2.2 = rnegbin(n, 100,0.2)
-g2.3 = rnegbin(n, 100,0.2)
-g3.1 = rnegbin(n, 700,0.4)
-g3.2 = rnegbin(n, 700,0.4)
-g3.3 = rnegbin(n, 700,0.4)
-data = data.frame(g1.1,g1.2,g1.3,g2.1,g2.2,g2.3,g3.1,g3.2,g3.3, row.names=features)
+data = data.frame(row.names=samples)
+for (i in 1:n){
+    data[features[i]] = c(rnegbin(3,means1[i],thetas1[i]),rnegbin(3,means2[i],thetas2[i]),rnegbin(3,means3[i],thetas3[i]))
+}
+data = t(data)
 write.table(data,"data.txt", sep=",", row.names=T, col.names=T, quote=F)
 
 #main <- function(filename, design, contrast){
-  #contrast <- read.table(contrast, header=F, sep=",")
-  #design <- read.table(design, header=T, row.names=1,  sep=",")
-  #design = as.data.frame(t(design))
 
 design = "design.txt"
 contrast = "contrast.txt"
@@ -40,20 +36,11 @@ features = rownames(data); nfeat = length(features)
 samples = colnames(data); nsamples = length(samples)
 groups = unique(unlist(lapply(strsplit(samples,".",fixed=T), "[[", 1))); ngroups = length(groups)
 
-## Design matrix ## (replicates as lines, groups as columns)
-design = data.frame(row.names=groups)
-for (s in 1:nsamples){
-  newcol = rep(0,ngroups);
-  for (g in 1:ngroups){
-    if (strsplit(samples[s],'.',fixed=T)[[1]][1]==groups[g])
-      {newcol[g]=1} 
-    }
-  design[samples[s]] = newcol
-  }
-design = t(design)
-#design = cbind(data.frame(m=rep(1,nsamples)), design)
+## Design matrix ##
+design = read.table(design, header=T, row.names=1,  sep=",")
+design = as.data.frame(t(design))
 
-## Covariates ## (same as groups for us)
+## Covariates ##
 covar = colnames(design)
 ncovar = length(covar)
 
@@ -63,10 +50,10 @@ for (c in covar[2:ncovar]){ formule = paste(formule,"+",as.name(c)) }
 
 ## Initialization ##
 for (i in 1:ncovar){ design[,i] = as.factor(design[,i]) }
-estimate = matrix(,nfeat,ncovar+1)
-stderror = matrix(,nfeat,ncovar+1)
-zvalue = matrix(,nfeat,ncovar+1)
-pvalue = matrix(,nfeat,ncovar+1)
+estimate = matrix(,nfeat,ncovar)
+stderror = matrix(,nfeat,ncovar)
+zvalue = matrix(,nfeat,ncovar)
+pvalue = matrix(,nfeat,ncovar)
 
 #for (i in 1:nrow(data)){
   i=1
