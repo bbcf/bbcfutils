@@ -27,7 +27,7 @@ write.table(data,"data.txt", sep=",", row.names=T, col.names=T, quote=F)
 
 #main <- function(filename, design, contrast){
 
-design = "design.txt"
+design_file = "design.txt"
 contrast = "contrast.txt"
 filename = "data.txt"
 
@@ -37,8 +37,9 @@ samples = colnames(data); nsamples = length(samples)
 groups = unique(unlist(lapply(strsplit(samples,".",fixed=T), "[[", 1))); ngroups = length(groups)
 
 ## Design matrix ##
-design = read.table(design, header=T, row.names=1,  sep=",")
+design = read.table(design_file, header=T, row.names=1,  sep=",")
 design = as.data.frame(t(design))
+for (i in 1:length(design)){ design[,i] = as.factor(design[,i]) }
 
 ## Covariates ##
 covar = colnames(design)
@@ -50,10 +51,10 @@ for (c in covar[2:ncovar]){ formule = paste(formule,"+",as.name(c)) }
 
 ## Initialization ##
 for (i in 1:ncovar){ design[,i] = as.factor(design[,i]) }
-estimate = matrix(,nfeat,ncovar)
-stderror = matrix(,nfeat,ncovar)
-zvalue = matrix(,nfeat,ncovar)
-pvalue = matrix(,nfeat,ncovar)
+estimate = matrix(,nfeat,ncovar+1) #+1 for intercept
+stderror = matrix(,nfeat,ncovar+1)
+zvalue = matrix(,nfeat,ncovar+1)
+pvalue = matrix(,nfeat,ncovar+1)
 
 #for (i in 1:nrow(data)){
   i=1
@@ -72,6 +73,9 @@ pvalue = matrix(,nfeat,ncovar)
 
   ## Contrasts ##
   contrast = contrMat(rep(nfeat,ngroups), type="Tukey") # ou Dunnett
+
+
+
 
   test = glht(nbmodel, linfct=mcp(temp=contrast))
   #contrast.matrix <- data.matrix(contrast)
