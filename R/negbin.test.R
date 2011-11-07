@@ -29,50 +29,64 @@ write.table(data,"data.txt", sep=",", row.names=T, col.names=T, quote=F)
 
 design_file = "design.txt"
 contrast = "contrast.txt"
-filename = "data.txt"
+data_file = "data.txt"
 
-data <- read.table(filename, header=T, row.names=1, sep=",")
+data = read.table(data_file, header=T, row.names=1, sep=",")
 features = rownames(data); nfeat = length(features)
 samples = colnames(data); nsamples = length(samples)
 groups = unique(unlist(lapply(strsplit(samples,".",fixed=T), "[[", 1))); ngroups = length(groups)
 
 ## Design matrix ##
 design = read.table(design_file, header=T, row.names=1,  sep=",")
-design = as.data.frame(t(design))
-for (i in 1:length(design)){ design[,i] = as.factor(design[,i]) }
-
-## Covariates ##
+design = t(design)
 covar = colnames(design)
 ncovar = length(covar)
+lvls = c()
+for (cov in covar){ lvls = c(lvls,paste(cov,levels(as.factor(design[,cov])),sep=""))}
+nlvls = length(lvls)
+
+X = matrix(0,nsamples,length(lvls))
+colnames(X) = lvls
+rownames(X) = samples
+for (i in 1:nsamples){
+  gr = strsplit(samples[i],".",fixed=T)[[1]][1]
+  for (j in 1:ncovar){
+    cov = covar[j]
+    val = design[gr,cov]
+    X[samples[i],paste(cov,val,sep="")] = 1
+  }
+}
 
 ## Build the right part of the regression formula ##
-formule = covar[1]
-for (c in covar[2:ncovar]){ formule = paste(formule,"+",as.name(c)) }
+formule = lvls[1]
+for (c in lvls[2:nlvls]){ formule = paste(formule,"+",as.name(c)) }
 
 ## Initialization ##
-for (i in 1:ncovar){ design[,i] = as.factor(design[,i]) }
-estimate = matrix(,nfeat,ncovar+1) #+1 for intercept
-stderror = matrix(,nfeat,ncovar+1)
-zvalue = matrix(,nfeat,ncovar+1)
-pvalue = matrix(,nfeat,ncovar+1)
+results = list()
 
-#for (i in 1:nrow(data)){
+#for (i in 1:nrow(data))
   i=1
-  F = data[features[i],]
-  Y = as.data.frame(t(F))
-  g = cbind(Y,design)
+  f = features[i]
+  Y = t(data[f,])
+  g = as.data.frame(cbind(Y,X))
   regressionFormula = formula(paste(features[i],"~",formule))
 
   nbmodel = glm.nb(regressionFormula, data=g) # AIC must be minimal
-  summ = summary(nbmodel)
+  summ = summary.glm(nbmodel)
   coeff = as.data.frame(summ$coefficients)
-  estimate[i,] = coeff$"Estimate" # 'beta' coefficients of the regression
-  stderror[i,] = coeff$"Std. Error"
-  zvalue[i,] = coeff$"z value"
-  pvalue[i,] = coeff$"Pr(>|z|)"
+
+  result = matrix(NA,nlvls+1,4)
+  rownames(result) = c("(Intercept)",lvls)
+  colnames(result) = c("Estimate","Std. Error","t value","Pr(>|t|)")
+  for (lvl in rownames(coeff)){
+    for (res in colnames(coeff)){
+      result[lvl,res] = coeff[lvl,res]
+    }
+  }
+  results[[f]] = result
 
   ## Contrasts ##
-  contrast = contrMat(rep(nfeat,ngroups), type="Tukey") # ou Dunnett
+  contrast = contrMat(rep(nfeat,ngroups), type="Tukey") # or Dunnett
 
 
 
