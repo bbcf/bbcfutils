@@ -95,15 +95,4 @@ results = list()
   #contrast.matrix <- data.matrix(contrast)
 #}
 
-colnames(estimate) <- paste(rep("estimate",3),".",groups,sep="")
-colnames(stderror) <- paste(rep("stderror",3),".",groups,sep="")
-colnames(pvalue) <- paste(rep("pvalue",3),".",groups,sep="")
-estimate = as.data.frame(estimate)
-stderror = as.data.frame(stderror)
-pvalue = as.data.frame(pvalue)
-data = cbind(data, estimate, stderror, pvalue)
-
-#result = data.frame()
-#write.table(result, "ouput")
-
 
