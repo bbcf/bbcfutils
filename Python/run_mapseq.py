@@ -3,8 +3,9 @@
 A High-throughput sequencing data mapping workflow.
 
 """
+from bein.util import use_pickle, add_pickle
 from bbcflib import daflims, genrep, frontend, email, gdv
-from bbcflib.common import get_files, set_file_descr
+from bbcflib.common import get_files, set_file_descr, track_header
 from bbcflib.mapseq import *
 import sys, getopt, os, re
 
@@ -130,6 +131,13 @@ def main(argv = None):
                     logfile.write("GDV project: "+str(gdv_project['project_id']+"\n"));logfile.flush()
                     add_pickle( ex, gdv_project, description=set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
         allfiles = get_files( ex.id, M )
+        if 'ucsc_bigwig':
+            ucscfiles = get_files( ex.id, M, select_param={'ucsc':'1'} )
+            with open(hts_key+".bed",'w') as ucscbed:
+                for ftype,fset in ucscfiles.iteritems():
+                    for ffile,descr in fset.iteritems():
+                        if re.search(r' \(.*\)',descr): continue
+                        ucscbed.write(track_header(descr,ftype,gl['hts_mapseq']['download'],ffile))
         if job.options['create_gdv_project']:
             allfiles['url'] = {gdv_project['public_url']: 'GDV view'}
             download_url = gl['hts_mapseq']['download']

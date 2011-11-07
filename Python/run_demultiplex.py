@@ -2,6 +2,8 @@
 """
 	demultiplexing
 """
+from bein import *
+from bein.util import use_pickle
 from bbcflib import daflims, genrep, frontend, email, gdv, common
 from bbcflib.mapseq import *
 import sys, getopt, os, json, re
