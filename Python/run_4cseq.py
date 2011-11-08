@@ -92,7 +92,9 @@ def main(argv = None):
                                            mapseq_files, mapseq_url,  
                                            gl['script_path'])
         allfiles = common.get_files( ex.id, M )
-        
+       
+	
+ 
         gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
                                                 job.description,
                                                 assembly.nr_assembly_id,
