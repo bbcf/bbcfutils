@@ -1,4 +1,5 @@
-#!/bin/env python
+#!/usr/bin/env python
+
 '''
 parsegtf.py
 by Julien Delafontaine, <julien.delafontaine@epfl.ch>
@@ -88,7 +89,7 @@ def search_gtf(data, request):
         if all([request[k] == c.get(k) for k in request.keys()]):
             result.append(c)
     return result
-            
+
 
 def main(argv=None):
     if argv is None:
@@ -106,7 +107,7 @@ def main(argv=None):
             raise Usage("parsegtf.py takes at least 1 argument.")
 
         input_filename = str(args[0])
-        
+
         for o, a in opts:
             if o in ("-h", "--help"):
                 print __doc__
@@ -121,13 +122,13 @@ def main(argv=None):
 
         ### Program body ###
         contents = parse_gtf(input_filename, output_filename, nlines)
-            
+
         sys.exit(0)
     except Usage, err:
         print >>sys.stderr, err.msg
         print >>sys.stderr, usage
         return 2
-    
+
 
 if __name__ == '__main__':
     sys.exit(main())

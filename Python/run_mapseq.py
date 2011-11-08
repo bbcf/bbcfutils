@@ -1,4 +1,5 @@
-#!/bin/env python
+#!/usr/bin/env python
+
 """
 A High-throughput sequencing data mapping workflow.
 
@@ -64,7 +65,7 @@ def main(argv = None):
                 config_file = a
             else:
                 raise Usage("Unhandled option: " + o)
-        if not(limspath and os.path.exists(limspath) 
+        if not(limspath and os.path.exists(limspath)
                and (hts_key != None or (config_file and os.path.exists(config_file)))):
             raise Usage("Need a minilims and a job key or a configuration file")
         M = MiniLIMS( limspath )
@@ -78,7 +79,7 @@ def main(argv = None):
             hts_key = job.description
         else:
             raise ValueError("Need either a job key (-k) or a configuration file (-c).")
-        g_rep = genrep.GenRep( url=gl["genrep_url"], root=gl["bwt_root"], 
+        g_rep = genrep.GenRep( url=gl["genrep_url"], root=gl["bwt_root"],
                                intype=job.options.get('input_type_id') or 0 )
         assembly = g_rep.assembly( job.assembly_id )
         if 'lims' in gl:
@@ -89,16 +90,16 @@ def main(argv = None):
         if not('compute_densities' in job.options):
             job.options['compute_densities'] = True
         elif isinstance(job.options['compute_densities'],str):
-            job.options['compute_densities'] = job.options['compute_densities'].lower() in ['1','true','t'] 
+            job.options['compute_densities'] = job.options['compute_densities'].lower() in ['1','true','t']
         if not('ucsc_bigwig' in job.options):
             job.options['ucsc_bigwig'] = True
         elif isinstance(job.options['ucsc_bigwig'],str):
-            job.options['ucsc_bigwig'] = job.options['ucsc_bigwig'].lower() in ['1','true','t'] 
+            job.options['ucsc_bigwig'] = job.options['ucsc_bigwig'].lower() in ['1','true','t']
         job.options['ucsc_bigwig'] = job.options['ucsc_bigwig'] and job.options['compute_densities']
         if not('create_gdv_project' in job.options):
             job.options['create_gdv_project'] = False
         elif isinstance(job.options['create_gdv_project'],str):
-            job.options['create_gdv_project'] = job.options['create_gdv_project'].lower() in ['1','true','t'] 
+            job.options['create_gdv_project'] = job.options['create_gdv_project'].lower() in ['1','true','t']
         if job.options.get('read_extension'):
             job.options['read_extension'] = int(job.options['read_extension'])
         if job.options.get('merge_strands'):
@@ -125,7 +126,7 @@ def main(argv = None):
                 if job.options['create_gdv_project']:
                     logfile.write("Creating GDV project.\n");logfile.flush()
                     gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
-                                                          job.description,  
+                                                          job.description,
                                                           assembly.nr_assembly_id,
                                                           gdv_url=gl['gdv']['url'], public=True )
                     logfile.write("GDV project: "+str(gdv_project['project_id']+"\n"));logfile.flush()
@@ -143,9 +144,9 @@ def main(argv = None):
             download_url = gl['hts_mapseq']['download']
             [gdv.add_gdv_track( gl['gdv']['key'], gl['gdv']['email'],
                                 gdv_project['project_id'],
-                                url=download_url+str(k), 
+                                url=download_url+str(k),
                                 name = re.sub('\.sql','',str(f)),
-                                gdv_url=gl['gdv']['url'] ) 
+                                gdv_url=gl['gdv']['url'] )
              for k,f in allfiles['sql'].iteritems()]
         logfile.close()
         print json.dumps(allfiles)
@@ -159,7 +160,7 @@ def main(argv = None):
             r.appendBody('''
 Your mapseq job has finished.
 
-The description was: 
+The description was:
 '''+str(job.description)+'''
 and its unique key is '''+hts_key+'''.
 
@@ -171,6 +172,6 @@ You can now retrieve the results at this url:
         print >>sys.stderr, err.msg
         print >>sys.stderr, usage
         return 2
-    
+
 if __name__ == '__main__':
     sys.exit(main())

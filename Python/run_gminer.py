@@ -1,6 +1,5 @@
-#!/bin/env python
-import getopt
-import os
+#!/usr/bin/env python
+
 import sys
 import pickle
 import gMiner
@@ -35,4 +34,3 @@ def main(argv = None):
 
 if __name__ == '__main__':
     sys.exit(main())
-
