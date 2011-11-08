@@ -1,7 +1,10 @@
-#!/bin/env python
+#!/usr/bin/env python
+
 """
-	demultiplexing
+    demultiplexing
 """
+from bein import *
+from bein.util import use_pickle
 from bbcflib import daflims, genrep, frontend, email, gdv, common
 from bbcflib.mapseq import *
 import sys, getopt, os, json, re
@@ -16,7 +19,7 @@ usage = """run_demultiplex.py [-h] [-u via] [-w wdir] [-k job_key] [-c config_fi
 -w wdir      Create execution working directories in wdir
 -d minilims  MiniLIMS where demultiplexing executions and files will be stored.
 -k job_key   Alphanumeric key specifying the job
--c file      Config file 
+-c file      Config file
 """
 
 class Usage(Exception):
@@ -65,8 +68,8 @@ def main(argv = None):
                 config_file = a
             else:
                 raise Usage("Unhandled option: " + o)
-	#temporary:  test_demultiplexing.py -i /scratch/cluster/monthly/mleleu/Nicolas/NL1_NoIndex_L004_R1.fastq -p /scratch/cluster/monthly/mleleu/Nicolas/primers4C_GT_NL.fa -x 22 -n 2 -s 77 -l 30 &
-	#job={'description':'test_demultiplex_Nico', 'options':{'opt1':'','opt2':''} , 'group': {'grpName':'grpNameNico', 'run':{'runName':'runNameNico','fastaFile':'/scratch/cluster/monthly/mleleu/Nicolas/NL1_NoIndex_L004_R1_part.fastq'}}}
+    #temporary:  test_demultiplexing.py -i /scratch/cluster/monthly/mleleu/Nicolas/NL1_NoIndex_L004_R1.fastq -p /scratch/cluster/monthly/mleleu/Nicolas/primers4C_GT_NL.fa -x 22 -n 2 -s 77 -l 30 &
+    #job={'description':'test_demultiplex_Nico', 'options':{'opt1':'','opt2':''} , 'group': {'grpName':'grpNameNico', 'run':{'runName':'runNameNico','fastaFile':'/scratch/cluster/monthly/mleleu/Nicolas/NL1_NoIndex_L004_R1_part.fastq'}}}
         M = MiniLIMS( limspath )
         if len(hts_key)>1:
             gl = use_pickle( M, "global variables" )
@@ -80,7 +83,7 @@ def main(argv = None):
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
             demultiplex_files = demultiplex.workflow_groups( ex, job, gl['script_path'])
         allfiles = common.get_files( ex.id, M )
-	
+
 #        gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
  #                                               job.description,
   #                                              assembly.nr_assembly_id,
@@ -90,13 +93,13 @@ def main(argv = None):
      #       download_url = gl['hts_demultiplex']['download']
      #       [gdv.add_gdv_track( gl['gdv']['key'], gl['gdv']['email'],
      #                           gdv_project['project_id'],
-     #                           url=download_url+str(k), 
+     #                           url=download_url+str(k),
      #                           name = re.sub('\.sql','',str(f)),
-     #                           gdv_url=gl['gdv']['url'] ) 
+     #                           gdv_url=gl['gdv']['url'] )
      #        for k,f in allfiles['sql'].iteritems()]
         print json.dumps(allfiles)
-	with open(hts_key+".done",'w') as done:
-		json.dump(allfiles,done)
+    with open(hts_key+".done",'w') as done:
+        json.dump(allfiles,done)
         if 'email' in gl:
             r = email.EmailReport( sender=gl['email']['sender'],
                                    to=str(job.email),
@@ -105,7 +108,7 @@ def main(argv = None):
             r.appendBody('''
 Your chip-seq job is finished.
 
-The description was: 
+The description was:
 '''+str(job.description)+'''
 and its unique key is '''+hts_key+'''.
 
@@ -117,7 +120,6 @@ You can retrieve the results at this url:
         print >>sys.stderr, err.msg
         print >>sys.stderr, usage
         return 2
-    
+
 if __name__ == '__main__':
     sys.exit(main())
-

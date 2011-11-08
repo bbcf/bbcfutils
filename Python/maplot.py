@@ -1,4 +1,5 @@
-#!/bin/env python
+#!/usr/bin/env python
+
 """
 Creates an `MA-plot` to compare transcription levels of a set of genes
 (or other features) in two different conditions, from a CSV file.
@@ -8,7 +9,7 @@ in a different color, and be annotated if requested.
 The class AnnoteFinder is used to create interactive - clickable - plots.
 """
 
-import sys, os, pickle, json, urllib, math, time, csv, optparse
+import sys, os, json, urllib, math, csv, optparse
 import numpy
 from scipy import stats
 import matplotlib.pyplot as plt
@@ -29,11 +30,12 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
     in two different conditions. It returns the name of the .png file produced,
     and the name of a json containing enough information to reconstruct the plot using Javascript.
 
-    :param dataset: list or string, containing names of CSV files with rows of
-    the form (feature_name, sample1, sample2, ...)
-    :param annotate: in 'normal' mode, choose which for which datasets you want
+    :param dataset: list or string, containing names of up to six CSV files with rows
+    of the form (feature_name, sample1, sample2, ...).
+    :param annotate: in 'normal' mode, choose which for which datasets you want the
     points to be labeled. In a list, enter 1 to annotate, 0 not to annotate, in the
-    same order as datasets were entered. E.g. []
+    same order as datasets were entered. E.g. [0,0,1] to annotate only the third of 3
+    datasets.
     :param mode: string, display mode:
     * If `normal`, name of genes over 99%/under 1% quantile are displayed.
     * If `interactive`, click on a point to display its name.
@@ -47,7 +49,7 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
     """
     # Constants:
     if data_format == "counts":
-        lower = 0.45
+        lower = 100
         upper = 1e9 #should not be
         spline_xmin = math.log10(math.sqrt(20)) #counts of 2,3 -> log(sqrt(2*3))
         spline_xmax = None
@@ -57,37 +59,28 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
         spline_xmin = None
         spline_xmax = 1
     else:
-        lower = 1e-20; upper = 1e20; print "else"
-    ## others
+        lower = 1e-20; upper = 1e20
     min_pts_per_bin = 20
     extreme_ratios = False # print extremes ratios
 
     # Extract data from CSV
     if isinstance(dataset,str): dataset = [dataset]
-    names=[]; means=[]; ratios=[]; pvals=[]; points=[]; delimiter=None; groups={}; counts={}
+    names=[]; means=[]; ratios=[]; pvals=[]; points=[]; groups={}; counts={}
     for data in dataset:
         with open(data,'r') as f:
-            header = f.readline()
-            for d in ['\t',',',' ',':','-']:
-                if len(header.split(d)) > 1: #to change
-                    delimiter = d; break;
-            if not delimiter:
-                print """\n Each line of the CSV file must be of the form \n
-                         Feature_name    Expression_cond1    Expression_cond2  ... \n
-                         Accepted delimiters: (space) , : - \\t    \n"""
-            csvreader = csv.reader(f, delimiter=delimiter, quoting=csv.QUOTE_NONE)
+            dialect = csv.Sniffer().sniff(f.read(1024)); f.seek(0)
+            f.readline()
+            csvreader = csv.reader(f, dialect=dialect, quoting=csv.QUOTE_NONE)
             n=[]; m=[]; r=[]; p=[]
             for row in csvreader:
                 #numpy.seterr(all='raise') # testing
                 c1 = float(row[1]); c2 = float(row[2])
-                if (c1 > lower and c2 > lower) and (c1 < upper and c2 < upper):
+                if (c1*c2 > lower) and (c1*c2 < upper):
                     counts[row[0]] = (c1,c2)
                     n.append(row[0])
                     m.append(numpy.log10(numpy.sqrt(c1*c2)))
                     r.append(numpy.log2(c1/c2))
-                if len(row)==4:
-                    p.append(float(row[3]))
-                else: p.append(None)
+                p.append(None) # future p-values
         groups[data] = zip(n, m, r, p)
         names.extend(n); means.extend(m); ratios.extend(r); pvals.extend(p)
     points = zip(names, means, ratios, pvals)
@@ -399,4 +392,3 @@ def main():
 
 if __name__ == '__main__':
     sys.exit(main())
-

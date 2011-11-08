@@ -1,4 +1,5 @@
-#!/bin/env python
+#!/usr/bin/env python
+
 """
 Command-line interface to genrep functionalities.
 
@@ -50,7 +51,7 @@ def main():
         genrep_url = normalize_url(opt.url)
         if opt.output:
             fout = open(re.search('([._\-\w]+)', str(opt.output)).groups()[0], 'w')
-        else: 
+        else:
             fout = sys.stdout
         if opt.regions:
             regions = []; start=None; end=None
@@ -87,12 +88,12 @@ def main():
             stats = g_rep.statistics(assembly,frequency=True)
             fout.write("\n".join([k+":\t"+str(stats[k]) for k in sorted(stats.keys())])+"\n")
         fout.close()
-        
+
         return 0
     except Usage, err:
         print >>sys.stderr, err.msg
         print >>sys.stderr, usage
         return 2
-    
+
 if __name__ == '__main__':
     sys.exit(main())

@@ -1,12 +1,13 @@
-#!/bin/env python
+#!/usr/bin/env python
+
 """
 A High-throughput ChIP-seq peak analysis workflow.
 
 """
-from bbcflib import genrep, frontend, email, gdv
-from bbcflib.mapseq import *
+from bein.util import use_pickle
+from bbcflib import genrep, frontend, email, gdv, mapseq
+from bbcflib.common import get_files
 from bbcflib.chipseq import *
-from bbcflib.common import get_files, set_file_descr
 import sys, getopt, os, json, re
 
 usage = """run_chipseq.py [-h] [-u via] [-w wdir] [-k job_key] [-c config_file] -d minilims
@@ -17,7 +18,7 @@ usage = """run_chipseq.py [-h] [-u via] [-w wdir] [-k job_key] [-c config_file] 
 -d minilims  MiniLIMS where Chipseq executions and files will be stored.
 -m minilims  MiniLIMS where a previous Mapseq execution and files has been stored.
 -k job_key   Alphanumeric key specifying the job
--c file      Config file 
+-c file      Config file
 """
 
 class Usage(Exception):
@@ -69,7 +70,7 @@ def main(argv = None):
                 config_file = a
             else:
                 raise Usage("Unhandled option: " + o)
-        if not(limspath and os.path.exists(limspath) 
+        if not(limspath and os.path.exists(limspath)
                and (hts_key != None or (config_file and os.path.exists(config_file)))):
             raise Usage("Need a minilims and a job key or a configuration file")
         M = MiniLIMS( limspath )
@@ -92,12 +93,12 @@ def main(argv = None):
         logfile = open(hts_key+".log",'w')
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
             logfile.write("Enter execution, fetch bam and wig files.\n");logfile.flush()
-            (mapped_files, job) = get_bam_wig_files( ex, job, minilims=ms_limspath, hts_url=mapseq_url,
+            (mapped_files, job) = mapseq.get_bam_wig_files( ex, job, minilims=ms_limspath, hts_url=mapseq_url,
                                                      script_path=gl.get('script_path') or '', via=via )
             logfile.write("Starting workflow.\n");logfile.flush()
-            chipseq_files = workflow_groups( ex, job, mapped_files, assembly.chromosomes, 
+            chipseq_files = workflow_groups( ex, job, mapped_files, assembly.chromosomes,
                                              gl.get('script_path') or '', g_rep, logfile=logfile, via=via )
-            
+
         allfiles = get_files( ex.id, M )
         if 'gdv_project' in job.options and 'sql' in allfiles:
             logfile.write("Adding to GDV project.\n");logfile.flush()
@@ -105,9 +106,9 @@ def main(argv = None):
             download_url = gl['hts_chipseq']['download']
             [gdv.add_gdv_track( gl['gdv']['key'], gl['gdv']['email'],
                                 job.options['gdv_project']['project_id'],
-                                url=download_url+str(k), 
+                                url=download_url+str(k),
                                 name = re.sub('\.sql','',str(f)),
-                                gdv_url=gl['gdv']['url'] ) 
+                                gdv_url=gl['gdv']['url'] )
              for k,f in allfiles['sql'].iteritems()]
         logfile.close()
         print json.dumps(allfiles)
@@ -121,7 +122,7 @@ def main(argv = None):
             r.appendBody('''
 Your chip-seq job has finished.
 
-The description was: 
+The description was:
 '''+str(job.description)+'''
 and its unique key is '''+hts_key+'''.
 
@@ -133,6 +134,6 @@ You can retrieve the results at this url:
         print >>sys.stderr, err.msg
         print >>sys.stderr, usage
         return 2
-    
+
 if __name__ == '__main__':
     sys.exit(main())
