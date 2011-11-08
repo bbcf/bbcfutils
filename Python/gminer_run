@@ -41,4 +41,5 @@ parameters = {
 # Optparse is deprecated as of 2.7 #
 parser = optparse.OptionParser(**parameters)
 options, args = parser.parse_args()
+if len(args) != 0: parser.error("You cannot specify any arguments, only options. For instance: " + example)
 gMiner.run(*args, **options.__dict__)
