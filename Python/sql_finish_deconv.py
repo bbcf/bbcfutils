@@ -1,7 +1,7 @@
-#!/bin/env python
+#!/usr/bin/env python
+
 import rpy2.robjects as robjects
 from bbcflib.track import Track
-import getopt
 import os
 import sys
 
@@ -25,7 +25,7 @@ def _robject(obj,chrom):
             pos = p.rx2('pos')[0]
             score = p.rx2('score')[0]
             yield((pos-1,pos,score))
-    
+
 
 def main(argv = None):
     if argv is None:
@@ -56,4 +56,3 @@ def main(argv = None):
 
 if __name__ == '__main__':
     sys.exit(main())
-

@@ -1,5 +1,6 @@
-#!/bin/env python
-import os, sys, getopt
+#!/usr/bin/env python
+
+import sys
 import pickle
 from bbcflib.rnaseq import comparisons
 
@@ -26,33 +27,33 @@ def main(argv = None):
     try:
         if len(argv) < 5:
             raise Usage("run_deseq.py takes at least %d arguments." % 5)
-        
+
         cond1_file = argv[0]
         with open(cond1_file,'rb') as f:
             cond1 = pickle.load(f)
-            
+
         cond2_file = argv[1]
         with open(cond2_file,'rb') as f:
             cond2 = pickle.load(f)
-            
+
         cond1_label = str(argv[2])
         cond2_label = str(argv[3])
         assembly_id = argv[4]
-        
+
         targ = argv[5]
         with open(targ,'rb') as f:
             target = pickle.load(f)
-            
+
         method = str(argv[6])
         output = str(argv[7])
 
         optargs = {}
         #if not maplot=="None": optargs['maplot'] = maplot
-        
+
         result = comparisons(cond1_label, cond1, cond2_label, cond2, assembly_id, target, method, **optargs)
         with open(output,"wb") as f:
             pickle.dump(result,f)
-        
+
         sys.exit(0)
     except Usage, err:
         print >>sys.stderr, err.msg
@@ -61,5 +62,3 @@ def main(argv = None):
 
 if __name__ == '__main__':
     sys.exit(main())
-
-
