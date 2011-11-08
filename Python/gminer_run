@@ -1,0 +1,44 @@
+#!/usr/bin/env python
+
+# Built-in modules #
+import sys, optparse
+
+# Constants #
+doc_url = 'http://bbcf.epfl.ch/gMiner'
+example = "gminer_run --tracks=a.sql,b.sql --genomic_manip=overlap"
+
+# We might be missing gMiner #
+try:
+    import gMiner
+except ImportError:
+    print 'You do not seem to have the "gMiner" package installed.' \
+          ' Either you never installed it or your PYTHON_PATH is not set correctly.' \
+          ' For more instructions see our documentation: ' + doc_url
+    sys.exit()
+
+# We might be missing track #
+try:
+    import track
+except ImportError:
+    print 'You do not seem to have the "track" package installed.' \
+          ' Either you never installed it or your PYTHON_PATH is not set correctly.' \
+          ' For more instructions see our documentation: ' + doc_url
+    sys.exit()
+
+# All the help messages #
+parameters = {
+'usage'   : '%prog [options]',
+'version' : gMiner.__version__,
+'epilog'  : 'Using version %s of %s' % (gMiner.__version__, gMiner),
+'description' : '    Will run a gFeatMiner operation.' \
+                ' For instance, it will compute the overlap between two tracks.' \
+                ' Or it can graph the length distribution between several tracks.' \
+                ' Supported formats are: %s.' \
+                ' An example usage is the following: "%s"' \
+                ' The full list of options that the script can accept is described here: %s' \
+                % (', '.join(track.formats), example, doc_url)}
+
+# Optparse is deprecated as of 2.7 #
+parser = optparse.OptionParser(**parameters)
+options, args = parser.parse_args()
+gMiner.run(*args, **options.__dict__)
