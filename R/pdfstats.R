@@ -18,6 +18,7 @@ for (sample in sort(names(stats.by.sample))) {
     text(nrow(df)/2,stats$total,paste("reads total:",stats$total),pos=3)
     df=data.frame(mismatches=rev(names(stats$mismatches)),
       reads=rev(as.numeric(stats$mismatches)))
+    if (nrow(df) > 10) df=df[nrow(df)-9:0,] 
     col=heat.colors(6)[c(rep(4,length(df$reads)-1),2)]
 #    col='darkorange'
     p=barplot(df$reads,names.arg=df$mismatches,horiz=T,border=0,
@@ -42,5 +43,6 @@ for (sample in sort(names(stats.by.sample))) {
                    sprintf("total read length: %.1f%%",df$expected*100),
                    sprintf("actual portion covered: %.1f%%",df$actual*100)),cex=1.1)
     title(main=sample,outer=T,cex.main=4)
+    if (length(stats$cmd_line)) mtext(stats$cmd_line,1,outer=T,cex=.8)
 }
 dev.off()
