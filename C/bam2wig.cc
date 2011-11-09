@@ -38,7 +38,8 @@ static const std::string bed_minus("track type=bedGraph visibility=2 name=strand
 
 static struct global_options {
     bool regress, noratio, six, sql;
-    int wtpm, mincover, maxhits, maxcnt, cut, cut_ct, chid, start, end, merge;
+    long wtpm;
+    int mincover, maxhits, maxcnt, cut, cut_ct, chid, start, end, merge;
     std::string ofile, sfile, cfile, chr, chrn;
 } opts;
 
@@ -46,8 +47,8 @@ inline double weight_per_tag( const int ntags,
 			      const posh *_cnts=0, const posh *_ctrl=0 ) {
     double weight = 1.0;
 //************** 1/[(ntags/10k)/(2*chr size/1Mb)] __average per strand__
-    if (opts.wtpm == 0) weight = 2.0e-2*(opts.end-opts.start)/ntags;
-    if (opts.wtpm >  0) weight = 1e7/(double)opts.wtpm;
+    if (opts.wtpm == 0L) weight = 2.0e-2*(opts.end-opts.start)/ntags;
+    if (opts.wtpm >  0L) weight = 1e7/(double)opts.wtpm;
     if (opts.regress && _ctrl && _ctrl->size()) {
 	double scalprod = 0, norm2 = 0;
 	for ( poshcit I = _cnts->begin(); I != _cnts->end(); I++ )
@@ -334,7 +335,7 @@ int main( int argc, char **argv )
 	cmd.add( cut );
 	TCLAP::ValueArg< int > cut_c( "k", "kut", "Control tags (pseudo-)size",  false, -1, "int" );
 	cmd.add( cut_c );
-	TCLAP::ValueArg< int > wtpm( "w", "weight", "If 0: normalise by total tag count per megabase, if >0: uses 1e-7*w as factor",  false, -1, "int" );
+	TCLAP::ValueArg< long > wtpm( "w", "weight", "If 0: normalise by total tag count per megabase, if >0: uses 1e-7*w as factor",  false, -1, "int" );
 	cmd.add( wtpm );
 	TCLAP::SwitchArg reg( "r", "regress", "Normalize count by regression on control",  false, false );
 	cmd.add( reg );
