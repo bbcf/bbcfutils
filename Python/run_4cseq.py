@@ -94,11 +94,11 @@ def main(argv = None):
                                            mapseq_files, mapseq_url,
                                            gl['script_path'])
 
-            ucscfiles = get_files( ex.id, M, select_param={'ucsc':'1'} )
-            with open(hts_key+".bed",'w') as ucscbed:
-                for ftype,fset in ucscfiles.iteritems():
-                    for ffile,descr in fset.iteritems():
-                        ucscbed.write(common.track_header(descr,ftype,gl['hts_c4seq']['download'],ffile))
+        ucscfiles = get_files( ex.id, M, select_param={'ucsc':'1'} )
+        with open(hts_key+".bed",'w') as ucscbed:
+            for ftype,fset in ucscfiles.iteritems():
+                for ffile,descr in fset.iteritems():
+                    ucscbed.write(common.track_header(descr,ftype,gl['hts_c4seq']['download'],ffile))
 
         allfiles = common.get_files( ex.id, M )
 	
