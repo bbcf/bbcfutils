@@ -102,21 +102,21 @@ def main(argv = None):
 
         allfiles = common.get_files( ex.id, M )
 	
-        gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
-                                                job.description,
-                                                assembly.nr_assembly_id,
-                                                gdv_url=gl['gdv']['url'], public=True )
-        add_pickle( ex, gdv_project, description='py:gdv_json' )
-        if 'sql' in allfiles:
-                allfiles['url'] = {gdv_project['public_url']: 'GDV view'}
-                download_url = gl['hts_4cseq']['download']
-                [gdv.add_gdv_track( gl['gdv']['key'], gl['gdv']['email'],
-                                gdv_project['project_id'],
-                                url=download_url+str(k),
-                                name = re.sub('\.sql','',str(f)),
-                                gdv_url=gl['gdv']['url'])
-                 for k,f in allfiles['sql'].iteritems()]
-        print json.dumps(allfiles)
+#        gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
+#                                                job.description,
+#                                                assembly.nr_assembly_id,
+#                                                gdv_url=gl['gdv']['url'], public=True )
+#        add_pickle( ex, gdv_project, description='py:gdv_json' )
+#        if 'sql' in allfiles:
+#                allfiles['url'] = {gdv_project['public_url']: 'GDV view'}
+#                download_url = gl['hts_4cseq']['download']
+#                [gdv.add_gdv_track( gl['gdv']['key'], gl['gdv']['email'],
+#                                gdv_project['project_id'],
+#                                url=download_url+str(k),
+#                                name = re.sub('\.sql','',str(f)),
+#                                gdv_url=gl['gdv']['url'])
+#                 for k,f in allfiles['sql'].iteritems()]
+#        print json.dumps(allfiles)
         with open(hts_key+".done",'w') as done:
                 json.dump(allfiles,done)
 
