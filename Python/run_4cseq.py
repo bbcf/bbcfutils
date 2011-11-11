@@ -94,7 +94,7 @@ def main(argv = None):
                                            mapseq_files, mapseq_url,
                                            gl['script_path'])
 
-        ucscfiles = get_files( ex.id, M, select_param={'ucsc':'1'} )
+        ucscfiles = common.get_files( ex.id, M, select_param={'ucsc':'1'} )
         with open(hts_key+".bed",'w') as ucscbed:
             for ftype,fset in ucscfiles.iteritems():
                 for ffile,descr in fset.iteritems():
