@@ -1,4 +1,5 @@
-#!/bin/env python
+#!/usr/bin/env python
+
 """
 Creates an `MA-plot` to compare transcription levels of a set of genes
 (or other features) in two different conditions, from a CSV file.
@@ -8,7 +9,7 @@ will be plotted in a different color, and be annotated if requested.
 The class AnnoteFinder is used to create interactive - clickable - plots.
 """
 
-import sys, os, pickle, json, urllib, math, time, csv, optparse
+import sys, os, json, urllib, math, csv, optparse
 import numpy
 from scipy import stats
 import matplotlib.pyplot as plt
@@ -397,4 +398,3 @@ def main():
 
 if __name__ == '__main__':
     sys.exit(main())
-

@@ -1,4 +1,5 @@
-#!/bin/env python
+#!/usr/bin/env python
+
 """
 pickle_mappings.py
 by Julien Delafontaine, <julien.delafontaine@epfl.ch>
@@ -14,12 +15,12 @@ trans_in_gene is a dictionary      {gene ID: [transcripts IDs]};
 exons_in_trans is a dictionary     {transcript ID: [exons IDs]}.
 """
 import cogent.db.ensembl as ensembl
-import pickle, os, sys, urllib, getopt
+import pickle, sys, getopt
 
 usage = """Usage: pickle_mappings.py [-h] [-o output.pickle] [-r ensembl_release] species
 >>> pickle_mappings.py -o maptest -r 63 human
 
-species: 
+species:
 -h     Print this message and exit
 -o     Name of the output file (default: species name)
 -r     Version number of Ensembl release (default: 63)
@@ -80,7 +81,7 @@ def main(argv=None):
             opts, args = getopt.getopt(argv, "ho:r:", ["help","output=","release="])
         except getopt.error, msg:
             raise Usage(msg)
-        
+
         if len(args) < 1:
             raise Usage("pickle_exon_mapping.py takes at least 1 argument.")
 
@@ -110,7 +111,7 @@ def main(argv=None):
         print >>sys.stderr, err.msg
         print >>sys.stderr, usage
         return 2
-    
+
 
 if __name__ == '__main__':
     sys.exit(main())

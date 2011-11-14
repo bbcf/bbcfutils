@@ -1,4 +1,5 @@
-#!/bin/env python
+#!/usr/bin/env python
+
 """
 A High-throughput RNA-seq analysis workflow.
 
@@ -140,8 +141,5 @@ You can retrieve the results at this url:
         print >>sys.stderr, usage
         return 2
 
-
 if __name__ == '__main__':
     sys.exit(main())
-
-

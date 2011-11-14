@@ -1,0 +1,37 @@
+#!/usr/bin/env python
+
+# Built-in modules #
+import sys, optparse
+
+# Constants #
+doc_url = 'http://bbcf.epfl.ch/track'
+example = "track_convert --assembly=sacCer2 genes.bed genes.sql"
+
+# We might be missing track #
+try:
+    import track
+except ImportError:
+    print 'You do not seem to have the "track" package installed.' \
+          ' Either you never installed it or your PYTHON_PATH is not set correctly.' \
+          ' For more instructions see our documentation: ' + doc_url
+    sys.exit()
+
+# All the help messages #
+parameters = {
+'usage'   : '%prog [options] SOURCE DESTINATION',
+'version' : track.__version__,
+'epilog'  : 'Using version %s of %s' % (track.__version__, track),
+'description' : '    Will convert a genomic file from one format to an other.' \
+                ' For instance, it can convert a WIG file to a BEDGRAPH file.' \
+                ' Supported formats are: %s.' \
+                ' An example usage is the following: "%s"' \
+                ' More documentation is available at: %s' \
+                % (', '.join(track.formats), example, doc_url),
+'option_list' : [optparse.make_option("-a", "--assembly",
+help = "The assembly can be any valid GenRep assembly names. For example 'sacCer2'.")]}
+
+# Optparse is deprecated as of 2.7 #
+parser = optparse.OptionParser(**parameters)
+options, args = parser.parse_args()
+if len(args) != 2: parser.error("You need to specify a SOURCE and a DESTINATION. For instance: " + example)
+track.convert(*args, **options.__dict__)
