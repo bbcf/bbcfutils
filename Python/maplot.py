@@ -2,8 +2,8 @@
 """
 Creates an `MA-plot` to compare transcription levels of a set of genes
 (or other features) in two different conditions, from a CSV file.
-One can enter several datasets (CSV files), each of which will be plotted
-in a different color, and be annotated if requested.
+One can enter several datasets (CSV files) in the same format, each of which
+will be plotted in a different color, and be annotated if requested.
 
 The class AnnoteFinder is used to create interactive - clickable - plots.
 """
@@ -22,13 +22,14 @@ def rstring(len=20):
     import random
     return "".join([random.choice(string.letters+string.digits) for x in range(len)])
 
-def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[None,None,None,None],
-           slimits=[None,None], deg=3, bins=30, assembly_id=None, quantiles=True):
+def MAplot(dataset, cols=[2,3],annotate=None, mode="normal", data_format="counts", limits=[None,None,None,None],
+           slimits=[None,None], deg=3, bins=30, assembly_id=None, quantiles=True, title="MA-plot"):
     """
     Creates an "MA-plot" to compare transcription levels of a set of genes
     in two different conditions. It returns the name of the .png file produced,
     and the name of a json containing enough information to reconstruct the plot using Javascript.
 
+    :param cols: list containing the numbers of the two columns containing the numeric data to compare.
     :param dataset: list or string, containing names of up to six CSV files with rows
     of the form (feature_name, sample1, sample2, ...).
     :param annotate: in 'normal' mode, choose which for which datasets you want the
@@ -48,17 +49,15 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
     """
     # Constants:
     if data_format == "counts":
-        lower = 100
-        upper = 1e9 #should not be
-        spline_xmin = math.log10(math.sqrt(20)) #counts of 2,3 -> log(sqrt(2*3))
+        lower = 1
+        spline_xmin = math.log10(math.sqrt(10)) #counts of 2,3 -> log(sqrt(2*3))
         spline_xmax = None
+        slimits[0] = slimits[0] or 1
     elif data_format == "rpkm":
         lower = 0
-        upper = 1e5
-        spline_xmin = None
-        spline_xmax = 1
-    else:
-        lower = 1e-20; upper = 1e20
+        spline_xmin = math.log10(0.1)
+        spline_xmax = None
+        slimits[0] = slimits[0] or -1
     min_pts_per_bin = 20
     extreme_ratios = False # print extremes ratios
 
@@ -73,8 +72,8 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
             n=[]; m=[]; r=[]; p=[]
             for row in csvreader:
                 #numpy.seterr(all='raise') # testing
-                c1 = float(row[1]); c2 = float(row[2])
-                if (c1*c2 > lower) and (c1*c2 < upper):
+                c1 = float(row[cols[0]-1]); c2 = float(row[cols[1]-1])
+                if (c1*c2 > lower):
                     counts[row[0]] = (c1,c2)
                     n.append(row[0])
                     m.append(numpy.log10(numpy.sqrt(c1*c2)))
@@ -88,7 +87,7 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
     # Figure initialization
     fig = plt.figure(figsize=[14,9])
     ax = fig.add_subplot(111)
-    fig.subplots_adjust(left=0.08, right=0.98, bottom=0.08, top=0.98)
+    fig.subplots_adjust(left=0.08, right=0.98, bottom=0.08, top=0.95)
 
     # Points
     colors = iter(["black","red","green","cyan","magenta","yellow"])
@@ -152,6 +151,7 @@ def MAplot(dataset, annotate=None, mode="normal", data_format="counts", limits=[
     # Decoration
     ax.set_xlabel("Log10 of sqrt(x1*x2)")
     ax.set_ylabel("Log2 of x1/x2")
+    ax.set_title(title)
     if limits[0] is not None: xmin = limits[0]
     if limits[1] is not None: xmax = limits[1]
     if limits[2] is not None: ymin = limits[2]
@@ -312,7 +312,7 @@ class AnnoteFinder:
 
 usage = """
 
-maplot.py [-h] [-m --mode] [-f --format] [-d --deg] [-b --bins] [-a --assembly]
+maplot.py [-h] [-c --cols] [-m --mode] [-f --format] [-d --deg] [-b --bins] [-a --assembly]
           [-q --noquantiles] [-n --annotate] [--xmin --xmax --ymin --ymax] [--smin --smax]
           data_1 .. data_n
 
@@ -323,14 +323,16 @@ maplot.py [-h] [-m --mode] [-f --format] [-d --deg] [-b --bins] [-a --assembly]
             the plot using Javascript. """
 
 help = iter([
+"""The numbers of the two columns containing the numeric data to compare, separated by
+commas. E.g. --cols 3,5.""",
 """Display mode: 'normal' for static .pgn output,
 'interactive' - clic to display gene names, or
 'json' - json output to stdout for Javascript web interface.""",
 """Data type: 'counts' for raw count data (default), 'rpkm' for normalized data.""",
 """Degree of the interpolant percentile splines.""",
 """Number of divisions of the x axis to calculate percentiles.""",
-"""Identifier for the Genrep assembly (e.g. 'hg19') used to add more
-information about features into the json output.""",
+"""Identifier for the Genrep assembly used to add more
+information about features into the json output. E.g. -a hg19.""",
 """Don't draw quantile splines. This may improve speed and lisibility in some cases.""",
 """Indication of which datasets to annotate (if 'normal' mode).
 Must be a binary string of the same lenght as the number of datasets, \
@@ -342,7 +344,8 @@ type --annotate 001.""",
 """Minimum y value to be displayed on the output graph.""",
 """Maximum y value to be displayed on the output graph.""",
 """Left bound to draw splines.""",
-"""Right bound to draw splines."""
+"""Right bound to draw splines.""",
+"""Title of the graph"""
 ])
 
 def main():
@@ -351,6 +354,7 @@ def main():
                                        compare transcription levels of a set of genes \
                                        (or other features) in two different conditions.")
 
+        parser.add_option("-c", "--cols", default='2,3', help = help.next())
         parser.add_option("-m", "--mode", default='normal', help = help.next())
         parser.add_option("-f", "--format", default='counts', help = help.next())
         parser.add_option("-d", "--deg", default=4, type="int", help = help.next())
@@ -364,6 +368,7 @@ def main():
         parser.add_option("--ymax", default=None, type="float", help = help.next())
         parser.add_option("--smin", default=None, type="float", help = help.next())
         parser.add_option("--smax", default=None, type="float", help = help.next())
+        parser.add_option("-t","--title", default="MA-plot", help = help.next())
 
         (opt, args) = parser.parse_args()
         args = [os.path.abspath(a) for a in args]
@@ -376,11 +381,12 @@ def main():
         if opt.annotate: annotate = [eval(a) for a in opt.annotate] # 0100101 -> [0,1,0,0,1,0,1]
         limits = [None or opt.xmin, None or opt.xmax, None or opt.ymin, None or opt.ymax]
         slimits = [None or opt.smin, None or opt.smax]
+        cols = [int(c) for c in opt.cols.split(",")]
 
         # Program body #
-        MAplot(args, mode=opt.mode, data_format=opt.format, limits=limits, slimits=slimits,
+        MAplot(args, cols=cols, mode=opt.mode, data_format=opt.format, limits=limits, slimits=slimits,
                          deg=opt.deg, bins=opt.bins, assembly_id=opt.assembly,
-                         annotate=annotate, quantiles=opt.noquantiles)
+                         annotate=annotate, quantiles=opt.noquantiles, title=opt.title)
         # End of program body #
 
         sys.exit(0)

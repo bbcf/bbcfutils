@@ -4,8 +4,9 @@
 library(MASS)
 library(lattice)
 library(multcomp)
-#library(limma)
 library(rjson)
+library(DESeq)
+#library(limma)
 
 args=commandArgs(trailingOnly = TRUE)
 args
@@ -49,50 +50,45 @@ X = matrix(0,nsamples,length(lvls))
 colnames(X) = lvls
 rownames(X) = samples
 for (i in 1:nsamples){
-  gr = strsplit(samples[i],".",fixed=T)[[1]][1]
-  for (j in 1:ncovar){
-    cov = covar[j]
-    val = design[gr,cov]
-    X[samples[i],paste(cov,val,sep="")] = 1
-  }
+    gr = strsplit(samples[i],".",fixed=T)[[1]][1]
+    for (j in 1:ncovar){
+        cov = covar[j]
+        val = design[gr,cov]
+        X[samples[i],paste(cov,val,sep="")] = 1
+    }
 }
 
 ## Build the right part of the regression formula ##
 formule = lvls[1]
 for (c in lvls[2:nlvls]){ formule = paste(formule,"+",as.name(c)) }
 
-## Initialization ##
+## Calculate the model for each feature ##
 results = list()
+#for (i in 1:nrow(data)){
+    i=1
+    f = features[i]
+    Y = t(data[f,])
+    g = as.data.frame(cbind(Y,X))
+    regressionFormula = formula(paste(features[i],"~",formule))
 
-#for (i in 1:nrow(data))
-  i=1
-  f = features[i]
-  Y = t(data[f,])
-  g = as.data.frame(cbind(Y,X))
-  regressionFormula = formula(paste(features[i],"~",formule))
+    nbmodel = glm.nb(regressionFormula, data=g) # AIC must be minimal
+    summ = summary.glm(nbmodel)
+    coeff = as.data.frame(summ$coefficients)
 
-  nbmodel = glm.nb(regressionFormula, data=g) # AIC must be minimal
-  summ = summary.glm(nbmodel)
-  coeff = as.data.frame(summ$coefficients)
-
-  result = matrix(NA,nlvls+1,4)
-  rownames(result) = c("(Intercept)",lvls)
-  colnames(result) = c("Estimate","Std. Error","t value","Pr(>|t|)")
-  for (lvl in rownames(coeff)){
-    for (res in colnames(coeff)){
-      result[lvl,res] = coeff[lvl,res]
+    result = matrix(NA,nlvls+1,4)
+    rownames(result) = c("(Intercept)",lvls)
+    colnames(result) = c("Estimate","Std. Error","t value","Pr(>|t|)")
+    for (lvl in rownames(coeff)){
+        for (res in colnames(coeff)){
+            result[lvl,res] = coeff[lvl,res]
+        }
     }
-  }
-  results[[f]] = result
+    results[[f]] = result
 
   ## Contrasts ##
   contrast = contrMat(rep(nfeat,ngroups), type="Tukey") # or Dunnett
 
-
-
-
-  test = glht(nbmodel, linfct=mcp(temp=contrast))
-  #contrast.matrix <- data.matrix(contrast)
+  #test = glht(nbmodel, linfct=mcp(temp=contrast))
 #}
 
 
