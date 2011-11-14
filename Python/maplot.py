@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-
+#!/bin/env python
 """
 Creates an `MA-plot` to compare transcription levels of a set of genes
 (or other features) in two different conditions, from a CSV file.
@@ -9,7 +8,7 @@ will be plotted in a different color, and be annotated if requested.
 The class AnnoteFinder is used to create interactive - clickable - plots.
 """
 
-import sys, os, json, urllib, math, csv, optparse
+import sys, os, pickle, json, urllib, math, time, csv, optparse
 import numpy
 from scipy import stats
 import matplotlib.pyplot as plt
@@ -37,16 +36,17 @@ def MAplot(dataset, cols=[2,3],annotate=None, mode="normal", data_format="counts
     points to be labeled. In a list, enter 1 to annotate, 0 not to annotate, in the
     same order as datasets were entered. E.g. [0,0,1] to annotate only the third of 3
     datasets.
-    :param mode: string, display mode:
+    :param mode: (str) display mode:
     * If `normal`, name of genes over 99%/under 1% quantile are displayed.
     * If `interactive`, click on a point to display its name.
     * If `json`, a .json file is produced that allows to reproduce th graph
     in a web interface using Javascript.
     :param data_format: `counts` or `rpkm`.
-    :param deg: int, the degree of the interpolating polynomial splines
-    :param bins: int, the number of divisions of the x axis for quantiles estimation
-    :param assembly_id: string of integer. If an assembly ID is given,
+    :param deg: (int) the degree of the interpolating polynomial splines
+    :param bins: (int) the number of divisions of the x axis for quantiles estimation
+    :param assembly_id: (str or int) if an assembly ID is given,
     the json output will provide links to information on genes.
+    :param title: (str), title to be written on top of the graph.
     """
     # Constants:
     if data_format == "counts":
@@ -317,11 +317,14 @@ maplot.py [-h] [-c --cols] [-m --mode] [-f --format] [-d --deg] [-b --bins] [-a 
           [-q --noquantiles] [-n --annotate] [--xmin --xmax --ymin --ymax] [--smin --smax]
           data_1 .. data_n
 
-**Input**: CSV files with rows of the form
-            (feature_name, expression_in_condition1, expression_in_condition2).
-**Output**: (str,str) - the name of the .png file produced,
-            and the name of a json containing enough information to reconstruct
-            the plot using Javascript. """
+**Input**: CSV files containing at least two numeric columns representing the two
+           samples to compare, all in the same format. By default they are columns 2 and 3,
+           the first one containing names. Else, precise which columns to use with the
+           `--cols` argument.
+
+**Output**: depending on the chosen `--mode`, prints to stdout the name of the .png file produced,
+            prints to stdout a json containing enough information to reconstruct the plot using
+            Javascript, or produces an interactive matplotlib figure. """
 
 help = iter([
 """The numbers of the two columns containing the numeric data to compare, separated by
@@ -333,9 +336,9 @@ commas. E.g. --cols 3,5.""",
 """Degree of the interpolant percentile splines.""",
 """Number of divisions of the x axis to calculate percentiles.""",
 """Identifier for the Genrep assembly used to add more
-information about features into the json output. E.g. -a hg19.""",
+information about features into the json output. E.g. --assembly hg19.""",
 """Don't draw quantile splines. This may improve speed and lisibility in some cases.""",
-"""Indication of which datasets to annotate (if 'normal' mode).
+"""(In 'normal' mode) Indication of which datasets to annotate.
 Must be a binary string of the same lenght as the number of datasets, \
 1 indicating to annotate the corresponding set, 0 not to annotate. \
 E.g. For a list of datasets d1,d2,d3, if you want to annotate only d3, \
@@ -348,12 +351,12 @@ type --annotate 001.""",
 """Right bound to draw splines.""",
 """Title of the graph"""
 ])
+description = """Creates an `MA-plot` to compare transcription levels of a set of
+genes (or other genomic features) in two different conditions."""
 
 def main():
     try:
-        parser = optparse.OptionParser(usage=usage, description="Creates an `MA-plot` to \
-                                       compare transcription levels of a set of genes \
-                                       (or other features) in two different conditions.")
+        parser = optparse.OptionParser(usage=usage, description=description)
 
         parser.add_option("-c", "--cols", default='2,3', help = help.next())
         parser.add_option("-m", "--mode", default='normal', help = help.next())
@@ -375,20 +378,20 @@ def main():
         args = [os.path.abspath(a) for a in args]
 
         annotate = None
-        if opt.mode not in ["normal","interactive","json"]:
-            parser.error("--mode must be one of 'normal','interactive', or 'json'.")
-        if opt.format not in ["counts","rpkm"]:
-            parser.error("--format must be one of 'counts' or 'rpkm'.")
         if opt.annotate: annotate = [eval(a) for a in opt.annotate] # 0100101 -> [0,1,0,0,1,0,1]
         limits = [None or opt.xmin, None or opt.xmax, None or opt.ymin, None or opt.ymax]
         slimits = [None or opt.smin, None or opt.smax]
         cols = [int(c) for c in opt.cols.split(",")]
+        if len(cols) != 2:
+            parser.error("--cols must be two integers separated by commas (got %s)." % opt.cols)
+        if opt.mode not in ["normal","interactive","json"]:
+            parser.error("--mode must be one of 'normal','interactive', or 'json' (got %s)." % opt.mode)
+        if opt.format not in ["counts","rpkm"]:
+            parser.error("--format must be one of 'counts' or 'rpkm' (got %s)." % opt.format)
 
-        # Program body #
         MAplot(args, cols=cols, mode=opt.mode, data_format=opt.format, limits=limits, slimits=slimits,
                          deg=opt.deg, bins=opt.bins, assembly_id=opt.assembly,
                          annotate=annotate, quantiles=opt.noquantiles, title=opt.title)
-        # End of program body #
 
         sys.exit(0)
     except Usage, err:
@@ -398,3 +401,4 @@ def main():
 
 if __name__ == '__main__':
     sys.exit(main())
+
