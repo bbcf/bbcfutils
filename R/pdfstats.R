@@ -3,7 +3,7 @@ library(rjson)
 args=commandArgs(trailingOnly = TRUE)
 stats.by.sample=fromJSON(file=args[1])
 pdf(file=args[2],paper="a4",height=11,width=8)
-par(cex=1.5,lwd=1.5,mfrow=c(4,1),oma=c(0,0,4,0))
+par(cex=1.5,lwd=1.5,mfrow=c(4,1),oma=c(4,0,4,0))
 for (sample in sort(names(stats.by.sample))) {
     stats=stats.by.sample[[sample]]
     df=data.frame(hits=names(stats$multi_hits),reads=as.numeric(stats$multi_hits))
@@ -43,6 +43,6 @@ for (sample in sort(names(stats.by.sample))) {
                    sprintf("total read length: %.1f%%",df$expected*100),
                    sprintf("actual portion covered: %.1f%%",df$actual*100)),cex=1.1)
     title(main=sample,outer=T,cex.main=4)
-    if (length(stats$cmd_line)) mtext(stats$cmd_line,1,outer=T,cex=.8)
+    if (length(stats$cmd_line)) mtext(stats$cmd_line,1,outer=T,cex=.8,adj=0)
 }
 dev.off()

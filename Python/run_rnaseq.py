@@ -1,13 +1,12 @@
-#!/usr/bin/env python
-
+#!/bin/env python
 """
 A High-throughput RNA-seq analysis workflow.
 
-python run_rnaseq.py -v lsf -c config_files/jobbamtest.txt -d rnaseq -p genes
+python run_rnaseq.py -v lsf -c config_files/jobbamtest.txt -d rnaseq -p transcripts
 """
 import os, sys, json, re
 import optparse
-from bbcflib import rnaseq, frontend, common, mapseq, genrep, email
+from bbcflib import rnaseq, frontend, common, mapseq, genrep, email, gdv
 from bein.util import use_pickle, add_pickle
 from bein import execution, MiniLIMS
 
@@ -19,7 +18,7 @@ def main():
     map_args = None # {'bwt_args':["-n",str(3),"-p",str(4),"-d",str(50),"--chunkmbs",str(1024),"-m",str(5)]}
 
     opts = (("-v", "--via", "Run executions using method 'via' (can be 'local' or 'lsf')", {'default': "lsf"}),
-            ("-k", "--key", "Alphanumeric key specifying the job", {'default': None}),
+            ("-k", "--key", "Alphanumeric key of the new RNA-seq job", {'default': None}),
             ("-d", "--minilims", "MiniLIMS where RNAseq executions and files will be stored.", {'default': None}),
             ("-m", "--mapseq-minilims", "MiniLIMS where a previous Mapseq execution and files has been stored. \
                                      Set it to None to align de novo from read files.",
@@ -42,24 +41,28 @@ def main():
         if os.path.exists(opt.wdir): os.chdir(opt.wdir)
         else: parser.error("Working directory '%s' does not exist." % opt.wdir)
         if not opt.minilims: parser.error("Must specify a MiniLIMS to attach to")
-        if opt.pileup_level: pileup_level = opt.pileup_level.split(',')
+        if opt.pileup_level:
+            pileup_level = opt.pileup_level.split(',')
+            if '0' in pileup_level: pileup_level.remove('0'); pileup_level.append("genes")
+            if '1' in pileup_level: pileup_level.remove('1'); pileup_level.append("exons")
+            if '2' in pileup_level: pileup_level.remove('2'); pileup_level.append("transcripts")
 
         # Rna-seq job configuration
         M = MiniLIMS(opt.minilims)
         if opt.key:
             gl_dict = {
-            'genrep_url': 'http://bbcftools.vital-it.ch/genrep/',
-            'bwt_root': '/db/genrep/',
-            'fastq_root': '/scratch/cluster/daily/htsstation/mapseq/',
-            'hts_mapseq': {'url': 'http://htsstation.vital-it.ch/mapseq/',
-                           'download': 'http://htsstation.vital-it.ch/lims/mapseq/mapseq_minilims.files/'},
-            'hts_rnaseq': {'url': 'http://htsstation.vital-it.ch/rnaseq/',
+                'genrep_url': 'http://bbcftools.vital-it.ch/genrep/',
+                'bwt_root': '/db/genrep/',
+                'fastq_root': '/scratch/cluster/daily/htsstation/mapseq/',
+                'hts_mapseq': {'url': 'http://htsstation.vital-it.ch/mapseq/',
+                               'download': 'http://htsstation.vital-it.ch/lims/mapseq/mapseq_minilims.files/'},
+                'hts_rnaseq': {'url': 'http://htsstation.vital-it.ch/rnaseq/',
                            'download': 'http://htsstation.vital-it.ch/lims/rnaseq/rnaseq_minilims.files/'},
-            'gdv': {'url': 'http://svitsrv25.epfl.ch/gdv','email': 'jacques.rougemont@epfl.ch',
-                    'key': 'ah6kr9fm4nqogijamd3tmclihf'},
-            'lims': {'user': 'jrougemont','passwd': {'lgtf': 'cREThu6u','gva': 'wAs2th'}},
-            'email': {'sender': 'webmaster.bbcf@epfl.ch','smtp': 'lipidx.vital-it.ch'},
-            'script_path': '/mnt/common/epfl/share' }
+                'gdv': {'url': 'http://svitsrv25.epfl.ch/gdv','email': 'jacques.rougemont@epfl.ch',
+                        'key': 'ah6kr9fm4nqogijamd3tmclihf'},
+                'lims': {'user': 'jrougemont','passwd': {'lgtf': 'cREThu6u','gva': 'wAs2th'}},
+                'email': {'sender': 'webmaster.bbcf@epfl.ch','smtp': 'lipidx.vital-it.ch'},
+                'script_path': '/mnt/common/epfl/share' }
 
             M.delete_alias("global variables")
             with execution( M, description='create global variables' ) as ex:
@@ -67,12 +70,12 @@ def main():
 
             gl = use_pickle( M, "global variables" )
             htss = frontend.Frontend( url=gl['hts_rnaseq']['url'] )
-            job = htss.job(opt.key)
+            job = htss.job(opt.key) # new *RNA-seq* job instance
             [M.delete_execution(x) for x in M.search_executions(with_description=opt.key,fails=True)]
-            description = opt.key
+            description = "Job run with mapseq key %s" % opt.key
         elif os.path.exists(opt.config):
-            (job,gl) = frontend.parseConfig( opt.config )
-            description = "Job run from config file %s" % opt.config
+            (job,gl) = frontend.parseConfig(opt.config)
+            description = "Job run with config file %s" % opt.config
         else: raise ValueError("Need either a job key (-k) or a configuration file (-c).")
 
         job.options['ucsc_bigwig'] = job.options.get('ucsc_bigwig') or True
@@ -104,8 +107,6 @@ def main():
             print "Current working directory:", ex.working_directory
             rnaseq.rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=pileup_level, via=opt.via)
         # End of program body #
-
-        #common.results_to_json(M, ex.id)
 
         # GDV
         allfiles = common.get_files(ex.id, M)
@@ -141,5 +142,8 @@ You can retrieve the results at this url:
         print >>sys.stderr, usage
         return 2
 
+
 if __name__ == '__main__':
     sys.exit(main())
+
+
