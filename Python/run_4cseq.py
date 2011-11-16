@@ -98,7 +98,7 @@ def main(argv = None):
         with open(hts_key+".bed",'w') as ucscbed:
             for ftype,fset in ucscfiles.iteritems():
                 for ffile,descr in fset.iteritems():
-                    ucscbed.write(common.track_header(descr,ftype,gl['hts_c4seq']['download'],ffile))
+                    ucscbed.write(common.track_header(descr,ftype,gl['hts_4cseq']['download'],ffile))
 
         allfiles = common.get_files( ex.id, M )
 	
