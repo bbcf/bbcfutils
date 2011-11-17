@@ -18,11 +18,12 @@ for (sample in sort(names(stats.by.sample))) {
     text(nrow(df)/2,stats$total,paste("reads total:",stats$total),pos=3)
     df=data.frame(mismatches=rev(names(stats$mismatches)),
       reads=rev(as.numeric(stats$mismatches)))
-    if (nrow(df) > 10) df=df[nrow(df)-9:0,] 
+    if (nrow(df) > 9) df=rbind(data.frame(mismatches=">8",reads=sum(df[1:(nrow(df)-9),"reads"])),
+                        df[nrow(df)-8:0,]) 
     col=heat.colors(6)[c(rep(4,length(df$reads)-1),2)]
 #    col='darkorange'
     p=barplot(df$reads,names.arg=df$mismatches,horiz=T,border=0,
-      col=col,ylab='# mismatches',xlab='# reads',
+      col=col,ylab='# mismatches',xlab='# reads',las=1,
       main='Mismatches between reads and reference')
     text(x=mean(df$reads),y=p,lab=df$reads,cex=1.1)
     ps=as.numeric(c(stats$alignments$fwd,stats$alignments$rev))
