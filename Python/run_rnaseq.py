@@ -7,7 +7,7 @@ python run_rnaseq.py -v lsf -c config_files/jobbamtest.txt -d rnaseq -p transcri
 import os, sys, json, re
 import optparse
 from bbcflib import rnaseq, frontend, common, mapseq, genrep, email, gdv
-from bein.util import use_pickle, add_pickle
+from bein.util import use_pickle
 from bein import execution, MiniLIMS
 
 class Usage(Exception):
@@ -107,13 +107,9 @@ def main():
                                    to=str(job.email),
                                    subject="RNA-seq job "+str(job.description),
                                    smtp_server=gl['email']['smtp'] )
-            r.appendBody('''
-Your RNA-seq job is finished. \n
-The description was:
-'''+str(job.description)+'''
-and its unique key is '''+opt.key+'''.\n
-You can retrieve the results at this url:
-'''+gl['hts_rnaseq']['url']+"jobs/"+opt.key+"/get_results")
+            r.appendBody('''Your RNA-seq job is finished.
+                \n The description was: '''+str(job.description)+''' and its unique key is '''+opt.key+'''.
+                \n You can retrieve the results at this url: '''+gl['hts_rnaseq']['url']+"jobs/"+opt.key+"/get_results" )
             r.send()
 
         sys.exit(0)
