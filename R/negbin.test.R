@@ -29,7 +29,7 @@ write.table(data,"data.txt", sep=",", row.names=T, col.names=T, quote=F)
 #main <- function(filename, design, contrast){
 
 design_file = "design.txt"
-contrast = "contrast.txt"
+contrast_file = "contrast.txt"
 data_file = "data.txt"
 
 data = read.table(data_file, header=T, row.names=1, sep=",")
@@ -46,49 +46,53 @@ lvls = c()
 for (cov in covar){ lvls = c(lvls,paste(cov,levels(as.factor(design[,cov])),sep=""))}
 nlvls = length(lvls)
 
-X = matrix(0,nsamples,length(lvls))
-colnames(X) = lvls
-rownames(X) = samples
-for (i in 1:nsamples){
-    gr = strsplit(samples[i],".",fixed=T)[[1]][1]
-    for (j in 1:ncovar){
-        cov = covar[j]
-        val = design[gr,cov]
-        X[samples[i],paste(cov,val,sep="")] = 1
-    }
+## Regression coefficients
+X = c()
+for (i in 1:ngroups){
+  e = paste(covar[1],design[i,1], sep="")
+  for (j in 2:ncovar){
+     e = paste(e,paste(covar[j],design[i,j], sep=""), sep="_")
+  }
+  X = cbind(X,e)
 }
-
-## Build the right part of the regression formula ##
-formule = covar[1]
-for (c in covar[2:ncovar]){ formule = paste(formule,"+",as.name(c)) }
 
 ## Calculate the model for each feature ##
 results = list()
-#for (i in 1:nrow(data)){
+comparisons = list()
+for (i in 1:nrow(data)){
     i=1
     f = features[i]
     Y = t(data[f,])
-    g = as.data.frame(cbind(Y,X))
-    regressionFormula = formula(paste(features[i],"~",formule))
+    g = data.frame(Y=Y,All=as.factor(t(X)))
+    regressionFormula = formula(paste(features[i],"~",as.name("All")))
 
     nbmodel = glm.nb(regressionFormula, data=g) # AIC must be minimal
     summ = summary.glm(nbmodel)
     coeff = as.data.frame(summ$coefficients)
+    lvls = rownames(coeff)
+    for (i in 1:length(lvls)){
+        if (lvls[i] != "(Intercept)"){ lvls[i] = strsplit(lvls[i],"All")[[1]][2]}
+    }
+    rownames(coeff) = lvls
 
-    result = matrix(NA,nlvls+1,4)
-    rownames(result) = c("(Intercept)",lvls)
-    colnames(result) = c("Estimate","Std. Error","t value","Pr(>|t|)")
-    for (lvl in rownames(coeff)){
-        for (res in colnames(coeff)){
-            result[lvl,res] = coeff[lvl,res]
-        }
+    result = matrix(NA,ncovar,4)
+    rownames(result) = rownames(coeff)
+    colnames(result) = colnames(coeff)
+    for (lvl in lvls){
+            for (res in colnames(coeff)){
+                result[lvl,res] = coeff[lvl,res]
+            }
     }
     results[[f]] = result
 
-  ## Contrasts ##
-  contrast = contrMat(rep(nfeat,ngroups), type="Tukey") # or Dunnett
-
-  #test = glht(nbmodel, linfct=mcp(temp=contrast))
-#}
+    ## Contrasts ##
+    #if (file.exists(contrast_file)){
+    #    contrast = read.table(contrast_file, header=T, row.names=1, sep=",")
+    #}else{
+        contrast = contrMat(rep(nfeat,ngroups), type="Tukey") # or Dunnett
+    #}
+    comp = glht(nbmodel, linfct=mcp(All=contrast))
+    comparisons[[f]] = comp
+}
 
 
