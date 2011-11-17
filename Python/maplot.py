@@ -224,10 +224,12 @@ def MAplot(dataset, cols=[2,3],annotate=None, mode="normal", data_format="counts
         if assembly_id:
             nr_assemblies = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies.json").read()
             nr_assemblies = json.loads(nr_assemblies)
+            try: assembly_id = int(assembly_id)
+            except: pass
             for a in nr_assemblies:
                 if a['nr_assembly']['name'] == assembly_id or a['nr_assembly']['id'] == assembly_id:
-                        assembly_id = a['nr_assembly']['id'];
-                        md5 = a['nr_assembly']['md5']; break
+                    assembly_id = a['nr_assembly']['id']
+                    md5 = a['nr_assembly']['md5']; break
             url_template = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies/" +
                             "get_links/" + str(assembly_id) + ".json?gene_name=%3CName%3E&md5=" + md5)
             jsdata = jsdata + "var url_template = " + url_template.read() + ";"
