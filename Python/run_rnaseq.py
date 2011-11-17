@@ -50,24 +50,6 @@ def main():
         # Rna-seq job configuration
         M = MiniLIMS(opt.minilims)
         if opt.key:
-            gl_dict = {
-                'genrep_url': 'http://bbcftools.vital-it.ch/genrep/',
-                'bwt_root': '/db/genrep/',
-                'fastq_root': '/scratch/cluster/daily/htsstation/mapseq/',
-                'hts_mapseq': {'url': 'http://htsstation.vital-it.ch/mapseq/',
-                               'download': 'http://htsstation.vital-it.ch/lims/mapseq/mapseq_minilims.files/'},
-                'hts_rnaseq': {'url': 'http://htsstation.vital-it.ch/rnaseq/',
-                           'download': 'http://htsstation.vital-it.ch/lims/rnaseq/rnaseq_minilims.files/'},
-                'gdv': {'url': 'http://svitsrv25.epfl.ch/gdv','email': 'jacques.rougemont@epfl.ch',
-                        'key': 'ah6kr9fm4nqogijamd3tmclihf'},
-                'lims': {'user': 'jrougemont','passwd': {'lgtf': 'cREThu6u','gva': 'wAs2th'}},
-                'email': {'sender': 'webmaster.bbcf@epfl.ch','smtp': 'lipidx.vital-it.ch'},
-                'script_path': '/mnt/common/epfl/share' }
-
-            M.delete_alias("global variables")
-            with execution( M, description='create global variables' ) as ex:
-                add_pickle( ex, gl_dict, alias="global variables" )
-
             gl = use_pickle( M, "global variables" )
             htss = frontend.Frontend( url=gl['hts_rnaseq']['url'] )
             job = htss.job(opt.key) # new *RNA-seq* job instance

@@ -59,8 +59,8 @@ for (i in 1:nsamples){
 }
 
 ## Build the right part of the regression formula ##
-formule = lvls[1]
-for (c in lvls[2:nlvls]){ formule = paste(formule,"+",as.name(c)) }
+formule = covar[1]
+for (c in covar[2:ncovar]){ formule = paste(formule,"+",as.name(c)) }
 
 ## Calculate the model for each feature ##
 results = list()
