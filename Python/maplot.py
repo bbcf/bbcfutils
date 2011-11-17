@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/usr/bin/env python
 """
 Creates an `MA-plot` to compare transcription levels of a set of genes
 (or other features) in two different conditions, from a CSV file.
@@ -8,7 +8,7 @@ will be plotted in a different color, and be annotated if requested.
 The class AnnoteFinder is used to create interactive - clickable - plots.
 """
 
-import sys, os, pickle, json, urllib, math, time, csv, optparse
+import sys, os, json, urllib, math, csv, optparse
 import numpy
 from scipy import stats
 import matplotlib.pyplot as plt
@@ -222,14 +222,16 @@ def MAplot(dataset, cols=[2,3],annotate=None, mode="normal", data_format="counts
 
         # - url for more info on features
         if assembly_id:
-            nr_assemblies = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies.json").read()
-            nr_assemblies = json.loads(nr_assemblies)
-            for a in nr_assemblies:
-                if a['nr_assembly']['name'] == assembly_id or a['nr_assembly']['id'] == assembly_id:
-                        assembly_id = a['nr_assembly']['id'];
-                        md5 = a['nr_assembly']['md5']; break
+            assemblies = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/assemblies.json").read()
+            assemblies = json.loads(assemblies)
+            try: assembly_id = int(assembly_id)
+            except: pass
+            for a in assemblies:
+                if a['assembly']['name'] == assembly_id or a['assembly']['id'] == assembly_id:
+                    nr_assembly_id =  a['assembly']['nr_assembly_id']
+                    md5 = a['assembly']['md5']; break
             url_template = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies/" +
-                            "get_links/" + str(assembly_id) + ".json?gene_name=%3CName%3E&md5=" + md5)
+                            "get_links/" + str(nr_assembly_id) + ".json?gene_name=%3CName%3E&md5=" + md5)
             jsdata = jsdata + "var url_template = " + url_template.read() + ";"
         else: jsdata = jsdata + "var url_template = null;"
         print >> sys.stdout, jsdata
@@ -269,7 +271,7 @@ class AnnoteFinder:
     self.links = []
 
   def distance(self, x1, x2, y1, y2):
-    """distance between two points"""
+    """Distance between two points"""
     return math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
 
   def __call__(self, event):
@@ -335,8 +337,8 @@ commas. E.g. --cols 3,5.""",
 """Data type: 'counts' for raw count data (default), 'rpkm' for normalized data.""",
 """Degree of the interpolant percentile splines.""",
 """Number of divisions of the x axis to calculate percentiles.""",
-"""Identifier for the Genrep assembly used to add more
-information about features into the json output. E.g. --assembly hg19.""",
+"""Identifier for the Genrep assembly (e.g. 'hg19' or 7) used to add more
+information about features into the json output.""",
 """Don't draw quantile splines. This may improve speed and lisibility in some cases.""",
 """(In 'normal' mode) Indication of which datasets to annotate.
 Must be a binary string of the same lenght as the number of datasets, \

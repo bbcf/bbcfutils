@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/usr/bin/env python
 """
 A High-throughput RNA-seq analysis workflow.
 
@@ -41,39 +41,19 @@ def main():
         if os.path.exists(opt.wdir): os.chdir(opt.wdir)
         else: parser.error("Working directory '%s' does not exist." % opt.wdir)
         if not opt.minilims: parser.error("Must specify a MiniLIMS to attach to")
-        if opt.pileup_level:
-            pileup_level = opt.pileup_level.split(',')
-            if '0' in pileup_level: pileup_level.remove('0'); pileup_level.append("genes")
-            if '1' in pileup_level: pileup_level.remove('1'); pileup_level.append("exons")
-            if '2' in pileup_level: pileup_level.remove('2'); pileup_level.append("transcripts")
 
         # Rna-seq job configuration
         M = MiniLIMS(opt.minilims)
         if opt.key:
-            gl_dict = {
-                'genrep_url': 'http://bbcftools.vital-it.ch/genrep/',
-                'bwt_root': '/db/genrep/',
-                'fastq_root': '/scratch/cluster/daily/htsstation/mapseq/',
-                'hts_mapseq': {'url': 'http://htsstation.vital-it.ch/mapseq/',
-                               'download': 'http://htsstation.vital-it.ch/lims/mapseq/mapseq_minilims.files/'},
-                'hts_rnaseq': {'url': 'http://htsstation.vital-it.ch/rnaseq/',
-                           'download': 'http://htsstation.vital-it.ch/lims/rnaseq/rnaseq_minilims.files/'},
-                'gdv': {'url': 'http://svitsrv25.epfl.ch/gdv','email': 'jacques.rougemont@epfl.ch',
-                        'key': 'ah6kr9fm4nqogijamd3tmclihf'},
-                'lims': {'user': 'jrougemont','passwd': {'lgtf': 'cREThu6u','gva': 'wAs2th'}},
-                'email': {'sender': 'webmaster.bbcf@epfl.ch','smtp': 'lipidx.vital-it.ch'},
-                'script_path': '/mnt/common/epfl/share' }
-
-            M.delete_alias("global variables")
-            with execution( M, description='create global variables' ) as ex:
-                add_pickle( ex, gl_dict, alias="global variables" )
-
             gl = use_pickle( M, "global variables" )
             htss = frontend.Frontend( url=gl['hts_rnaseq']['url'] )
             job = htss.job(opt.key) # new *RNA-seq* job instance
+            h_pileup_level = {'0':'genes', '1':'exons', '2':'transcripts'}
+            pileup_level = [h_pileup_level[e] for e in job.options.get('pileup_level').split(',')]
             [M.delete_execution(x) for x in M.search_executions(with_description=opt.key,fails=True)]
             description = "Job run with mapseq key %s" % opt.key
         elif os.path.exists(opt.config):
+            pileup_level = opt.pileup_level.split(',')
             (job,gl) = frontend.parseConfig(opt.config)
             description = "Job run with config file %s" % opt.config
         else: raise ValueError("Need either a job key (-k) or a configuration file (-c).")
@@ -133,7 +113,7 @@ The description was:
 '''+str(job.description)+'''
 and its unique key is '''+opt.key+'''.\n
 You can retrieve the results at this url:
-'''+gl['hts_chipseq']['url']+"jobs/"+opt.key+"/get_results")
+'''+gl['hts_rnaseq']['url']+"jobs/"+opt.key+"/get_results")
             r.send()
 
         sys.exit(0)
