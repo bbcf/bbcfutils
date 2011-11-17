@@ -210,15 +210,17 @@ def MAplot(dataset, cols=[2,3],annotate=None, mode="normal", data_format="counts
                         "points": {"show":False},
                         "lines": {"show":False},
                         "labels": ["1%","5%","25%","50%","75%","95%","99%"]}
-        transparencies = iter([0.12, 0.2, 0.35, 0.35, 0.2, 0.12])
+        transparencies = iter([0.15, 0.2, 0.35, 0.35, 0.2, 0.15])
         percentiles.pop(percentiles.index(50))
         for i in percentiles:
-            jsdata.append({"id": str(i)+" % Quantile",
+            jsdata.append({"id": i,
                            "data": spline_coords[i],
                            "lines": {"show":True, "lineWidth":0, "fill": transparencies.next()},
-                           "color": rgb_to_hex((255,0,255)) })
+                           "color": rgb_to_hex((255,0,255)),
+                           "label": str(i)+"% Quantile" })
         jsdata = "var data = " + json.dumps(jsdata) + ";\n" \
                  + "var splinelabels = " + json.dumps(splinelabels) + ";\n"
+        jsdata = jsdata + "var ordered_spline_labels = "+json.dumps(percentiles)+";\n"
 
         # - url for more info on features
         if assembly_id:
