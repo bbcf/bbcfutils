@@ -115,7 +115,7 @@ The description was:
 '''+str(job.description)+'''
 and its unique key is '''+opt.key+'''.\n
 You can retrieve the results at this url:
-'''+gl['hts_chipseq']['url']+"jobs/"+opt.key+"/get_results")
+'''+gl['hts_rnaseq']['url']+"jobs/"+opt.key+"/get_results")
             r.send()
 
         sys.exit(0)
