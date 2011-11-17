@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/usr/bin/env python
 """
 A High-throughput RNA-seq analysis workflow.
 
@@ -28,9 +28,6 @@ def main():
             ("-c", "--config", "Config file", {'default': None}),
             ("-p", "--pileup_level", "Target features, inside of quotes, separated by commas.\
                                      E.g. 'genes,exons,transcripts'",{'default': "genes"}))
-
-    h_pileup_level={'0' : 'genes', '1' : 'exons', '2' : 'transcripts'}
-    
     try:
         usage = "run_rnaseq.py [OPTIONS]"
         desc = """A High-throughput RNA-seq analysis workflow. It returns a file containing
@@ -44,8 +41,6 @@ def main():
         if os.path.exists(opt.wdir): os.chdir(opt.wdir)
         else: parser.error("Working directory '%s' does not exist." % opt.wdir)
         if not opt.minilims: parser.error("Must specify a MiniLIMS to attach to")
-        if opt.pileup_level:
-            pileup_level = opt.pileup_level.split(',')
 
         # Rna-seq job configuration
         M = MiniLIMS(opt.minilims)
@@ -53,10 +48,12 @@ def main():
             gl = use_pickle( M, "global variables" )
             htss = frontend.Frontend( url=gl['hts_rnaseq']['url'] )
             job = htss.job(opt.key) # new *RNA-seq* job instance
+            h_pileup_level = {'0':'genes', '1':'exons', '2':'transcripts'}
             pileup_level = [h_pileup_level[e] for e in job.options.get('pileup_level').split(',')]
             [M.delete_execution(x) for x in M.search_executions(with_description=opt.key,fails=True)]
             description = "Job run with mapseq key %s" % opt.key
         elif os.path.exists(opt.config):
+            pileup_level = opt.pileup_level.split(',')
             (job,gl) = frontend.parseConfig(opt.config)
             description = "Job run with config file %s" % opt.config
         else: raise ValueError("Need either a job key (-k) or a configuration file (-c).")

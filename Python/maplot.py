@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/usr/bin/env python
 """
 Creates an `MA-plot` to compare transcription levels of a set of genes
 (or other features) in two different conditions, from a CSV file.
@@ -271,7 +271,7 @@ class AnnoteFinder:
     self.links = []
 
   def distance(self, x1, x2, y1, y2):
-    """distance between two points"""
+    """Distance between two points"""
     return math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
 
   def __call__(self, event):
