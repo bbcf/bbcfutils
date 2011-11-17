@@ -28,6 +28,9 @@ def main():
             ("-c", "--config", "Config file", {'default': None}),
             ("-p", "--pileup_level", "Target features, inside of quotes, separated by commas.\
                                      E.g. 'genes,exons,transcripts'",{'default': "genes"}))
+
+    h_pileup_level={'0' : 'genes', '1' : 'exons', '2' : 'transcripts'}
+    
     try:
         usage = "run_rnaseq.py [OPTIONS]"
         desc = """A High-throughput RNA-seq analysis workflow. It returns a file containing
@@ -43,9 +46,6 @@ def main():
         if not opt.minilims: parser.error("Must specify a MiniLIMS to attach to")
         if opt.pileup_level:
             pileup_level = opt.pileup_level.split(',')
-            if '0' in pileup_level: pileup_level.remove('0'); pileup_level.append("genes")
-            if '1' in pileup_level: pileup_level.remove('1'); pileup_level.append("exons")
-            if '2' in pileup_level: pileup_level.remove('2'); pileup_level.append("transcripts")
 
         # Rna-seq job configuration
         M = MiniLIMS(opt.minilims)
@@ -53,6 +53,7 @@ def main():
             gl = use_pickle( M, "global variables" )
             htss = frontend.Frontend( url=gl['hts_rnaseq']['url'] )
             job = htss.job(opt.key) # new *RNA-seq* job instance
+            pileup_level = [h_pileup_level[e] for e in job.options.get('pileup_level').split(',')]
             [M.delete_execution(x) for x in M.search_executions(with_description=opt.key,fails=True)]
             description = "Job run with mapseq key %s" % opt.key
         elif os.path.exists(opt.config):
