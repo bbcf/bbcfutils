@@ -22,14 +22,16 @@ def rstring(len=20):
     import random
     return "".join([random.choice(string.letters+string.digits) for x in range(len)])
 
-def MAplot(dataset, cols=[2,3],annotate=None, mode="normal", data_format="counts", limits=[None,None,None,None],
-           slimits=[None,None], deg=3, bins=30, assembly_id=None, quantiles=True, title="MA-plot"):
+def MAplot(dataset, cols=[2,3], annotate=None, mode="normal", data_format="counts", sep=None,
+           limits=[None,None,None,None], slimits=[None,None], deg=3, bins=30, assembly_id=None,
+           quantiles=True, title="MA-plot"):
     """
     Creates an "MA-plot" to compare transcription levels of a set of genes
     in two different conditions. It returns the name of the .png file produced,
     and the name of a json containing enough information to reconstruct the plot using Javascript.
 
     :param cols: list containing the numbers of the two columns containing the numeric data to compare.
+    :param sep: character delimiting the columns.
     :param dataset: list or string, containing names of up to six CSV files with rows
     of the form (feature_name, sample1, sample2, ...).
     :param annotate: in 'normal' mode, choose which for which datasets you want the
@@ -60,20 +62,24 @@ def MAplot(dataset, cols=[2,3],annotate=None, mode="normal", data_format="counts
         spline_xmax = None
         slimits[0] = slimits[0] or -1
     min_pts_per_bin = 20
-    extreme_ratios = False # print extremes ratios
+    extreme_ratios = True # print extremes ratios
 
     # Extract data from CSV
     if isinstance(dataset,str): dataset = [dataset]
     names=[]; means=[]; ratios=[]; pvals=[]; points=[]; groups={}; counts={}
     for data in dataset:
         with open(data,'r') as f:
-            dialect = csv.Sniffer().sniff(f.read(1024)); f.seek(0)
             f.readline()
+            dialect = csv.Sniffer().sniff(f.readline()); f.seek(0)
+            if sep: dialect.delimiter = sep
+            if csv.Sniffer().has_header(f.readline()):
+                f.seek(0); f.readline()
             csvreader = csv.reader(f, dialect=dialect, quoting=csv.QUOTE_NONE)
             n=[]; m=[]; r=[]; p=[]
             for row in csvreader:
                 #numpy.seterr(all='raise') # testing
-                c1 = float(row[cols[0]-1]); c2 = float(row[cols[1]-1])
+                try: c1 = float(row[cols[0]-1]); c2 = float(row[cols[1]-1])
+                except ValueError: continue
                 if (c1*c2 > lower):
                     counts[row[0]] = (c1,c2)
                     n.append(row[0])
@@ -83,7 +89,10 @@ def MAplot(dataset, cols=[2,3],annotate=None, mode="normal", data_format="counts
         groups[data] = zip(n, m, r, p)
         names.extend(n); means.extend(m); ratios.extend(r); pvals.extend(p)
     points = zip(names, means, ratios, pvals)
-    xmin = min(means); xmax = max(means); ymin = min(ratios); ymax = max(ratios)
+    try: xmin = min(means); xmax = max(means); ymin = min(ratios); ymax = max(ratios)
+    except ValueError:
+        print "\nError: non-numeric columns selected. Try to specify more suitable columns with [-c].\n"
+        raise
 
     # Figure initialization
     fig = plt.figure(figsize=[14,9])
@@ -138,7 +147,7 @@ def MAplot(dataset, cols=[2,3],annotate=None, mode="normal", data_format="counts
             spline_coords[k] = zip(x_spline,y_spline)
 
         if extreme_ratios:
-            with open("extremes_ratios"+rstring(5),"w") as f:
+            with open("extremes_ratios_"+rstring(5),"w") as f:
                 c = csv.writer(f,delimiter="\t")
                 c.writerow(["Name","countsC1","countsC2","log10Mean","log2Fold"])
                 for p in extremes:
@@ -337,6 +346,8 @@ commas. E.g. --cols 3,5.""",
 'interactive' - clic to display gene names, or
 'json' - json output to stdout for Javascript web interface.""",
 """Data type: 'counts' for raw count data (default), 'rpkm' for normalized data.""",
+"""The character delimiting the columns of the file. If not specified, the program tries
+to detect it automatically.""",
 """Degree of the interpolant percentile splines.""",
 """Number of divisions of the x axis to calculate percentiles.""",
 """Identifier for the Genrep assembly (e.g. 'hg19' or 7) used to add more
@@ -365,6 +376,7 @@ def main():
         parser.add_option("-c", "--cols", default='2,3', help = help.next())
         parser.add_option("-m", "--mode", default='normal', help = help.next())
         parser.add_option("-f", "--format", default='counts', help = help.next())
+        parser.add_option("-s", "--sep", default=None, help = help.next())
         parser.add_option("-d", "--deg", default=4, type="int", help = help.next())
         parser.add_option("-b", "--bins", default=30, type="int", help = help.next())
         parser.add_option("-a", "--assembly", default=None, help = help.next())
@@ -393,7 +405,7 @@ def main():
         if opt.format not in ["counts","rpkm"]:
             parser.error("--format must be one of 'counts' or 'rpkm' (got %s)." % opt.format)
 
-        MAplot(args, cols=cols, mode=opt.mode, data_format=opt.format, limits=limits, slimits=slimits,
+        MAplot(args, cols=cols, mode=opt.mode, data_format=opt.format, sep=opt.sep, limits=limits, slimits=slimits,
                          deg=opt.deg, bins=opt.bins, assembly_id=opt.assembly,
                          annotate=annotate, quantiles=opt.noquantiles, title=opt.title)
 
