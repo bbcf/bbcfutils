@@ -24,7 +24,7 @@ def rstring(len=20):
 
 def MAplot(dataset, cols=[2,3], annotate=None, mode="normal", data_format="counts", sep=None,
            limits=[None,None,None,None], slimits=[None,None], deg=3, bins=30, assembly_id=None,
-           quantiles=True, title="MA-plot"):
+           quantiles=True, title="MA-plot", extreme_ratios=False):
     """
     Creates an "MA-plot" to compare transcription levels of a set of genes
     in two different conditions. It returns the name of the .png file produced,
@@ -62,7 +62,7 @@ def MAplot(dataset, cols=[2,3], annotate=None, mode="normal", data_format="count
         spline_xmax = None
         slimits[0] = slimits[0] or -1
     min_pts_per_bin = 20
-    extreme_ratios = True # print extremes ratios
+    output_filename = rstring()
 
     # Extract data from CSV
     if isinstance(dataset,str): dataset = [dataset]
@@ -91,8 +91,7 @@ def MAplot(dataset, cols=[2,3], annotate=None, mode="normal", data_format="count
     points = zip(names, means, ratios, pvals)
     try: xmin = min(means); xmax = max(means); ymin = min(ratios); ymax = max(ratios)
     except ValueError:
-        print "\nError: non-numeric columns selected. Try to specify more suitable columns with [-c].\n"
-        raise
+        print "\nError: non-numeric columns selected. Try to specify more suitable columns with [-c].\n"; raise
 
     # Figure initialization
     fig = plt.figure(figsize=[14,9])
@@ -147,11 +146,13 @@ def MAplot(dataset, cols=[2,3], annotate=None, mode="normal", data_format="count
             spline_coords[k] = zip(x_spline,y_spline)
 
         if extreme_ratios:
-            with open("extremes_ratios_"+rstring(5),"w") as f:
+            extremes_filename = "extreme_ratios_"+output_filename
+            with open(extremes_filename,"w") as f:
                 c = csv.writer(f,delimiter="\t")
                 c.writerow(["Name","countsC1","countsC2","log10Mean","log2Fold"])
                 for p in extremes:
                     c.writerow([p[0], str(counts[p[0]][0]), str(counts[p[0]][1]), str(p[1]), str(p[2])])
+            print "Ratios >99% 1%< :", extremes_filename
 
         # Annotation of splines (percentage)
         for sa in spline_annotes:
@@ -188,9 +189,9 @@ def MAplot(dataset, cols=[2,3], annotate=None, mode="normal", data_format="count
                     ax.annotate(p[0], xy=(p[1],p[2]))
                     annotes[data].append(p[0])
     if mode == "normal":
-        figname = rstring()+".png"
+        figname = "maplot_"+output_filename +".png"
         fig.savefig(figname)
-        print "png:", figname
+        print "Figure:", figname
 
     # Output for Javascript
     if mode == "json":
@@ -364,7 +365,9 @@ type --annotate 001.""",
 """Maximum y value to be displayed on the output graph.""",
 """Left bound to draw splines.""",
 """Right bound to draw splines.""",
-"""Title of the graph"""
+"""Title of the graph""",
+"""Create an output file containing features for which ratios were outside the
+1%/99% quantiles. It is named *extreme_ratios_xxxxx* ."""
 ])
 description = """Creates an `MA-plot` to compare transcription levels of a set of
 genes (or other genomic features) in two different conditions."""
@@ -380,7 +383,7 @@ def main():
         parser.add_option("-d", "--deg", default=4, type="int", help = help.next())
         parser.add_option("-b", "--bins", default=30, type="int", help = help.next())
         parser.add_option("-a", "--assembly", default=None, help = help.next())
-        parser.add_option("-q", "--noquantiles", default=True, action= "store_false", help = help.next())
+        parser.add_option("-q", "--noquantiles", default=True, action="store_false", help = help.next())
         parser.add_option("-n", "--annotate", default=None, help = help.next())
         parser.add_option("--xmin", default=None, type="float", help = help.next())
         parser.add_option("--xmax", default=None, type="float", help = help.next())
@@ -389,6 +392,7 @@ def main():
         parser.add_option("--smin", default=None, type="float", help = help.next())
         parser.add_option("--smax", default=None, type="float", help = help.next())
         parser.add_option("-t","--title", default="MA-plot", help = help.next())
+        parser.add_option("--extremes", default=False, action="store_true", help=help.next())
 
         (opt, args) = parser.parse_args()
         args = [os.path.abspath(a) for a in args]
@@ -407,7 +411,7 @@ def main():
 
         MAplot(args, cols=cols, mode=opt.mode, data_format=opt.format, sep=opt.sep, limits=limits, slimits=slimits,
                          deg=opt.deg, bins=opt.bins, assembly_id=opt.assembly,
-                         annotate=annotate, quantiles=opt.noquantiles, title=opt.title)
+                         annotate=annotate, quantiles=opt.noquantiles, title=opt.title, extreme_ratios=opt.extremes)
 
         sys.exit(0)
     except Usage, err:
