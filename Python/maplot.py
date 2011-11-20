@@ -230,7 +230,6 @@ def MAplot(dataset, cols=[2,3], annotate=None, mode="normal", data_format="count
                            "label": str(i)+"% Quantile" })
         jsdata = "var data = " + json.dumps(jsdata) + ";\n" \
                  + "var splinelabels = " + json.dumps(splinelabels) + ";\n"
-        jsdata = jsdata + "var ordered_spline_labels = "+json.dumps(percentiles)+";\n"
 
         # - url for more info on features
         if assembly_id:
