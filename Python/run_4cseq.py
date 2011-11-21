@@ -116,7 +116,8 @@ def main(argv = None):
 #                                name = re.sub('\.sql','',str(f)),
 #                                gdv_url=gl['gdv']['url'])
 #                 for k,f in allfiles['sql'].iteritems()]
-#        print json.dumps(allfiles)
+
+        print json.dumps(allfiles)
         with open(hts_key+".done",'w') as done:
                 json.dump(allfiles,done)
 
