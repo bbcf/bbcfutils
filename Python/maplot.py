@@ -24,7 +24,7 @@ def rstring(len=20):
 
 def MAplot(dataset, cols=[2,3], annotate=None, mode="normal", data_format="counts", sep=None,
            limits=[None,None,None,None], slimits=[None,None], deg=3, bins=30, assembly_id=None,
-           quantiles=True, title="MA-plot", extreme_ratios=False):
+           quantiles=True, title="MA-plot", extremes=False):
     """
     Creates an "MA-plot" to compare transcription levels of a set of genes
     in two different conditions. It returns the name of the .png file produced,
@@ -124,15 +124,15 @@ def MAplot(dataset, cols=[2,3], annotate=None, mode="normal", data_format="count
         x = intervals[:-1]+(intervals[1:]-intervals[:-1])/2. #the middle point of each bin
 
         # Compute percentiles in each bin
-        spline_annotes=[]; spline_coords={}; extremes=[]
+        spline_annotes=[]; spline_coords={}; extreme_ratios=[]
         percentiles = [1,5,25,50,75,95,99]
         for k in percentiles:
             h=[]
             for b in range(bins):
                 score = stats.scoreatpercentile([p[2] for p in points_in[b]], k)
                 h.append(score)
-                if k==1: extremes.extend([p for p in points_in[b] if p[2] < score])
-                if k==99: extremes.extend([p for p in points_in[b] if p[2] > score])
+                if k == extremes: extreme_ratios.extend([p for p in points_in[b] if p[2] < score])
+                if k == 100-extremes: extreme_ratios.extend([p for p in points_in[b] if p[2] > score])
 
             coeffs = numpy.polyfit(x, h, deg)
             smin = slimits[0] or x[0]
@@ -145,12 +145,12 @@ def MAplot(dataset, cols=[2,3], annotate=None, mode="normal", data_format="count
             spline_annotes.append((k,x_spline[0],y_spline[0])) #quantile percentages
             spline_coords[k] = zip(x_spline,y_spline)
 
-        if extreme_ratios:
+        if extremes:
             extremes_filename = "extreme_ratios_"+output_filename
             with open(extremes_filename,"w") as f:
                 c = csv.writer(f,delimiter="\t")
                 c.writerow(["Name","countsC1","countsC2","log10Mean","log2Fold"])
-                for p in extremes:
+                for p in extreme_ratios:
                     c.writerow([p[0], str(counts[p[0]][0]), str(counts[p[0]][1]), str(p[1]), str(p[2])])
             print "Ratios >99% 1%< :", extremes_filename
 
@@ -365,9 +365,10 @@ type --annotate 001.""",
 """Left bound to draw splines.""",
 """Right bound to draw splines.""",
 """Title of the graph""",
-"""Create an output file containing features for which ratios were outside the
-1%/99% quantiles. It is named *extreme_ratios_xxxxx* ."""
+"""Create an output file containing features for which ratios were outside the specified
+ percentile (two-sided). For the moment, must be 1 or 5. The file is named *extreme_ratios_xxxxx* ."""
 ])
+
 description = """Creates an `MA-plot` to compare transcription levels of a set of
 genes (or other genomic features) in two different conditions."""
 
@@ -391,7 +392,7 @@ def main():
         parser.add_option("--smin", default=None, type="float", help = help.next())
         parser.add_option("--smax", default=None, type="float", help = help.next())
         parser.add_option("-t","--title", default="MA-plot", help = help.next())
-        parser.add_option("--extremes", default=False, action="store_true", help=help.next())
+        parser.add_option("-e","--extremes", default=False, type="int", help=help.next())
 
         (opt, args) = parser.parse_args()
         args = [os.path.abspath(a) for a in args]
@@ -410,7 +411,7 @@ def main():
 
         MAplot(args, cols=cols, mode=opt.mode, data_format=opt.format, sep=opt.sep, limits=limits, slimits=slimits,
                          deg=opt.deg, bins=opt.bins, assembly_id=opt.assembly,
-                         annotate=annotate, quantiles=opt.noquantiles, title=opt.title, extreme_ratios=opt.extremes)
+                         annotate=annotate, quantiles=opt.noquantiles, title=opt.title, extremes=opt.extremes)
 
         sys.exit(0)
     except Usage, err:
