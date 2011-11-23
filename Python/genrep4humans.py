@@ -21,8 +21,8 @@ opts = (("-l", "--list", "list available assemblies, or a chromosome table if an
         ("-t", "--regions", "extract regions to fasta (ex: 'chr2:2-1356,chr1:10-45')", {'default': None}),
         ("-o", "--output", "output file (default standard output)", {'default': None}),
         ("-r", "--root", "genrep root directory (default: '/db/genrep/')", {'default': '/db/genrep/'}),
-        ("-u", "--url", "url to genrep (default: 'http://bbcftools.vital-it.ch/genrep/')",
-         {'default': 'http://bbcftools.vital-it.ch/genrep/'}))
+        ("-u", "--url", "url to genrep (default: 'http://bbcftools.vital-it.ch/genrep/')",{'default': 'http://bbcftools.vital-it.ch/genrep/'}),
+        ("-c", "--convert", "convert bam headers to natural chromosome names",{}))
 
 class Usage(Exception):
     def __init__(self,  msg):
@@ -88,6 +88,23 @@ def main():
             stats = g_rep.statistics(assembly,frequency=True)
             fout.write("\n".join([k+":\t"+str(stats[k]) for k in sorted(stats.keys())])+"\n")
         fout.close()
+        if opt.convert:
+            if not(os.path.exists(opt.convert)):
+                raise ValueError("No such file: %s."%opt.convert)
+            if not(opt.output):
+                raise ValueError("Need an output file name.")
+            import pysam
+            infile = pysam.Samfile( opt.convert, 'rb' )
+            header = infile.header
+            chromosomes = dict((_compact_key(k),v['name']) for k,v in assembly.chromosomes.iteritems())
+            for h in header["SQ"]:
+                if h["SN"] in chromosomes:
+                    h["SN"] = chromosomes[h["SN"]]
+            outfile = pysam.Samfile(re.search('([._\-\w]+)', str(opt.output)).groups()[0], 'wb', header=header )
+            for read in infile:
+                outfile.write(read)
+            outfile.close()
+            infile.close()
 
         return 0
     except Usage, err:
