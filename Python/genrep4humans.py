@@ -103,8 +103,8 @@ def main():
             outfile = pysam.Samfile(re.search('([._\-\w]+)', str(opt.output)).groups()[0], 'wb', header=header )
             for read in infile:
                 outfile.write(read)
-        outfile.close()
-        infile.close()
+            outfile.close()
+            infile.close()
 
         return 0
     except Usage, err:
