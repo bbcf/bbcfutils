@@ -24,14 +24,14 @@ for (i in 1:n){
     data[features[i]] = c(rnegbin(3,means1[i],thetas1[i]),rnegbin(3,means2[i],thetas2[i]),rnegbin(3,means3[i],thetas3[i]))
 }
 data = t(data)
-write.table(data,"data.txt", sep=",", row.names=T, col.names=T, quote=F)
+write.table(data,"tests/data.txt", sep=",", row.names=T, col.names=T, quote=F)
 
 
 main <- function(filename, design, contrast){
 
-    design_file = "design.txt"
-    contrast_file = "contrast.txt"
-    data_file = "data.txt"
+    design_file = "tests/design.txt"
+    contrast_file = "tests/contrast.txt"
+    data_file = "tests/data.txt"
 
     data = read.table(data_file, header=T, row.names=1, sep=",")
     features = rownames(data); nfeat = length(features)
