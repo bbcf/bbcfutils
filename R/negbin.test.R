@@ -44,8 +44,18 @@ main <- function(filename, design, contrast){
     covar = colnames(design)
     ncovar = length(covar)
     lvls = c()
-    for (cov in covar){ lvls = c(lvls,paste(cov,levels(as.factor(design[,cov])),sep=""))}
+    for (cov in covar){
+        lvls = c(lvls,paste(cov,levels(as.factor(design[,cov])),sep=""))
+    }
     nlvls = length(lvls)
+
+    ## Contrasts matrix ##
+    if (file.exists(contrast_file)){
+        contrast = as.matrix(read.table(contrast_file, header=T, row.names=1, sep=","))
+    }else{
+        contrast = contrMat(rep(nfeat,ngroups), type="Tukey") # or Dunnett
+    }
+    ncomp = length(rownames(contrast))
 
     ## Regression coefficients
     X = c()
@@ -70,7 +80,7 @@ main <- function(filename, design, contrast){
 
         nbmodel = glm.nb(regressionFormula, data=g) # AIC must be minimal
         nbmodel.summ = summary.glm(nbmodel)
-        coeff = as.data.frame(summ$coefficients)
+        coeff = as.data.frame(nbmodel.summ$coefficients)
         lvls = rownames(coeff)
         for (i in 1:length(lvls)){
             if (lvls[i] != "(Intercept)"){ lvls[i] = strsplit(lvls[i],"All")[[1]][2]}
@@ -88,25 +98,32 @@ main <- function(filename, design, contrast){
         results[[f]] = result
 
         ## Contrasts ##
-        if (file.exists(contrast_file)){
-            contrast = as.matrix(read.table(contrast_file, header=T, row.names=1, sep=","))
-        }else{
-            contrast = contrMat(rep(nfeat,ngroups), type="Tukey") # or Dunnett
-        }
         comp = glht(nbmodel, linfct=mcp(All=contrast))
         comp.summ = summary(comp)
         estimate = comp.summ$test$coefficients
         pval = comp.summ$test$pvalues
 
-        comparisons[[f]] = data.frame("Estimate"=estimate, "P-value"=pval)
+        comparisons[[f]] = data.frame("Estimate"=estimate, "Pvalue"=pval)
         warns = warnings()
     }
+
+    ## Compute adjusted p-values ##
+    pvalues = c()
+    for (i in 1:length(rownames(contrast))){
+        pvalues = c(pvalues,unlist(lapply(lapply(comparisons,"[[",2),"[[",i)))
+    }
+    pvalues.adj = p.adjust(pvalues,"BH")
+    for (i in 1:nfeat){
+        comparisons[[features[i]]]["Adj.Pvalue"] = pvalues.adj[nfeat*(0:(ncomp-1))+i]
+    }
+
+    ## Return ##
     comparisons
 }
 
 comparisons = main(data_file, design_file, contrast_file)
 unlink("negbin.test.txt") #deletes the file if it already exists
 for (f in features) {
-    write.table(comparisons[f],"negbin.test.txt",quote=F,row.names=T,col.names=T,append=T)
+    write.table(comparisons[f],"negbin.test.txt",quote=F,row.names=T,col.names=T,append=T,sep="\t")
     write(c(),"negbin.test.txt",append=T)
 }
