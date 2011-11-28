@@ -121,7 +121,8 @@ public class Histo {
 
 	protected static int getCount(int start, int end, int startCursor,
 			int endCursor, List<Integer> starts, List<Integer> ends) {
-		if((starts.get(startCursor)<=end && ends.get(startCursor)>=start)){
+		if((!starts.isEmpty() && !ends.isEmpty() && 
+				starts.get(startCursor)<=end && ends.get(startCursor)>=start)){
 			return endCursor -startCursor +1;
 		}
 		return 0;

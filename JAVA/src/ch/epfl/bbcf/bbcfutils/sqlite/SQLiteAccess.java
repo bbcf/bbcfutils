@@ -336,13 +336,25 @@ public class SQLiteAccess extends SQLiteParent{
 		feat.setChromosome(chr);
 		feat.setStart(r.getInt(1));
 		feat.setEnd(r.getInt(2));
-		feat.setScore(r.getFloat(3));
-		feat.setName(r.getString(4));
-		feat.setStrand(r.getInt(5));
-		feat.setAttributes(r.getString(6));
-		feat.setType(getTypeForExtendedQualitativeFeature(
-				r.getInt(7)));
-		feat.setIdentifier(r.getString(8));
+		try {
+			feat.setScore(r.getFloat(3));
+		} catch (SQLException e) {}
+		try {
+			feat.setName(r.getString(4));
+		} catch (SQLException e) {}
+		try {
+			feat.setStrand(r.getInt(5));
+		} catch (SQLException e) {}
+		try {
+			feat.setAttributes(r.getString(6));
+		} catch (SQLException e) {}
+		try {
+			feat.setType(getTypeForExtendedQualitativeFeature(
+					r.getInt(7)));
+		} catch (SQLException e) {}
+		try {
+			feat.setIdentifier(r.getString(8));
+		} catch (SQLException e) {}
 		return feat;
 	}
 
