@@ -62,15 +62,18 @@ public class ConvertToJSON {
 	 * @throws ConvertToJSONException if the conversion failed
 	 */
 	public boolean convert(String outputPath,String dbName,String ressourceUrl,String trackName)throws ConvertToJSONException{
+		System.out.println("converting");
 		/* making directory */
 		File test = new File(outputPath+"/"+dbName);
 		if(test.exists()){
 			test.delete();
 		}
+		System.out.println("directory creation");
 		boolean success = (new File(outputPath+"/"+dbName)).mkdir();
 		if(!success){
 			throw new ConvertToJSONException("Directory creation failed : "+outputPath+"/"+dbName);
 		}
+		System.out.println("connection with database");
 		/* connection with database */
 		try {
 			this.access = (SQLiteAccess) SQLiteAccess.getConnectionWithDatabase(inputPath);
@@ -83,7 +86,7 @@ public class ConvertToJSON {
 		} catch (SQLException e) {
 			throw new ConvertToJSONException(e);
 		}
-
+		System.out.println("get chrs");
 		/* get chromosomes in the SQLite database */
 		Map<String, Integer> chromosomes;
 		try {
@@ -98,6 +101,7 @@ public class ConvertToJSON {
 		/* separate qualitative & quantitative process */
 		switch(type){
 		case QUANTITATIVE:
+			System.out.println(SQLiteExtension.QUANTITATIVE);
 			try{
 				/* loop chromosomes */ 
 				for(Map.Entry<String, Integer> entry : chromosomes.entrySet()){
@@ -127,6 +131,7 @@ public class ConvertToJSON {
 
 		case QUALITATIVE:
 		case QUALITATIVE_EXTENDED:
+			System.out.println(SQLiteExtension.QUALITATIVE);
 			/* guess precise type (basic or extended) */
 			processingType = Type.EXTENDED;
 			if(!chromosomes.isEmpty()){
@@ -135,8 +140,7 @@ public class ConvertToJSON {
 					this.access.getExtendedQualitativeFeature(firstChromosome);
 				}catch(SQLException e){
 					processingType = Type.BASIC;
-				} finally {
-				}
+				} 
 			}
 			try {
 				access.close();
@@ -152,7 +156,7 @@ public class ConvertToJSON {
 			}
 
 
-
+			System.out.println("loop over chrs");
 			/* loop chromosomes */
 			for(Map.Entry<String, Integer> entry : chromosomes.entrySet()){
 				final String chromosome = entry.getKey();
@@ -164,6 +168,7 @@ public class ConvertToJSON {
 				try {
 					JSONChromosome jsonChromosome = new JSONChromosome(chromosome);
 					ResultSet r;
+					System.out.println("prepare chr "+chromosome);
 					r = access.prepareFeatures(chromosome);
 					List<String> types = null;
 					/* iterate throught features */
@@ -213,6 +218,7 @@ public class ConvertToJSON {
 			} catch (SQLException e) {
 				throw new ConvertToJSONException(e);
 			}
+			System.out.println("end");
 			return true;
 		}
 
@@ -624,11 +630,11 @@ public class ConvertToJSON {
 	}
 
 	public static void main(String[] args){
-		
-		
-		ConvertToJSON c = new ConvertToJSON("/Users/jarosz/Desktop/gminer_bool_not.sqlite3",SQLiteExtension.QUALITATIVE);
+
+
+		ConvertToJSON c = new ConvertToJSON("/Users/jarosz/Desktop/A.db",SQLiteExtension.QUALITATIVE);
 		try {
-			c.convert("/Users/jarosz/Desktop/","DIR", "../../tracks", "THE_TRACK");
+			c.convert("/Users/jarosz/Desktop/","AABC", "../../tracks", "THE_TRACK");
 		} catch (ConvertToJSONException e) {
 			e.printStackTrace();
 		}
