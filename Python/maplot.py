@@ -49,6 +49,8 @@ def MAplot(dataset, cols=[2,3], annotate=None, mode="normal", data_format="count
     :param assembly_id: (str or int) if an assembly ID is given,
     the json output will provide links to information on genes.
     :param title: (str), title to be written on top of the graph.
+    :param extremes: (int) create an output file containing features for which ratios were outside the specified
+    percentile (two-sided). For the moment, must be 1 or 5. The file is named *extreme_ratios_xxxxx* .
     """
     # Constants:
     if data_format == "counts":
@@ -72,14 +74,22 @@ def MAplot(dataset, cols=[2,3], annotate=None, mode="normal", data_format="count
             f.readline()
             dialect = csv.Sniffer().sniff(f.readline()); f.seek(0)
             if sep: dialect.delimiter = sep
+            header = 'None'
             if csv.Sniffer().has_header(f.readline()):
-                f.seek(0); f.readline()
+                f.seek(0); header=f.readline()
             csvreader = csv.reader(f, dialect=dialect, quoting=csv.QUOTE_NONE)
             n=[]; m=[]; r=[]; p=[]
+            if all([c in header.split(dialect.delimiter) for c in cols]):
+                cols = [header.split(dialect.delimiter).index(c)+1 for c in cols]
+            else:
+                try: cols = [int(c) for c in cols]
+                except ValueError:
+                    print "\nError: --cols must contain column names or indices (got %s)." % cols
+                    print "Detected header: %s" % header
             for row in csvreader:
                 #numpy.seterr(all='raise') # testing
                 try: c1 = float(row[cols[0]-1]); c2 = float(row[cols[1]-1])
-                except ValueError: continue
+                except ValueError: continue # Skip NA, nan, etc.
                 if (c1*c2 > lower):
                     counts[row[0]] = (c1,c2)
                     n.append(row[0])
@@ -152,7 +162,7 @@ def MAplot(dataset, cols=[2,3], annotate=None, mode="normal", data_format="count
                 c.writerow(["Name","countsC1","countsC2","log10Mean","log2Fold"])
                 for p in extreme_ratios:
                     c.writerow([p[0], str(counts[p[0]][0]), str(counts[p[0]][1]), str(p[1]), str(p[2])])
-            print "Ratios >99% 1%< :", extremes_filename
+            print "Ratios r<"+str(extremes)+"% "+str(100-extremes)+"%<r :", extremes_filename
 
         # Annotation of splines (percentage)
         for sa in spline_annotes:
@@ -328,6 +338,7 @@ usage = """
 
 maplot.py [-h] [-c --cols] [-m --mode] [-f --format] [-d --deg] [-b --bins] [-a --assembly]
           [-q --noquantiles] [-n --annotate] [--xmin --xmax --ymin --ymax] [--smin --smax]
+          [-t --title] [-e --extremes]
           data_1 .. data_n
 
 **Input**: CSV files containing at least two numeric columns representing the two
@@ -340,14 +351,14 @@ maplot.py [-h] [-c --cols] [-m --mode] [-f --format] [-d --deg] [-b --bins] [-a 
             Javascript, or produces an interactive matplotlib figure. """
 
 help = iter([
-"""The numbers of the two columns containing the numeric data to compare, separated by
+"""The numbers or names of the two columns containing the numeric data to compare, separated by
 commas. E.g. --cols 3,5.""",
 """Display mode: 'normal' for static .pgn output,
 'interactive' - clic to display gene names, or
 'json' - json output to stdout for Javascript web interface.""",
 """Data type: 'counts' for raw count data (default), 'rpkm' for normalized data.""",
 """The character delimiting the columns of the file. If not specified, the program tries
-to detect it automatically.""",
+to detect it automatically. Use C^V <tab> to use a <tab> delimiter.""",
 """Degree of the interpolant percentile splines.""",
 """Number of divisions of the x axis to calculate percentiles.""",
 """Identifier for the Genrep assembly (e.g. 'hg19' or 7) used to add more
@@ -401,9 +412,9 @@ def main():
         if opt.annotate: annotate = [eval(a) for a in opt.annotate] # 0100101 -> [0,1,0,0,1,0,1]
         limits = [None or opt.xmin, None or opt.xmax, None or opt.ymin, None or opt.ymax]
         slimits = [None or opt.smin, None or opt.smax]
-        cols = [int(c) for c in opt.cols.split(",")]
+        cols = opt.cols.split(",")
         if len(cols) != 2:
-            parser.error("--cols must be two integers separated by commas (got %s)." % opt.cols)
+            parser.error("--cols must be two integers or strings separated by commas (got %s)." % opt.cols)
         if opt.mode not in ["normal","interactive","json"]:
             parser.error("--mode must be one of 'normal','interactive', or 'json' (got %s)." % opt.mode)
         if opt.format not in ["counts","rpkm"]:
