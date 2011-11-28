@@ -233,11 +233,10 @@ def MAplot(dataset, cols=[2,3], annotate=None, mode="normal", data_format="count
         transparencies = iter([0.15, 0.2, 0.35, 0.35, 0.2, 0.15])
         percentiles.pop(percentiles.index(50))
         for i in percentiles:
-            jsdata.append({"id": i,
+            jsdata.append({"id": str(i)+"%",
                            "data": spline_coords[i],
                            "lines": {"show":True, "lineWidth":0, "fill": transparencies.next()},
-                           "color": rgb_to_hex((255,0,255)),
-                           "label": str(i)+"% Quantile" })
+                           "color": rgb_to_hex((255,0,255))})
         jsdata = "var data = " + json.dumps(jsdata) + ";\n" \
                  + "var splinelabels = " + json.dumps(splinelabels) + ";\n"
 

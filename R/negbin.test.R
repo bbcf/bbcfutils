@@ -12,26 +12,8 @@ args=commandArgs(trailingOnly = TRUE)
 args
 set.seed(123)
 
-## Create a fake experiment dataset
-n = 30
-samples = c("g1.1","g1.2","g1.3","g2.1","g2.2","g2.3","g3.1","g3.2","g3.3")
-means1 = sample(100:200,n,replace=T); thetas1 = sample(2:5,n,replace=T)/10
-means2 = sample(100:200,n,replace=T); thetas2 = sample(2:5,n,replace=T)/10
-means3 = sample(500:700,n,replace=T); thetas3 = sample(8:12,n,replace=T)/10
-features = paste(rep("feat",n), seq(n), sep="")
-data = data.frame(row.names=samples)
-for (i in 1:n){
-    data[features[i]] = c(rnegbin(3,means1[i],thetas1[i]),rnegbin(3,means2[i],thetas2[i]),rnegbin(3,means3[i],thetas3[i]))
-}
-data = t(data)
-write.table(data,"tests/data.txt", sep=",", row.names=T, col.names=T, quote=F)
 
-
-main <- function(filename, design, contrast){
-
-    design_file = "tests/design.txt"
-    contrast_file = "tests/contrast.txt"
-    data_file = "tests/data.txt"
+main <- function(data_file, design_file, contrast_file){
 
     data = read.table(data_file, header=T, row.names=1, sep=",")
     features = rownames(data); nfeat = length(features)
@@ -120,6 +102,26 @@ main <- function(filename, design, contrast){
     ## Return ##
     comparisons
 }
+
+
+## Create a fake experiment dataset
+n = 30
+samples = c("g1.1","g1.2","g1.3","g2.1","g2.2","g2.3","g3.1","g3.2","g3.3")
+means1 = sample(100:200,n,replace=T); thetas1 = sample(2:5,n,replace=T)/10
+means2 = sample(100:200,n,replace=T); thetas2 = sample(2:5,n,replace=T)/10
+means3 = sample(500:700,n,replace=T); thetas3 = sample(8:12,n,replace=T)/10
+features = paste(rep("feat",n), seq(n), sep="")
+data = data.frame(row.names=samples)
+for (i in 1:n){
+    data[features[i]] = c(rnegbin(3,means1[i],thetas1[i]),rnegbin(3,means2[i],thetas2[i]),rnegbin(3,means3[i],thetas3[i]))
+}
+data = t(data)
+write.table(data,"tests/data.txt", sep=",", row.names=T, col.names=T, quote=F)
+
+design_file = "tests/design.txt"
+contrast_file = "tests/contrast.txt"
+data_file = "tests/data.txt"
+
 
 comparisons = main(data_file, design_file, contrast_file)
 unlink("negbin.test.txt") #deletes the file if it already exists
