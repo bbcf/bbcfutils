@@ -143,14 +143,6 @@ test0 <- function(){
     }
 }
 
-test1 <- function(){
-    #missing replicates
-    data_file = "/archive/epfl/bbcf/jdelafon/MEF/mef_genes.csv"
-    design_file = "tests/design_mef.txt"
-    contrast_file = "tests/contrast_mef.txt"
-    comparisons = main(data_file, design_file, contrast_file, nsamples=2, sep="\t")
-}
-
 test2 <- function(){
     data_file = "tests/mult_genes.csv"
     design_file = "tests/design_mef.txt"
