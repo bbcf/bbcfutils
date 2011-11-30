@@ -129,7 +129,7 @@ create_fake_dataset <- function(n){
 }
 
 
-test0 <- function()
+test0 <- function(){
     data_file = "tests/data.txt"
     design_file = "tests/design.txt"
     contrast_file = "tests/contrast.txt"
@@ -141,6 +141,7 @@ test0 <- function()
         write.table(result,"tests/negbin.test.txt",quote=F,row.names=T,col.names=T,append=T,sep="\t")
         write(c(),"tests/negbin.test.txt",append=T)
     }
+}
 
 test1 <- function(){
     data_file = "/archive/epfl/bbcf/jdelafon/MEF/mef_genes.csv"
