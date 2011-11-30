@@ -25,11 +25,6 @@ main <- function(data_file, design_file, contrast_file){
     design = t(design)
     covar = colnames(design)
     ncovar = length(covar)
-    lvls = c()
-    for (cov in covar){
-        lvls = c(lvls,paste(cov,levels(as.factor(design[,cov])),sep=""))
-    }
-    nlvls = length(lvls)
 
     ## Contrasts matrix ##
     if (file.exists(contrast_file)){
@@ -37,7 +32,8 @@ main <- function(data_file, design_file, contrast_file){
     }else{
         contrast = contrMat(rep(nfeat,ngroups), type="Tukey") # or Dunnett
     }
-    ncomp = length(rownames(contrast))
+    contrast.names = rownames(contrast)
+    ncomp = length(contrast.names)
 
     ## Regression coefficients
     X = c()
@@ -52,8 +48,8 @@ main <- function(data_file, design_file, contrast_file){
     }
 
     ## Calculate the model for each feature ##
-    results = list()
-    comparisons = list()
+    models = list() #contains all nbmodels
+    comparisons = list() #contains all contrast summaries
     for (i in 1:nrow(data)){
         f = features[i]
         Y = t(data[f,])
@@ -77,21 +73,19 @@ main <- function(data_file, design_file, contrast_file){
                 result[lvl,res] = coeff[lvl,res]
             }
         }
-        results[[f]] = result
+        models[[f]] = result
 
         ## Contrasts ##
         comp = glht(nbmodel, linfct=mcp(All=contrast))
         comp.summ = summary(comp)
         estimate = comp.summ$test$coefficients
         pval = comp.summ$test$pvalues
-
         comparisons[[f]] = data.frame("Estimate"=estimate, "Pvalue"=pval)
-        warns = warnings()
     }
 
     ## Compute adjusted p-values ##
     pvalues = c()
-    for (i in 1:length(rownames(contrast))){
+    for (i in 1:length(contrast.names)){
         pvalues = c(pvalues,unlist(lapply(lapply(comparisons,"[[",2),"[[",i)))
     }
     pvalues.adj = p.adjust(pvalues,"BH")
@@ -99,33 +93,46 @@ main <- function(data_file, design_file, contrast_file){
         comparisons[[features[i]]]["Adj.Pvalue"] = pvalues.adj[nfeat*(0:(ncomp-1))+i]
     }
 
-    ## Return ##
-    comparisons
+    ## Group by comparison type and sort ##
+    bycomp = list()
+    comparisons.t = lapply(comparisons,FUN=t)
+    for (i in 1:ncomp){
+        a = c()
+        for (f in features){
+            a = cbind(a,comparisons.t[[f]][,i])
+        }
+        bycomp[[contrast.names[i]]] = t(a)
+    }
+
+    bycomp
 }
 
 
 ## Create a fake experiment dataset
-n = 30
-samples = c("g1.1","g1.2","g1.3","g2.1","g2.2","g2.3","g3.1","g3.2","g3.3")
-means1 = sample(100:200,n,replace=T); thetas1 = sample(2:5,n,replace=T)/10
-means2 = sample(100:200,n,replace=T); thetas2 = sample(2:5,n,replace=T)/10
-means3 = sample(500:700,n,replace=T); thetas3 = sample(8:12,n,replace=T)/10
-features = paste(rep("feat",n), seq(n), sep="")
-data = data.frame(row.names=samples)
-for (i in 1:n){
-    data[features[i]] = c(rnegbin(3,means1[i],thetas1[i]),rnegbin(3,means2[i],thetas2[i]),rnegbin(3,means3[i],thetas3[i]))
-}
-data = t(data)
-write.table(data,"tests/data.txt", sep=",", row.names=T, col.names=T, quote=F)
+#n = 30
+#samples = c("g1.1","g1.2","g1.3","g2.1","g2.2","g2.3","g3.1","g3.2","g3.3")
+#means1 = sample(100:200,n,replace=T); thetas1 = sample(2:5,n,replace=T)/10
+#means2 = sample(100:200,n,replace=T); thetas2 = sample(2:5,n,replace=T)/10
+#means3 = sample(500:700,n,replace=T); thetas3 = sample(8:12,n,replace=T)/10
+#features = paste(rep("feat",n), seq(n), sep="")
+#data = data.frame(row.names=samples)
+#for (i in 1:n){
+#    data[features[i]] = c(rnegbin(3,means1[i],thetas1[i]),rnegbin(3,means2[i],thetas2[i]),rnegbin(3,means3[i],thetas3[i]))
+#}
+#data = t(data)
+#write.table(data,"tests/data.txt", sep=",", row.names=T, col.names=T, quote=F)
 
 design_file = "tests/design.txt"
 contrast_file = "tests/contrast.txt"
 data_file = "tests/data.txt"
 
 
+## Create output file
 comparisons = main(data_file, design_file, contrast_file)
-unlink("negbin.test.txt") #deletes the file if it already exists
-for (f in features) {
-    write.table(comparisons[f],"negbin.test.txt",quote=F,row.names=T,col.names=T,append=T,sep="\t")
-    write(c(),"negbin.test.txt",append=T)
+unlink("tests/negbin.test.txt") #deletes the file if it already exists
+for (c in names(comparisons)) {
+    write.table(comparisons[c],"tests/negbin.test.txt",quote=F,row.names=T,col.names=T,append=T,sep="\t")
+    write(c(),"tests/negbin.test.txt",append=T)
 }
+
+
