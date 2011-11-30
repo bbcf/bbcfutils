@@ -66,7 +66,7 @@ main <- function(data_file, design_file, contrast_file, nsamples, sep){
         }
         rownames(coeff) = lvls
 
-        result = matrix(NA,ncovar,4)
+        result = matrix(NA,length(lvls),4)
         rownames(result) = rownames(coeff)
         colnames(result) = colnames(coeff)
         for (lvl in lvls){
@@ -144,9 +144,16 @@ test0 <- function(){
 }
 
 test1 <- function(){
+    #missing replicates
     data_file = "/archive/epfl/bbcf/jdelafon/MEF/mef_genes.csv"
     design_file = "tests/design_mef.txt"
     contrast_file = "tests/contrast_mef.txt"
     comparisons = main(data_file, design_file, contrast_file, nsamples=2, sep="\t")
 }
 
+test2 <- function(){
+    data_file = "tests/mult_genes.csv"
+    design_file = "tests/design_mef.txt"
+    contrast_file = "tests/contrast_mef.txt"
+    main(data_file, design_file, contrast_file, nsamples=6, sep="\t")
+}
