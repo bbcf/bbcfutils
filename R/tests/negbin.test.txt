@@ -12,21 +12,21 @@ create_fake_dataset <- function(n){
         data[features[i]] = c(line, line/3)
     }
     data = as.data.frame(signif(t(data),2))
-    write.table(data,"tests/data.txt", sep=",", row.names=T, col.names=T, quote=F)
+    write.table(data,"tests/testing_files/data.txt", sep=",", row.names=T, col.names=T, quote=F)
 }
 
 test0 <- function(){
-    data_file = "tests/data.txt"
-    design_file = "tests/design.txt"
-    contrast_file = "tests/contrast.txt"
-    output_file = "tests/output_glm.txt"
+    data_file = "tests/testing_files/data.txt"
+    design_file = "tests/testing_files/design.txt"
+    contrast_file = "tests/testing_files/contrast.txt"
+    output_file = "tests/testing_files/output_glm.txt"
     if (file.exists(output_file)) {unlink(output_file)} #deletes the file if it already exists
     comparisons = main(data_file,9,",",design_file=design_file, contrast_file=contrast_file, output_file=output_file)
 }
 
 test1 <- function(){
-    data_file = "tests/mult_genes.csv"
-    design_file = "tests/design_mef.txt"
-    contrast_file = "tests/contrast_mef.txt"
+    data_file = "tests/testing_files/mult_genes.csv"
+    design_file = "tests/testing_files/design_mef.txt"
+    contrast_file = "tests/testing_files/contrast_mef.txt"
     comparisons = main(data_file,6,"\t",design_file=design_file, contrast_file=contrast_file)
 }
