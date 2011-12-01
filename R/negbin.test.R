@@ -4,16 +4,41 @@
 library(MASS)
 library(lattice)
 library(multcomp)
-library(rjson)
-library(DESeq)
-#library(limma)
 
 args=commandArgs(trailingOnly = TRUE)
 args
 set.seed(123)
 
 
-main <- function(data_file, design_file, contrast_file, nsamples, sep){
+## IF NO REPLICATES ##
+
+DES <- function(data_file, nsamples, sep){
+
+    data = read.table(data_file, header=T, row.names=1, sep=sep)
+    data = data[,1:nsamples]
+    groups = unlist(lapply(strsplit(samples,".",fixed=T), "[[", 2))
+
+    ## DESeq ##
+    result = list()
+    library(DESeq)
+    cds <- newCountDataSet(data, groups)
+    cds <- estimateSizeFactors(cds)
+    cds <- estimateVarianceFunctions(cds)
+    couples = combn(unique(groups),2)
+    for (i in 1:dim(couples)[2]){
+        res <- nbinomTest(cds, couples[1,i], couples[2,i])
+        res = res[order(res[,8]),] # sort w.r.t. adjusted p-value
+        result[[paste(couples[1,i],"-",couples[2,i])]] = res
+    }
+
+    ## Return ##
+    result
+}
+
+
+## IF REPLICATES IN ALL GROUPS ##
+
+GLM <- function(data_file, design_file, contrast_file, nsamples, sep, output_filename=FALSE){
 
     data = read.table(data_file, header=T, row.names=1, sep=sep)
     data = data[,1:nsamples]
@@ -104,12 +129,27 @@ main <- function(data_file, design_file, contrast_file, nsamples, sep){
         }
         b = as.data.frame(t(a))
         rownames(b) = features
-        b = b[order(b[,3]),] # sort w.r.t adjusted p-values
+        b = b[order(b[,3]),] # sort w.r.t adjusted p-value
         bycomp[[contrast.names[i]]] = b
     }
 
-    bycomp
+    ## Return ##
+    if (output_filename == FALSE){
+        print(bycomp)
+    }else{
+        for (comp in names(bycomp)) {
+            result = signif(bycomp[[comp]],4)
+            write(comp,output_filename,append=T)
+            write.table(result,output_filename,quote=F,row.names=T,col.names=T,append=T,sep="\t")
+            write(c(),output_filename,append=T)
+        }
+    }
 }
+
+
+###############################################
+#------------------ TESTS --------------------#
+###############################################
 
 
 create_fake_dataset <- function(n){
@@ -128,24 +168,18 @@ create_fake_dataset <- function(n){
     write.table(data,"tests/data.txt", sep=",", row.names=T, col.names=T, quote=F)
 }
 
-
 test0 <- function(){
     data_file = "tests/data.txt"
     design_file = "tests/design.txt"
     contrast_file = "tests/contrast.txt"
-    comparisons = main(data_file, design_file, contrast_file, nsamples=9, sep=",")
-    unlink("tests/negbin.test.txt") #deletes the file if it already exists
-    for (c in names(comparisons)) {
-        result = signif(comparisons[[c]],4)
-        write(c,"tests/negbin.test.txt",append=T)
-        write.table(result,"tests/negbin.test.txt",quote=F,row.names=T,col.names=T,append=T,sep="\t")
-        write(c(),"tests/negbin.test.txt",append=T)
-    }
+    out = "tests/negbin.test.txt"
+    if (file.exists(out)) {unlink(out)} #deletes the file if it already exists
+    comparisons = GLM(data_file, design_file, contrast_file, nsamples=9, sep=",", output_filename=out)
 }
 
-test2 <- function(){
+test1 <- function(){
     data_file = "tests/mult_genes.csv"
     design_file = "tests/design_mef.txt"
     contrast_file = "tests/contrast_mef.txt"
-    main(data_file, design_file, contrast_file, nsamples=6, sep="\t")
+    GLM(data_file, design_file, contrast_file, nsamples=6, sep="\t")
 }
