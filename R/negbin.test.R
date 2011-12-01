@@ -10,18 +10,41 @@ args
 set.seed(123)
 
 
-## IF NO REPLICATES ##
-
-DES <- function(data_file, nsamples, sep){
-
+main <- function(data_file, nsamples, sep, contrast_file=FALSE, design_file=FALSE, output_file=FALSE){
     data = read.table(data_file, header=T, row.names=1, sep=sep)
     data = data[,1:nsamples]
-    groups = unlist(lapply(strsplit(samples,".",fixed=T), "[[", 2))
 
-    ## DESeq ##
-    result = list()
+    ## Choose GLM if every group has replicates, DESeq otherwise ##
+    a = c()
+    for (g in groups){ if (length(which(conds==g))>1) {a = c(a,1)} }
+    if (length(a) == length(groups) && file.exists(design_file) && file.exists(contrast_file)){
+        print("GLM")
+        design = read_design(design_file, sep)
+        contrast = read_contrast(contrast_file, sep)
+        comparisons = GLM(data, design, contrast, output_file)
+    }else{
+        print("DESeq")
+        different = DES(data)
+    }
+}
+
+
+read_design <- function(design_file, sep){
+    design = read.table(design_file, header=T, row.names=1,  sep=sep)
+    design = t(design)
+}
+read_contrast <- function(contrast_file, sep){
+    contrast = as.matrix(read.table(contrast_file, header=T, row.names=1, sep=sep))
+}
+
+
+DES <- function(data){  ## DESeq ##
     library(DESeq)
-    cds <- newCountDataSet(data, groups)
+    samples = colnames(data)
+    conds = unlist(lapply(strsplit(samples,".",fixed=T), "[[", 2))
+
+    result = list()
+    cds <- newCountDataSet(data, conds)
     cds <- estimateSizeFactors(cds)
     cds <- estimateVarianceFunctions(cds)
     couples = combn(unique(groups),2)
@@ -30,36 +53,20 @@ DES <- function(data_file, nsamples, sep){
         res = res[order(res[,8]),] # sort w.r.t. adjusted p-value
         result[[paste(couples[1,i],"-",couples[2,i])]] = res
     }
-
     ## Return ##
     result
 }
 
 
-## IF REPLICATES IN ALL GROUPS ##
-
-GLM <- function(data_file, design_file, contrast_file, nsamples, sep, output_filename=FALSE){
-
-    data = read.table(data_file, header=T, row.names=1, sep=sep)
-    data = data[,1:nsamples]
-    features = rownames(data); nfeat = length(features)
+GLM <- function(data, design, contrast, output_file=FALSE){
+    features = rownames(data)
     samples = colnames(data)
-    groups = unique(unlist(lapply(strsplit(samples,".",fixed=T), "[[", 2))); ngroups = length(groups)
-
-    ## Design matrix ##
-    design = read.table(design_file, header=T, row.names=1,  sep=sep)
-    design = t(design)
+    groups = unique(unlist(lapply(strsplit(samples,".",fixed=T), "[[", 2)))
     covar = colnames(design)
-    ncovar = length(covar)
-
-    ## Contrasts matrix ##
-    if (file.exists(contrast_file)){
-        contrast = as.matrix(read.table(contrast_file, header=T, row.names=1, sep=sep))
-    }else{
-        contrast = contrMat(rep(nfeat,ngroups), type="Tukey") # or Dunnett
-    }
     contrast.names = rownames(contrast)
-    ncomp = length(contrast.names)
+
+    nfeat = length(features); ngroups = length(groups); ncovar = length(covar)
+    nsamples = length(samples); ncomp = length(contrast.names)
 
     ## Regression coefficients
     X = c()
@@ -134,52 +141,15 @@ GLM <- function(data_file, design_file, contrast_file, nsamples, sep, output_fil
     }
 
     ## Return ##
-    if (output_filename == FALSE){
+    if (output_file == FALSE){
         print(bycomp)
     }else{
-        for (comp in names(bycomp)) {
+        for (comp in contrast.names) {
             result = signif(bycomp[[comp]],4)
-            write(comp,output_filename,append=T)
-            write.table(result,output_filename,quote=F,row.names=T,col.names=T,append=T,sep="\t")
-            write(c(),output_filename,append=T)
+            write(comp,output_file,append=T)
+            write.table(result,output_file, quote=F,row.names=T,col.names=T,append=T,sep="\t")
+            write(c(),output_file,append=T)
         }
     }
 }
 
-
-###############################################
-#------------------ TESTS --------------------#
-###############################################
-
-
-create_fake_dataset <- function(n){
-    samples = c("g1.1","g1.2","g1.3","g2.1","g2.2","g2.3","g3.1","g3.2","g3.3")
-    samples = c(paste("counts",samples,sep="."),paste("rpkm",samples,sep="."))
-    means1 = sample(100:200,n,replace=T); thetas1 = sample(2:5,n,replace=T)/10
-    means2 = sample(100:200,n,replace=T); thetas2 = sample(2:5,n,replace=T)/10
-    means3 = sample(500:700,n,replace=T); thetas3 = sample(8:12,n,replace=T)/10
-    features = paste(rep("feat",n), seq(n), sep="")
-    data = data.frame(row.names=samples)
-    for (i in 1:n){
-        line = c(rnegbin(3,means1[i],thetas1[i]),rnegbin(3,means2[i],thetas2[i]),rnegbin(3,means3[i],thetas3[i]))
-        data[features[i]] = c(line, line/3)
-    }
-    data = as.data.frame(signif(t(data),2))
-    write.table(data,"tests/data.txt", sep=",", row.names=T, col.names=T, quote=F)
-}
-
-test0 <- function(){
-    data_file = "tests/data.txt"
-    design_file = "tests/design.txt"
-    contrast_file = "tests/contrast.txt"
-    out = "tests/negbin.test.txt"
-    if (file.exists(out)) {unlink(out)} #deletes the file if it already exists
-    comparisons = GLM(data_file, design_file, contrast_file, nsamples=9, sep=",", output_filename=out)
-}
-
-test1 <- function(){
-    data_file = "tests/mult_genes.csv"
-    design_file = "tests/design_mef.txt"
-    contrast_file = "tests/contrast_mef.txt"
-    GLM(data_file, design_file, contrast_file, nsamples=6, sep="\t")
-}
