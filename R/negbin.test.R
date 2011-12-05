@@ -1,5 +1,5 @@
 #!/bin/env
-## R --vanilla << "EOF" # Pipe all subsequent lines into R.
+# R --vanilla negbin.test.r --args -s '\t' -d design_file -c contrast_file -o output_file
 
 library(MASS)
 library(lattice)
@@ -9,10 +9,19 @@ args=commandArgs(trailingOnly = TRUE)
 args
 set.seed(123)
 
+data_file = args[1]
+sep = args[grep("-s",args)+1]
+design_file = args[grep("-d",args)+1]
+contrast_file = args[grep("-c",args)+1]
+output_file = args[grep("-o",args)+1]
 
-main <- function(data_file, nsamples, sep, contrast_file=FALSE, design_file=FALSE, output_file=FALSE){
+
+main <- function(data_file, sep="\t", contrast_file=FALSE, design_file=FALSE, output_file=FALSE){
     data = read.table(data_file, header=T, row.names=1, sep=sep)
-    data = data[,1:nsamples]
+    header = colnames(data)
+    counts = grep("counts",header,fixed=T)
+    nsamples = length(counts)
+    data = data[,counts]
 
     ## Choose GLM if every group has replicates, DESeq otherwise ##
     a = c()
@@ -152,4 +161,5 @@ GLM <- function(data, design, contrast, output_file=FALSE){
         }
     }
 }
+
 
