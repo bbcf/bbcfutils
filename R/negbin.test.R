@@ -1,5 +1,32 @@
 #!/bin/env
-# R --vanilla negbin.test.r --args -s '\t' -d design_file -c contrast_file -o output_file
+
+# This script looks for differential expression in RNA-seq data
+# of genomic features in different conditions.
+#
+# --------
+#  Usage:
+# --------
+# R --vanilla negbin.test.r --args 'data_file' -s '\t' -d 'design_file' -c 'contrast_file' -o 'output_file'
+# (On Vital-IT, .bashrc contains: alias R="bsub -qbbcf -Ip -XF R --vanilla")
+#
+# The script is made to take as input the files returned by rnaseq.py, which format is the following:
+# - tab-delimited or CSV file containing (maybe normalized) read counts
+# - lines representing genomic features
+# - columns represent different samples
+# - the first column contains feature names
+# - columns containing counts are labeled "counts.<groupName>.<sampleIndex>" (e.g. counts.G1.3).
+#
+# If each group contains several replicate samples, a General Linear Model is fitted.
+# If at least one group contains no replicates, DESeq is used.
+#
+# To fit the GLM, the user needs to provide a design matrix and a contrast matrix in text format
+# (see tutorial [...]). If not found, DESeq is run.
+# If no output_file is provided, output is printed to stdout.
+#
+# Still to implement:
+# - DESeq must print output to a file
+# - Automatically generated contrast_file if not provided, just comparing groups (Tukey matrix -> ANOVA)
+
 
 library(MASS)
 library(lattice)
@@ -20,13 +47,12 @@ main <- function(data_file, sep="\t", contrast_file=FALSE, design_file=FALSE, ou
     data = read.table(data_file, header=T, row.names=1, sep=sep)
     header = colnames(data)
     counts = grep("counts",header,fixed=T)
-    nsamples = length(counts)
     data = data[,counts]
 
     ## Choose GLM if every group has replicates, DESeq otherwise ##
-    a = c()
-    for (g in groups){ if (length(which(conds==g))>1) {a = c(a,1)} }
-    if (length(a) == length(groups) && file.exists(design_file) && file.exists(contrast_file)){
+    samples = colnames(data)
+    conds = unlist(lapply(strsplit(samples,".",fixed=T), "[[", 2))
+    if (all(table(conds)>1) && file.exists(design_file) && file.exists(contrast_file)){
         print("GLM")
         design = read_design(design_file, sep)
         contrast = read_contrast(contrast_file, sep)
