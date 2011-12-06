@@ -29,8 +29,8 @@
 
 
 library(MASS)
-library(lattice)
 library(multcomp)
+#library(lattice)
 
 args=commandArgs(trailingOnly = TRUE)
 args
