@@ -10,7 +10,7 @@ from bbcflib.common import get_files
 from bbcflib.chipseq import *
 import sys, getopt, os, json, re
 
-usage = """run_chipseq.py [-h] [-u via] [-w wdir] [-k job_key] [-c config_file] -d minilims
+usage = """run_chipseq.py [-h] [-u via] [-w wdir] [-k job_key] [-c config_file] [-m mapseq_minilims] -d minilims
 
 -h           Print this message and exit
 -u via       Run executions using method 'via' (can be "local" or "lsf")

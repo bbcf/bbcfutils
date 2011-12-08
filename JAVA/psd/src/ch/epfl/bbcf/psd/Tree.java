@@ -43,7 +43,8 @@ public class Tree {
 			int start = scores.getInt(1);
 			int stop = scores.getInt(2);
 			float score = scores.getFloat(3);
-			for(int j=start;j<=stop;j++){
+			System.out.println(start +" "+stop+" "+score);
+			for(int j=start;j<stop;j++){
 				this.imageNumber = getImageNumber(j);
 				leaf.fill(j, score, imageNumber);
 			}
@@ -81,7 +82,7 @@ public class Tree {
 
 
 	private static int getImageNumber(int position){
-		double nb = (double)position / TAB_WIDTH;
+		double nb = (double)position / TAB_WIDTH + 0.01;
 		return (int)Math.ceil(nb);
 	}
 
