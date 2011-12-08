@@ -88,6 +88,7 @@ public class SQLiteConnector {
 		}
 		PreparedStatement prep = connectionStore.getPreparedStatement(database);
 		float val = tab[0];
+		System.out.println("score : "+val);
 		int pos = 0;
 		for(int i=1;i<tab.length;i++){
 			if(!Main.floatEquals(val, tab[i])){

@@ -36,6 +36,8 @@ public class Main {
 	}
 
 	public static void main (String[] args) {
+		
+		
 		if(args.length < 3){
 			logger = initLogger("psd", Level.ERROR);
 			logger.error("no enought args");
