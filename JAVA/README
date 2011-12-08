@@ -38,3 +38,8 @@ Run $java -jar gdvsender.jar help to see some help
 or $java -jar gdvsender.jar gender to generate a README
 
 
+################################################################
+Precompute Sqlite Databases (PSD)
+################################################################
+
+see README in psd directory
