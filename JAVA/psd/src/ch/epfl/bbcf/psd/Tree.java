@@ -20,7 +20,7 @@ public class Tree {
 	private static Logger logger = Main.logger;
 
 	public Tree(ConnectionStore connectionStore, String chromosome, String out) {
-		logger.debug("tree initialization");
+		logger.trace("tree initialization");
 
 		this.out = out;
 		this.connections = connectionStore;
@@ -37,7 +37,7 @@ public class Tree {
 
 
 	public void process(ResultSet scores) throws SQLException {
-		logger.debug("processing scores");
+		logger.trace("processing scores");
 		boolean hasScore = false;
 		while(scores.next()){
 			int start = scores.getInt(1);
@@ -70,8 +70,8 @@ public class Tree {
 
 		for (int i = 0; i < info.length; i++) {
 			File n = new File(dir + File.separator + info[i]);
-			if (n.isFile() && info[i].startsWith(chromosome)) { 
-				logger.debug("removing : "+ n.getPath());
+			if (n.isFile() && info[i].startsWith(chromosome + "_")) { 
+				logger.trace("removing : "+ n.getPath());
 				if(!n.delete()){
 					logger.error("cannot delete "+n.getAbsolutePath());
 				}

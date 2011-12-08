@@ -22,29 +22,38 @@ public class Main {
 	
 	public static final String decimals = "%.2f";
 
-	public static final Level loglevel = Level.DEBUG;
+	public static Level loglevel = Level.INFO;
 
-	public static final Logger logger = initLogger("psd", loglevel);
+	public static Logger logger;
 
 	public static void usage(){
 		String usage = "USAGE\n" +
-				"args[0] database : the sqlite file\n"+
-				"args[1] sah1 : the sha1 of this database\n"+
-				"args[2] output_dir : the output directory\n";
+				"\targs[0] database : the sqlite file\n" +
+				"\targs[1] sah1 : the sha1 of this database\n" +
+				"\targs[2] output_dir : the output directory\n" +
+				"\targs[3] loglevel : (optionnal) can be TRACE, DEBUG, INFO, OFF, WARN, ERROR, FATAL. Default is INFO";
 		logger.warn(usage);
 	}
 
 	public static void main (String[] args) {
 		if(args.length < 3){
+			logger = initLogger("psd", Level.ERROR);
 			logger.error("no enought args");
 			usage();
 		} else {
 			File database = new File(args[0]);
 			String sha1 = args[1];
 			String outputDir = args[2];
-
+			if (args.length == 4){
+				loglevel = Level.toLevel(args[3]);
+			};
+			logger = initLogger("psd", loglevel);
+			
+			
+			
+			
 			try {
-				logger.debug("processing " + database + " with sha1(" + sha1 + ") on directory : " + outputDir);
+				logger.info("processing " + database + " with sha1(" + sha1 + ") on directory : " + outputDir);
 				long start = System.currentTimeMillis();
 				process(database, sha1, outputDir);
 				long end = System.currentTimeMillis();
@@ -85,12 +94,12 @@ public class Main {
 
 		File output = new File(outputDir + File.separator + sha1);
 		output.mkdir();
-		logger.debug("output is " + output);
+		logger.trace("output is " + output);
 		
 		for(Map.Entry<String, Integer> entry : chromosomes.entrySet()){
 			
 			String chromosome = entry.getKey();
-			logger.debug("doing chromosome " + chromosome);
+			logger.trace("doing chromosome " + chromosome);
 			
 			ConnectionStore connectionStore = SQLiteConnector.createOutputDatabases(output.getAbsolutePath(), chromosome, zooms);
 

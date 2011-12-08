@@ -3,28 +3,26 @@
 
     <property environment="env"/>
     <property name="debuglevel" value="source,lines,vars"/>
-    <property name="target" value="1.6"/>
-    <property name="source" value="1.6"/>
-    <property name="lib.dir" value="lib"/>
+    <property name="target" value="1.7"/>
+    <property name="source" value="1.7"/>
     <property name="jar.name" value="psd"/>
     
     <path id="psd.classpath">
         <pathelement location="bin"/>
-        <pathelement location="lib/log4j-1.2.16.jar"/>
-        <pathelement location="lib/sqlite-jdbc-3.7.2.jar"/>
+        <pathelement location="log4j-1.2.16.jar"/>
+        <pathelement location="sqlite-jdbc-3.7.2.jar"/>
     </path>
 
 
     
     <target name="init">
       <mkdir dir="bin"/>
-      <mkdir dir="lib"/>
-        <copy includeemptydirs="false" todir="bin">
-          <fileset dir="src">
-            <exclude name="**/*.launch"/>
-            <exclude name="**/*.java"/>
-            </fileset>
-        </copy>
+      <copy includeemptydirs="false" todir="bin">
+	<fileset dir="src">
+	  <exclude name="**/*.launch"/>
+	  <exclude name="**/*.java"/>
+	</fileset>
+      </copy>
     </target>
     
     <target name="clean">
@@ -35,7 +33,7 @@
     
     <target depends="init" name="compile">
       <echo message="${ant.project.name}: ${ant.file}"/>
-      <javac includeantruntime="true" debug="true" debuglevel="${debuglevel}" destdir="bin" source="${source}" target="${target}">
+      <javac includeantruntime="true" debug="true" debuglevel="${debuglevel}" destdir="bin" source="${source}" target="${target}" fork="true">
         <src path="src"/>
         <classpath refid="psd.classpath"/>
       </javac>
@@ -47,7 +45,7 @@
       <mapper>
 	<chainedmapper>
 	  <flattenmapper/>
-	  <globmapper from="*.jar" to="lib/*.jar"/>
+	  <globmapper from="*.jar" to="*.jar"/>
 	</chainedmapper>
       </mapper>
     </pathconvert>
@@ -60,8 +58,8 @@
           <attribute name="Main-Class" value="ch.epfl.bbcf.psd.Main"/>
           <attribute name="Class-Path" value="${mf.classpath}" />
 	</manifest>
-	<zipfileset dir="/lib" includes="log4j-1.2.16.jar"/>
-        <zipfileset dir="/lib" includes="sqlite-jdbc-3.7.2.jar"/>
+	<zipfileset dir="." includes="log4j-1.2.16.jar"/>
+        <zipfileset dir="." includes="sqlite-jdbc-3.7.2.jar"/>
 	
       </jar>
     </target> 
