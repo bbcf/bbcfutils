@@ -47,7 +47,7 @@ main <- function(data_file, sep="\t", contrast_file=FALSE, design_file=FALSE, ou
     data = read.table(data_file, header=T, row.names=1, sep=sep)
     header = colnames(data)
     counts = grep("counts",header,fixed=T)
-    data = data[,counts]
+    data = round(data[,counts])
 
     ## Choose GLM if every group has replicates, DESeq otherwise ##
     samples = colnames(data)
