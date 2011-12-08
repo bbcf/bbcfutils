@@ -7,6 +7,7 @@ par(cex=1.5,lwd=1.5,mfrow=c(4,1),oma=c(4,0,4,0))
 for (sample in sort(names(stats.by.sample))) {
     stats=stats.by.sample[[sample]]
     df=data.frame(hits=names(stats$multi_hits),reads=as.numeric(stats$multi_hits))
+    df=df[order(as.numeric(df$hits)),]
     if (stats$unmapped>0) df=rbind(df,c(0,as.numeric(stats$unmapped)))
 #    col='darkorange'
     col=heat.colors(6)[c(2,rep(4,length(stats$multi_hits)-1),6)]
@@ -19,8 +20,9 @@ for (sample in sort(names(stats.by.sample))) {
     text(nrow(df)/3,stats$total,paste("reads mapped:",stats$total),pos=3)
     abline(h=read.total,lty=2)
     text(2*nrow(df)/3,read.total,paste("reads total:",read.total),pos=3)
-    df=data.frame(mismatches=rev(names(stats$mismatches)),
-      reads=rev(as.numeric(stats$mismatches)))
+    df=data.frame(mismatches=names(stats$mismatches),
+      reads=as.numeric(stats$mismatches))
+    df=df[order(as.numeric(df$mismatches),decreasing=T),]
     if (nrow(df) > 9) df=rbind(data.frame(mismatches=">8",reads=sum(df[1:(nrow(df)-9),"reads"])),
                         df[nrow(df)-8:0,]) 
     col=heat.colors(6)[c(rep(4,length(df$reads)-1),2)]
