@@ -2,7 +2,8 @@
 """
 A High-throughput RNA-seq analysis workflow.
 
-python run_rnaseq.py -v lsf -c config_files/jobbamtest.txt -d rnaseq -p transcripts
+python run_rnaseq.py -v lsf -c config_files/gapdh.txt -d rnaseq -p transcripts
+python run_rnaseq.py -v lsf -c config_files/gapdh.txt -d rnaseq -p transcripts -m /scratch/cluster/monthly/jdelafon/mapseq
 """
 import os, sys, json, re
 import optparse
@@ -72,6 +73,8 @@ def main():
 
         # Program body #
         with execution(M, description=description, remote_working_directory=opt.wdir ) as ex:
+            print "Current working directory:", ex.working_directory
+            unmapped = None
             if opt.ms_limspath == "None":
                 print "Alignment..."
                 job = mapseq.get_fastq_files( job, ex.working_directory)
@@ -81,12 +84,12 @@ def main():
             else:
                 print "Loading BAM files..."
                 (bam_files, job) = mapseq.get_bam_wig_files(ex, job, minilims=opt.ms_limspath, hts_url=mapseq_url,
-                                                            script_path=gl.get('script_path') or '', via=opt.via )
+                                                            script_path=gl.get('script_path') or '', via=opt.via)
+                if os.path.exists(opt.ms_limspath):
+                    unmapped = mapseq.get_unmapped(ex, job, minilims=opt.ms_limspath, via=opt.via)
                 print "Loaded."
             assert bam_files, "Bam files not found."
-            print "Current working directory:", ex.working_directory
-            rnaseq.rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=pileup_level, via=opt.via)
-        # End of program body #
+            rnaseq.rnaseq_workflow(ex, job, assembly, bam_files, unmapped=unmapped, pileup_level=pileup_level, via=opt.via)
 
         # GDV
         allfiles = common.get_files(ex.id, M)
@@ -121,5 +124,7 @@ def main():
 
 if __name__ == '__main__':
     sys.exit(main())
+
+
 
 
