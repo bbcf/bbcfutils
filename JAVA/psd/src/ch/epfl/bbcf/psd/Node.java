@@ -56,6 +56,7 @@ public class Node {
 	 * @throws SQLException 
 	 */
 	protected void fill(int position, float score,int currentImageNumber) throws SQLException{
+		
 		if(first){
 			this.imageNumber = currentImageNumber;
 			this.first = false;
@@ -88,11 +89,11 @@ public class Node {
 		int position = previousPosition;
 		int ind = getTabIndex(position);
 		int startPosition = getStartPosition(position);
-
 		if(one != null){
 			float max1 = tab[ind];
 			for(int i=ind;i<tab.length;i++){
 				ind++;
+				startPosition += zoom;
 				max1 = Math.max(max1, tab[i]);
 				if(i%2==1){//update parent 1
 					one.fill(startPosition, max1, (int)Math.ceil((double)imageNumber / 2));
@@ -176,6 +177,6 @@ public class Node {
 
 	protected int getTabIndex(int position) {
 		int ind = (int)Math.ceil((double)(position / zoom) % TAB_WIDTH);
-		return ind ;
+		return ind;
 	}
 }
