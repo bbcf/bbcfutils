@@ -1,0 +1,32 @@
+################################################################
+Precompute Signal Databases (PSD)
+################################################################
+
+Calculate scores at different zoom level for an sqlite database and create one database for each.
+
+
+in args :
+   - database : the sqlite file
+   - sha1 : the sha1 of this database
+   - output_dir : the output directory
+
+out :
+    - a directory created in the output_dir (sha1) with all databases inside.
+
+
+################################################################
+Library needed
+################################################################
+
+You need two library to compile the jar file :
+
+- sqlite-jdbc-3.7.2 (http://www.xerial.org/maven/repository/artifact/org/xerial/sqlite-jdbc/3.7.2/)
+- log4j-1.2.16 (http://logging.apache.org/log4j/1.2/download.html)
+
+
+################################################################
+Compile
+################################################################
+`cd` in the project directory and run `ant`.
+
+output : psd.jar

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project basedir="." default="jar" name="psd">
+
+    <property environment="env"/>
+    <property name="debuglevel" value="source,lines,vars"/>
+    <property name="target" value="1.7"/>
+    <property name="source" value="1.7"/>
+    <property name="jar.name" value="psd"/>
+    
+    <path id="psd.classpath">
+        <pathelement location="bin"/>
+        <pathelement location="log4j-1.2.16.jar"/>
+        <pathelement location="sqlite-jdbc-3.7.2.jar"/>
+    </path>
+
+
+    
+    <target name="init">
+      <mkdir dir="bin"/>
+      <copy includeemptydirs="false" todir="bin">
+	<fileset dir="src">
+	  <exclude name="**/*.launch"/>
+	  <exclude name="**/*.java"/>
+	</fileset>
+      </copy>
+    </target>
+    
+    <target name="clean">
+      <delete dir="bin"/>
+      <delete file="${jar.name}.jar"/>
+    </target>
+    
+    
+    <target depends="init" name="compile">
+      <echo message="${ant.project.name}: ${ant.file}"/>
+      <javac includeantruntime="true" debug="true" debuglevel="${debuglevel}" destdir="bin" source="${source}" target="${target}" fork="true">
+        <src path="src"/>
+        <classpath refid="psd.classpath"/>
+      </javac>
+    </target>
+    <target description="Build all projects which reference this project. Useful to propagate changes." name="build-refprojects"/>
+    
+    <pathconvert property="mf.classpath" pathsep=" ">
+      <path refid="psd.classpath"/>
+      <mapper>
+	<chainedmapper>
+	  <flattenmapper/>
+	  <globmapper from="*.jar" to="*.jar"/>
+	</chainedmapper>
+      </mapper>
+    </pathconvert>
+
+    <target name="jar" depends="clean, compile">
+      <jar destfile="${jar.name}.jar"
+           basedir="bin"
+           includes="**/*.class">
+	<manifest>
+          <attribute name="Main-Class" value="ch.epfl.bbcf.psd.Main"/>
+          <attribute name="Class-Path" value="${mf.classpath}" />
+	</manifest>
+	<zipfileset dir="." includes="log4j-1.2.16.jar"/>
+        <zipfileset dir="." includes="sqlite-jdbc-3.7.2.jar"/>
+	
+      </jar>
+    </target> 
+
+</project>
