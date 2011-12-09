@@ -25,9 +25,9 @@ static inline int samstats( const samtools::bam1_t *b, void *data )
 	if (i==0) i=1;
     }
     (*(std::map< int, size_t >*)data)[i]++;
-    if ((b->core.flag & BAM_FUNMAP) == 0) i = samtools::bam_aux2i(bam_aux_get(b,"NM"));
-    (*(std::map< int, size_t >*)data)[-i-3]++;
     if ((b->core.flag & BAM_FUNMAP) != 0) return 0;
+    i = samtools::bam_aux2i(bam_aux_get(b,"NM"));
+    (*(std::map< int, size_t >*)data)[-i-3]++;
     if (b->core.tid != last_tid) {
 	last_tid = b->core.tid;
 	last_start0 = 0;
