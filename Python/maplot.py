@@ -18,8 +18,7 @@ class Usage(Exception):
         self.msg = msg
 
 def rstring(len=20):
-    import string
-    import random
+    import string, random
     return "".join([random.choice(string.letters+string.digits) for x in range(len)])
 
 def MAplot(dataset, cols=[2,3], annotate=None, mode="normal", data_format="counts", sep=None,

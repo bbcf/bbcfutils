@@ -5,9 +5,9 @@ A High-throughput 4C-seq analysis workflow.
 
 """
 from bbcflib import genrep, frontend, email, gdv, common, mapseq
-from bein import *
+from bein import execution, MiniLIMS
 from bein.util import use_pickle, add_pickle
-import sys, getopt, os, json, re
+import sys, getopt, os, json
 
 from bbcflib import c4seq
 
@@ -101,7 +101,7 @@ def main(argv = None):
                     ucscbed.write(common.track_header(descr,ftype,gl['hts_4cseq']['download'],ffile))
 
         allfiles = common.get_files( ex.id, M )
-	
+
 #        gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
 #                                                job.description,
 #                                                assembly.nr_assembly_id,
