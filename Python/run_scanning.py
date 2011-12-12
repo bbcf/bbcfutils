@@ -7,11 +7,11 @@ to Genome Data Viewer ( GDV ).
 """
 
 from bbcflib.motif              import sqlite_to_false_discovery_rate
-from bein                       import MiniLIMS, unique_filename_in, execution
+from bein                       import MiniLIMS, execution
 from bbcflib.genrep             import GenRep
 from bbcflib.gdv                import create_gdv_project, add_gdv_track, get_project_id
 from bbcflib.frontend           import parseConfig
-from bbcflib.common             import scp, normalize_url
+from bbcflib.common             import scp, normalize_url, unique_filename_in
 from bbcflib.track              import Track, new, load
 from os.path                    import basename, expanduser, normcase, isfile, exists
 from os                         import sep
