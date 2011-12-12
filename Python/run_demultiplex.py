@@ -3,11 +3,11 @@
 """
     demultiplexing
 """
-from bein import *
+from bein import execution, MiniLIMS
 from bein.util import use_pickle
-from bbcflib import daflims, genrep, frontend, email, gdv, common
+from bbcflib import frontend, email, common#, gdv, genrep, daflims
 from bbcflib.mapseq import *
-import sys, getopt, os, json, re
+import sys, getopt, os, json
 
 from bbcflib import demultiplex
 #import demultiplex
@@ -98,8 +98,8 @@ def main(argv = None):
      #                           gdv_url=gl['gdv']['url'] )
      #        for k,f in allfiles['sql'].iteritems()]
         print json.dumps(allfiles)
-    with open(hts_key+".done",'w') as done:
-        json.dump(allfiles,done)
+        with open(hts_key+".done",'w') as done:
+            json.dump(allfiles,done)
         if 'email' in gl:
             r = email.EmailReport( sender=gl['email']['sender'],
                                    to=str(job.email),
