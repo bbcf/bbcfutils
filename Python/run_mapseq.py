@@ -80,7 +80,7 @@ def main(argv = None):
         else:
             raise ValueError("Need either a job key (-k) or a configuration file (-c).")
         g_rep = genrep.GenRep( url=gl["genrep_url"], root=gl["bwt_root"],
-                               intype=job.options.get('input_type_id') or 0 )
+                               intype=job.options.get('input_type_id',0) )
         assembly = g_rep.assembly( job.assembly_id )
         if 'lims' in gl:
             dafl = dict((loc,daflims.DAFLIMS( username=gl['lims']['user'], password=pwd ))
@@ -115,7 +115,7 @@ def main(argv = None):
                 logfile.write(str(k)+str(v['name'])+"\t");logfile.flush()
                 pdf = add_pdf_stats( ex, mapped_files,
                                      {k:v['name']},
-                                     gl.get('script_path') or '',
+                                     gl.get('script_path',''),
                                      description=set_file_descr(v['name']+"_mapping_report.pdf",groupId=k,step='stats',type='pdf') )
             if job.options['compute_densities']:
                 logfile.write("computing densities.\n");logfile.flush()
@@ -125,10 +125,9 @@ def main(argv = None):
                 logfile.write("Finished computing densities.\n");logfile.flush()
                 if job.options['create_gdv_project']:
                     logfile.write("Creating GDV project.\n");logfile.flush()
-                    gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
-                                                          job.description,
-                                                          assembly.nr_assembly_id,
-                                                          gdv_url=gl['gdv']['url'], public=True )
+                    gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'], 
+                                                   job.description, assembly.assembly_id,
+                                                   gdv_url=gl['gdv']['url'] )
                     logfile.write("GDV project: "+str(gdv_project['project_id']+"\n"));logfile.flush()
                     add_pickle( ex, gdv_project, description=set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
         allfiles = get_files( ex.id, M )
@@ -140,14 +139,15 @@ def main(argv = None):
                         if re.search(r' \(.*\)',descr): continue
                         ucscbed.write(track_header(descr,ftype,gl['hts_mapseq']['download'],ffile))
         if job.options['create_gdv_project']:
-            allfiles['url'] = {gdv_project['public_url']: 'GDV view'}
+            gdv_project_url = gl['gdv']['url']+"public/project?k="+str(gdv_project['project']['key'])+"&id="+str(gdv_project['project']['id'])
+            allfiles['url'] = {gdv_project_url: 'GDV view'}
             download_url = gl['hts_mapseq']['download']
-            [gdv.add_gdv_track( gl['gdv']['key'], gl['gdv']['email'],
-                                gdv_project['project_id'],
-                                url=download_url+str(k),
-                                name = re.sub('\.sql','',str(f)),
-                                gdv_url=gl['gdv']['url'] )
-             for k,f in allfiles['sql'].iteritems()]
+            urls = " ".join([download_url+str(k) for k in allfiles['sql'].keys()])
+            names = " ".join([re.sub('\.sql','',str(f)) for f in allfiles['sql'].values()])
+            gdv.new_track( gl['gdv']['email'], gl['gdv']['key'], 
+                           project_id=gdv_project['project']['id'],
+                           urls=urls , file_names=names,
+                           serv_url=gl['gdv']['url'] )
         logfile.close()
         print json.dumps(allfiles)
         with open(hts_key+".done",'w') as done:
