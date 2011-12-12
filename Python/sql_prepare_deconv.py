@@ -3,7 +3,6 @@ import rpy2.robjects as robjects
 from bbcflib.track import Track
 import re
 from numpy import *
-import getopt
 import os
 import sys
 

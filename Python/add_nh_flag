@@ -1,5 +1,5 @@
 #!/bin/env python
-import getopt, os, sys
+import os, sys
 from bbcflib.mapseq import add_nh_flag
 
 

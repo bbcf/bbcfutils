@@ -72,7 +72,6 @@ def main():
         # Program body #
         with execution(M, description=description, remote_working_directory=opt.wdir ) as ex:
             print "Current working directory:", ex.working_directory
-            unmapped_fastq = None
             if opt.ms_limspath == "None":
                 print "Alignment..."
                 job = mapseq.get_fastq_files( job, ex.working_directory)
@@ -87,11 +86,15 @@ def main():
                 print "Loaded."
                 if os.path.exists(opt.ms_limspath):
                     print "Map remaining reads on transcriptome..."
-                    unmapped_fastq = mapseq.get_unmapped(ex, job, minilims=opt.ms_limspath, via=opt.via)
-                    mdfive = rnaseq.get_md5(assembly_id)
-                    refseq_path = os.path.join("/db/genrep/nr_assemblies/cdna_bowtie/", mdfive)
-                    unmapped_bam = mapseq.bowtie(refseq_path, unmapped_fastq, args="-Sra")
-            rnaseq.rnaseq_workflow(ex, job, assembly, bam_files, unmapped=unmapped_bam, pileup_level=pileup_level, via=opt.via)
+                    unmapped = []
+                    for gid, group in job.groups.iteritems():
+                        for rid in group.runs.keys():
+                            unmapped.append(job.groups[gid][rid]['unmapped_fastq'])
+                    print unmapped
+                    #mdfive = rnaseq.get_md5(assembly_id)
+                    #refseq_path = os.path.join("/db/genrep/nr_assemblies/cdna_bowtie/", mdfive)
+                    #unmapped_bam = mapseq.bowtie(refseq_path, unmapped_fastq, args="-Sra")
+            rnaseq.rnaseq_workflow(ex, job, assembly, bam_files, unmapped=unmapped, pileup_level=pileup_level, via=opt.via)
 
         # GDV
         allfiles = common.get_files(ex.id, M)

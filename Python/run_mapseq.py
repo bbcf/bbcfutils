@@ -4,6 +4,7 @@
 A High-throughput sequencing data mapping workflow.
 
 """
+from bein import execution, MiniLIMS
 from bein.util import use_pickle, add_pickle
 from bbcflib import daflims, genrep, frontend, email, gdv
 from bbcflib.common import get_files, set_file_descr, track_header
@@ -125,7 +126,7 @@ def main(argv = None):
                 logfile.write("Finished computing densities.\n");logfile.flush()
                 if job.options['create_gdv_project']:
                     logfile.write("Creating GDV project.\n");logfile.flush()
-                    gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'], 
+                    gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
                                                    job.description, assembly.assembly_id,
                                                    gdv_url=gl['gdv']['url'] )
                     logfile.write("GDV project: "+str(gdv_project['project_id']+"\n"));logfile.flush()
@@ -144,7 +145,7 @@ def main(argv = None):
             download_url = gl['hts_mapseq']['download']
             urls = " ".join([download_url+str(k) for k in allfiles['sql'].keys()])
             names = " ".join([re.sub('\.sql','',str(f)) for f in allfiles['sql'].values()])
-            gdv.new_track( gl['gdv']['email'], gl['gdv']['key'], 
+            gdv.new_track( gl['gdv']['email'], gl['gdv']['key'],
                            project_id=gdv_project['project']['id'],
                            urls=urls , file_names=names,
                            serv_url=gl['gdv']['url'] )
