@@ -133,19 +133,21 @@ def main(argv = None):
                     add_pickle( ex, gdv_project, description=set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
         allfiles = get_files( ex.id, M )
         if 'ucsc_bigwig' and g_rep.intype == 0:
+            logfile.write("UCSC track file: "+hts_key+".bed");logfile.flush()
             ucscfiles = get_files( ex.id, M, select_param={'ucsc':'1'} )
             with open(hts_key+".bed",'w') as ucscbed:
                 for ftype,fset in ucscfiles.iteritems():
                     for ffile,descr in fset.iteritems():
                         if re.search(r' \(.*\)',descr): continue
                         ucscbed.write(track_header(descr,ftype,gl['hts_mapseq']['download'],ffile))
-        if job.options['create_gdv_project']:
+        if job.options['create_gdv_project'] and re.search(r'success',gdv_project['message']):
             gdv_project_url = gl['gdv']['url']+"public/project?k="+str(gdv_project['project']['key'])+"&id="+str(gdv_project['project']['id'])
             allfiles['url'] = {gdv_project_url: 'GDV view'}
             download_url = gl['hts_mapseq']['download']
             urls = " ".join([download_url+str(k) for k in allfiles['sql'].keys()])
-            names = " ".join([re.sub('\.sql','',str(f)) for f in allfiles['sql'].values()])
-            gdv.new_track( gl['gdv']['email'], gl['gdv']['key'],
+            names = " ".join([re.sub('\.sql.*','',str(f)) for f in allfiles['sql'].values()])
+            logfile.write("Uploading GDV tracks: "+" ".join(names));logfile.flush()
+            gdv.new_track( gl['gdv']['email'], gl['gdv']['key'], 
                            project_id=gdv_project['project']['id'],
                            urls=urls , file_names=names,
                            serv_url=gl['gdv']['url'] )
