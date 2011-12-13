@@ -92,6 +92,7 @@ def main(argv = None):
         g_rep = genrep.GenRep( gl["genrep_url"], gl.get("bwt_root") )
         assembly = g_rep.assembly( job.assembly_id )
         logfile = open(hts_key+".log",'w')
+        logfile.write(json.dumps(gl));logfile.flush()
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
             logfile.write("Enter execution, fetch bam and wig files.\n");logfile.flush()
             (mapped_files, job) = mapseq.get_bam_wig_files( ex, job, minilims=ms_limspath, hts_url=mapseq_url,
@@ -102,9 +103,9 @@ def main(argv = None):
             if job.options.get('create_gdv_project',False):
                 logfile.write("Creating GDV project.\n");logfile.flush()
                 gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'], 
-                                               job.description, assembly.assembly_id,
-                                               gdv_url=gl['gdv']['url'] )
-                logfile.write("GDV project: "+str(gdv_project['project_id']+"\n"));logfile.flush()
+                                               job.description, assembly.id,
+                                               gl['gdv']['url'] )
+                logfile.write("GDV project: "+str(gdv_project['project']['id'])+"\n");logfile.flush()
                 add_pickle( ex, gdv_project, description=set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
             else:
                 gdv_project = {'message': None}
@@ -115,7 +116,7 @@ def main(argv = None):
             download_url = gl['hts_chipseq']['download']
             urls = " ".join([download_url+str(k) for k in allfiles['sql'].keys()])
             names = " ".join([re.sub('\.sql.*','',str(f)) for f in allfiles['sql'].values()])
-            logfile.write("Uploading GDV tracks: "+" ".join(names));logfile.flush()
+            logfile.write("Uploading GDV tracks:\n"+url+"\n"+names+"\n");logfile.flush()
             gdv.new_track( gl['gdv']['email'], gl['gdv']['key'], 
                            project_id=gdv_project['project']['id'],
                            urls=urls , file_names=names,

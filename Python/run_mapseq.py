@@ -9,7 +9,7 @@ from bein.util import use_pickle, add_pickle
 from bbcflib import daflims, genrep, frontend, email, gdv
 from bbcflib.common import get_files, set_file_descr, track_header
 from bbcflib.mapseq import *
-import sys, getopt, os, re
+import sys, getopt, os, re, json
 
 usage = """run_mapseq.py [-h] [-u via] [-w wdir] [-k job_key] [-c config_file] -d minilims
 
@@ -106,6 +106,7 @@ def main(argv = None):
         if job.options.get('merge_strands'):
             job.options['merge_strands'] = int(job.options['merge_strands'])
         logfile = open(hts_key+".log",'w')
+        logfile.write(json.dumps(gl));logfile.flush()
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
             logfile.write("Enter execution, fetch fastq files.\n");logfile.flush()
             job = get_fastq_files( job, ex.working_directory, dafl )
@@ -113,7 +114,7 @@ def main(argv = None):
             mapped_files = map_groups( ex, job, ex.working_directory, assembly, {'via': via} )
             logfile.write("Make stats:\n");logfile.flush()
             for k,v in job.groups.iteritems():
-                logfile.write(str(k)+str(v['name'])+"\t");logfile.flush()
+                logfile.write(str(k)+"_"+str(v['name'])+"\t");logfile.flush()
                 pdf = add_pdf_stats( ex, mapped_files,
                                      {k:v['name']},
                                      gl.get('script_path',''),
@@ -127,13 +128,13 @@ def main(argv = None):
                 if job.options['create_gdv_project']:
                     logfile.write("Creating GDV project.\n");logfile.flush()
                     gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
-                                                   job.description, assembly.assembly_id,
-                                                   gdv_url=gl['gdv']['url'] )
-                    logfile.write("GDV project: "+str(gdv_project['project_id']+"\n"));logfile.flush()
+                                                   job.description, assembly.id,
+                                                   gl['gdv']['url'] )
+                    logfile.write("GDV project: "+str(gdv_project['project']['id'])+"\n");logfile.flush()
                     add_pickle( ex, gdv_project, description=set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
         allfiles = get_files( ex.id, M )
         if 'ucsc_bigwig' and g_rep.intype == 0:
-            logfile.write("UCSC track file: "+hts_key+".bed");logfile.flush()
+            logfile.write("UCSC track file: "+hts_key+".bed\n");logfile.flush()
             ucscfiles = get_files( ex.id, M, select_param={'ucsc':'1'} )
             with open(hts_key+".bed",'w') as ucscbed:
                 for ftype,fset in ucscfiles.iteritems():
@@ -146,7 +147,7 @@ def main(argv = None):
             download_url = gl['hts_mapseq']['download']
             urls = " ".join([download_url+str(k) for k in allfiles['sql'].keys()])
             names = " ".join([re.sub('\.sql.*','',str(f)) for f in allfiles['sql'].values()])
-            logfile.write("Uploading GDV tracks: "+" ".join(names));logfile.flush()
+            logfile.write("Uploading GDV tracks:\n"+url+"\n"+names+"\n");logfile.flush()
             gdv.new_track( gl['gdv']['email'], gl['gdv']['key'], 
                            project_id=gdv_project['project']['id'],
                            urls=urls , file_names=names,
