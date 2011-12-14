@@ -116,7 +116,7 @@ def main(argv = None):
             download_url = gl['hts_chipseq']['download']
             urls = " ".join([download_url+str(k) for k in allfiles['sql'].keys()])
             names = " ".join([re.sub('\.sql.*','',str(f)) for f in allfiles['sql'].values()])
-            logfile.write("Uploading GDV tracks:\n"+url+"\n"+names+"\n");logfile.flush()
+            logfile.write("Uploading GDV tracks:\n"+urls+"\n"+names+"\n");logfile.flush()
             gdv.new_track( gl['gdv']['email'], gl['gdv']['key'], 
                            project_id=gdv_project['project']['id'],
                            urls=urls , file_names=names,

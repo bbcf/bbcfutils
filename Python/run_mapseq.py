@@ -120,7 +120,7 @@ def main(argv = None):
                                      gl.get('script_path',''),
                                      description=set_file_descr(v['name']+"_mapping_report.pdf",groupId=k,step='stats',type='pdf') )
             if job.options['compute_densities']:
-                logfile.write("computing densities.\n");logfile.flush()
+                logfile.write("\ncomputing densities.\n");logfile.flush()
                 if not(job.options.get('read_extension')>0):
                     job.options['read_extension'] = mapped_files.values()[0].values()[0]['stats']['read_length']
                 density_files = densities_groups( ex, job, mapped_files, assembly.chromosomes, via=via )
@@ -128,9 +128,8 @@ def main(argv = None):
                 if job.options['create_gdv_project']:
                     logfile.write("Creating GDV project.\n");logfile.flush()
                     gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
-                                                   job.description, assembly.id,
-                                                   gl['gdv']['url'] )
-                    logfile.write("GDV project: "+str(gdv_project['project']['id'])+"\n");logfile.flush()
+                                                   job.description, assembly.id, gl['gdv']['url'] )
+                    logfile.write("GDV project: "+json.dumps(gdv_project)+"\n");logfile.flush()
                     add_pickle( ex, gdv_project, description=set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
         allfiles = get_files( ex.id, M )
         if 'ucsc_bigwig' and g_rep.intype == 0:
@@ -147,7 +146,7 @@ def main(argv = None):
             download_url = gl['hts_mapseq']['download']
             urls = " ".join([download_url+str(k) for k in allfiles['sql'].keys()])
             names = " ".join([re.sub('\.sql.*','',str(f)) for f in allfiles['sql'].values()])
-            logfile.write("Uploading GDV tracks:\n"+url+"\n"+names+"\n");logfile.flush()
+            logfile.write("Uploading GDV tracks:\n"+urls+"\n"+names+"\n");logfile.flush()
             gdv.new_track( gl['gdv']['email'], gl['gdv']['key'], 
                            project_id=gdv_project['project']['id'],
                            urls=urls , file_names=names,
