@@ -82,8 +82,8 @@ int main( int argc, char **argv )
     samtools::bam_index_destroy( _in );
     samtools::samclose( _fs );
 //-------------- OUTPUT
-    if ( !stats.count(-1) ) stats[-1] = 0
-    if ( !stats.count(-2) ) stats[-2] = 0
+    if ( !stats.count(-1) ) stats[-1] = 0;
+    if ( !stats.count(-2) ) stats[-2] = 0;
     std::cout << "Read length " << read_length << "\n";
     std::cout << "Genome size " << genome_size << "\n";
     std::cout << "Nb positions " << stats[-1] << "\n";    
