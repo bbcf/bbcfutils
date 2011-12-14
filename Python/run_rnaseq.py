@@ -3,7 +3,7 @@
 A High-throughput RNA-seq analysis workflow.
 
 python run_rnaseq.py -v lsf -c config_files/gapdh.txt -d rnaseq -p transcripts
-python run_rnaseq.py -v lsf -c config_files/gapdh.txt -d rnaseq -p transcripts -m /scratch/cluster/monthly/jdelafon/mapseq
+python run_rnaseq.py -v lsf -c config_files/rnaseq.txt -d rnaseq -p genes -m /scratch/cluster/monthly/jdelafon/mapseq
 """
 import os, sys, json, re
 import optparse
@@ -28,7 +28,9 @@ def main():
                                      {'default': os.getcwd(), 'dest':"wdir"}),
             ("-c", "--config", "Config file", {'default': None}),
             ("-p", "--pileup_level", "Target features, inside of quotes, separated by commas.\
-                                     E.g. 'genes,exons,transcripts'",{'default': "genes,exons,transcripts"}))
+                                     E.g. 'genes,exons,transcripts'",{'default': "genes,exons,transcripts"}),
+            ("-u", "--unmapped", "If True, add junction reads to the pileups.",
+                                     {'action':'store_true', 'default': False}))
     try:
         usage = "run_rnaseq.py [OPTIONS]"
         desc = """A High-throughput RNA-seq analysis workflow. It returns a file containing
@@ -81,20 +83,10 @@ def main():
             else:
                 print "Loading BAM files..."
                 (bam_files, job) = mapseq.get_bam_wig_files(ex, job, minilims=opt.ms_limspath, hts_url=mapseq_url,
-                                                            script_path=gl.get('script_path') or '', via=opt.via)
+                         script_path=gl.get('script_path') or '', via=opt.via, fetch_unmapped=True)
                 assert bam_files, "Bam files not found."
                 print "Loaded."
-                if os.path.exists(opt.ms_limspath):
-                    print "Map remaining reads on transcriptome..."
-                    unmapped = []
-                    for gid, group in job.groups.iteritems():
-                        for rid in group.runs.keys():
-                            unmapped.append(job.groups[gid][rid]['unmapped_fastq'])
-                    print unmapped
-                    #mdfive = rnaseq.get_md5(assembly_id)
-                    #refseq_path = os.path.join("/db/genrep/nr_assemblies/cdna_bowtie/", mdfive)
-                    #unmapped_bam = mapseq.bowtie(refseq_path, unmapped_fastq, args="-Sra")
-            rnaseq.rnaseq_workflow(ex, job, assembly, bam_files, unmapped=unmapped, pileup_level=pileup_level, via=opt.via)
+            rnaseq.rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=pileup_level, via=opt.via, unmapped=opt.unmapped)
 
         # GDV
         allfiles = common.get_files(ex.id, M)
@@ -129,6 +121,7 @@ def main():
 
 if __name__ == '__main__':
     sys.exit(main())
+
 
 
 
