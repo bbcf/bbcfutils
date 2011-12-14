@@ -53,10 +53,11 @@ def main():
             job = htss.job(opt.key) # new *RNA-seq* job instance
             [M.delete_execution(x) for x in M.search_executions(with_description=opt.key,fails=True)]
             description = "Job run with mapseq key %s" % opt.key
+            pileup_level = ['genes','exons','transcripts']
         elif os.path.exists(opt.config):
-            pileup_level = opt.pileup_level.split(',')
             (job,gl) = frontend.parseConfig(opt.config)
             description = "Job run with config file %s" % opt.config
+            pileup_level = opt.pileup_level.split(',')
         else: raise ValueError("Need either a job key (-k) or a configuration file (-c).")
 
         job.options['ucsc_bigwig'] = job.options.get('ucsc_bigwig') or True
@@ -83,7 +84,7 @@ def main():
             else:
                 print "Loading BAM files..."
                 (bam_files, job) = mapseq.get_bam_wig_files(ex, job, minilims=opt.ms_limspath, hts_url=mapseq_url,
-                         script_path=gl.get('script_path') or '', via=opt.via, fetch_unmapped=True)
+                         script_path=gl.get('script_path') or '', via=opt.via, fetch_unmapped=opt.unmapped)
                 assert bam_files, "Bam files not found."
                 print "Loaded."
             rnaseq.rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=pileup_level, via=opt.via, unmapped=opt.unmapped)

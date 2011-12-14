@@ -30,3 +30,10 @@ test1 <- function(){
     contrast_file = "tests/testing_files/contrast_mef.txt"
     comparisons = main(data_file,"\t",design_file=design_file, contrast_file=contrast_file)
 }
+
+test2 <- function(){
+    data_file = "tests/testing_files/genes_expression.tab"
+    design_file = "tests/testing_files/design_mado.txt"
+    contrast_file = "tests/testing_files/contrast_mado.txt"
+    comparisons = main(data_file,"\t",design_file=design_file, contrast_file=contrast_file)
+}
