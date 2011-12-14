@@ -53,7 +53,7 @@ def main():
             job = htss.job(opt.key) # new *RNA-seq* job instance
             [M.delete_execution(x) for x in M.search_executions(with_description=opt.key,fails=True)]
             description = "Job run with mapseq key %s" % opt.key
-            pileup_level = ['genes','exons','transcripts']
+            pileup_level = opt.pileup_level
         elif os.path.exists(opt.config):
             (job,gl) = frontend.parseConfig(opt.config)
             description = "Job run with config file %s" % opt.config
