@@ -4,6 +4,7 @@
 A High-throughput ChIP-seq peak analysis workflow.
 
 """
+from bein import execution, MiniLIMS
 from bein.util import use_pickle
 from bbcflib import genrep, frontend, email, gdv, mapseq
 from bbcflib.common import get_files
@@ -91,25 +92,35 @@ def main(argv = None):
         g_rep = genrep.GenRep( gl["genrep_url"], gl.get("bwt_root") )
         assembly = g_rep.assembly( job.assembly_id )
         logfile = open(hts_key+".log",'w')
+        logfile.write(json.dumps(gl));logfile.flush()
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
             logfile.write("Enter execution, fetch bam and wig files.\n");logfile.flush()
             (mapped_files, job) = mapseq.get_bam_wig_files( ex, job, minilims=ms_limspath, hts_url=mapseq_url,
-                                                     script_path=gl.get('script_path') or '', via=via )
+                                                            script_path=gl.get('script_path') or '', via=via )
             logfile.write("Starting workflow.\n");logfile.flush()
             chipseq_files = workflow_groups( ex, job, mapped_files, assembly.chromosomes,
                                              gl.get('script_path') or '', g_rep, logfile=logfile, via=via )
-
+            if job.options.get('create_gdv_project',False):
+                logfile.write("Creating GDV project.\n");logfile.flush()
+                gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'], 
+                                               job.description, assembly.id,
+                                               gl['gdv']['url'] )
+                logfile.write("GDV project: "+str(gdv_project['project']['id'])+"\n");logfile.flush()
+                add_pickle( ex, gdv_project, description=set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
+            else:
+                gdv_project = {'message': None}
         allfiles = get_files( ex.id, M )
-        if 'gdv_project' in job.options and 'sql' in allfiles:
-            logfile.write("Adding to GDV project.\n");logfile.flush()
-            allfiles['url'] = {job.options['gdv_project']['public_url']: 'GDV view'}
+        if re.search(r'success',gdv_project['message']) and 'sql' in allfiles:
+            gdv_project_url = gl['gdv']['url']+"public/project?k="+str(gdv_project['project']['key'])+"&id="+str(gdv_project['project']['id'])
+            allfiles['url'] = {gdv_project_url: 'GDV view'}
             download_url = gl['hts_chipseq']['download']
-            [gdv.add_gdv_track( gl['gdv']['key'], gl['gdv']['email'],
-                                job.options['gdv_project']['project_id'],
-                                url=download_url+str(k),
-                                name = re.sub('\.sql','',str(f)),
-                                gdv_url=gl['gdv']['url'] )
-             for k,f in allfiles['sql'].iteritems()]
+            urls = " ".join([download_url+str(k) for k in allfiles['sql'].keys()])
+            names = " ".join([re.sub('\.sql.*','',str(f)) for f in allfiles['sql'].values()])
+            logfile.write("Uploading GDV tracks:\n"+urls+"\n"+names+"\n");logfile.flush()
+            gdv.new_track( gl['gdv']['email'], gl['gdv']['key'], 
+                           project_id=gdv_project['project']['id'],
+                           urls=urls , file_names=names,
+                           serv_url=gl['gdv']['url'] )
         logfile.close()
         print json.dumps(allfiles)
         with open(hts_key+".done",'w') as done:
