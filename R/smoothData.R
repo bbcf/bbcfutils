@@ -66,7 +66,9 @@ generateSmoothedWindows <- function(myData,n)
         newWindows <- lapply(1:length(data_byChr),
                 function(i){if(nrow(data_byChr[[i]])>0){
 			s=c();e=c();
-			mid=round(n/2);if((n/2)==round(n/2)){nprev=mid-1;nnext=mid}else{nprev=mid;nnext=mid}
+			mid=round(n/2);
+			nprev=mid;nnext=mid;
+			#if((n/2)==round(n/2)){nprev=mid-1;nnext=mid}else{nprev=mid;nnext=mid}
 			mid=seq(1,nrow(data_byChr[[i]]),by=1)
 			istart=mid-rep(nprev,length(mid))
 			iend=mid+rep(nnext,length(mid))
