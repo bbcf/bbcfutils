@@ -84,8 +84,8 @@ def main(argv = None):
         if 'hts_mapseq' in gl:
                 mapseq_url = gl['hts_mapseq']['url']
         job.options['ucsc_bigwig'] = True
-        g_rep = genrep.GenRep( gl["genrep_url"], gl.get("bwt_root") )
-        assembly = g_rep.assembly( job.assembly_id )
+        g_rep = genrep.GenRep( gl.get("genrep_url"), gl.get("bwt_root") )
+        assembly = genrep.Assembly( assembly=job.assembly_id, genrep=g_rep )
         primers_file='/scratch/cluster/monthly/htsstation/4cseq/'+str(job.id)+'/primers.fa'
         primers_dict=c4seq.loadPrimers(primers_file)
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
@@ -93,7 +93,12 @@ def main(argv = None):
             c4seq_files = c4seq.workflow_groups( ex, job, primers_dict, g_rep,
                                            mapseq_files, mapseq_url,
                                            gl['script_path'])
-
+            if job.options.get('create_gdv_project'):
+                gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
+                                               job.description, assembly.id, 
+                                               gl['gdv']['url'] )
+                add_pickle( ex, gdv_project, 
+                            description=set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
         ucscfiles = common.get_files( ex.id, M, select_param={'ucsc':'1'} )
         with open(hts_key+".bed",'w') as ucscbed:
             for ftype,fset in ucscfiles.iteritems():
@@ -101,25 +106,19 @@ def main(argv = None):
                     ucscbed.write(common.track_header(descr,ftype,gl['hts_4cseq']['download'],ffile))
 
         allfiles = common.get_files( ex.id, M )
-
-#        gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],
-#                                                job.description,
-#                                                assembly.nr_assembly_id,
-#                                                gdv_url=gl['gdv']['url'], public=True )
-#        add_pickle( ex, gdv_project, description='py:gdv_json' )
-#        if 'sql' in allfiles:
-#                allfiles['url'] = {gdv_project['public_url']: 'GDV view'}
-#                download_url = gl['hts_4cseq']['download']
-#                [gdv.add_gdv_track( gl['gdv']['key'], gl['gdv']['email'],
-#                                gdv_project['project_id'],
-#                                url=download_url+str(k),
-#                                name = re.sub('\.sql','',str(f)),
-#                                gdv_url=gl['gdv']['url'])
-#                 for k,f in allfiles['sql'].iteritems()]
-
+        if job.options['create_gdv_project'] and re.search(r'success',gdv_project['message']):
+            gdv_project_url = gl['gdv']['url']+"public/project?k="+str(gdv_project['project']['key'])+"&id="+str(gdv_project['project']['id'])
+            allfiles['url'] = {gdv_project_url: 'GDV view'}
+            download_url = gl['hts_4cseq']['download']
+            urls = " ".join([download_url+str(k) for k in allfiles['sql'].keys()])
+            names = " ".join([re.sub('\.sql.*','',str(f)) for f in allfiles['sql'].values()])
+            gdv.new_track( gl['gdv']['email'], gl['gdv']['key'], 
+                           project_id=gdv_project['project']['id'],
+                           urls=urls , file_names=names,
+                           serv_url=gl['gdv']['url'] )
         print json.dumps(allfiles)
         with open(hts_key+".done",'w') as done:
-                json.dump(allfiles,done)
+            json.dump(allfiles,done)
 
 
         if 'email' in gl:

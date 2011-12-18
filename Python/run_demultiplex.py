@@ -5,7 +5,7 @@
 """
 from bein import execution, MiniLIMS
 from bein.util import use_pickle
-from bbcflib import frontend, email, common#, gdv, genrep, daflims
+from bbcflib import frontend, email, common
 from bbcflib.mapseq import *
 import sys, getopt, os, json
 
