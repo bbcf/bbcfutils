@@ -21,7 +21,7 @@ opts = (("-l", "--list", "list available assemblies, or a chromosome table if an
         ("-t", "--regions", "extract regions to fasta (ex: 'chr2:2-1356,chr1:10-45')", {'default': None}),
         ("-o", "--output", "output file (default standard output)", {'default': None}),
         ("-r", "--root", "genrep root directory (default: '/db/genrep/')", {'default': '/db/genrep/'}),
-        ("-u", "--url", "url to genrep (default: 'http://bbcftools.vital-it.ch/genrep/')",{'default': 'http://bbcftools.vital-it.ch/genrep/'}),
+        ("-u", "--url", "url to genrep (default: 'http://bbcftools.vital-it.ch/genrep/')", {'default': 'http://bbcftools.vital-it.ch/genrep/'}),
         ("-c", "--convert", "convert bam headers to natural chromosome names",{}))
 
 class Usage(Exception):
@@ -60,9 +60,9 @@ def main():
                 regions.append([chrom,int(start),int(end)])
 
         # Program body
-        g_rep = genrep.GenRep(url=genrep_url, root=genrep_root, intype=opt.intype)
+        g_rep = genrep.GenRep(url=genrep_url, root=genrep_root)
         if opt.assembly:
-            assembly = g_rep.assembly(assembly_id)
+            assembly = genrep.Assembly(assembly=assembly_id, genrep=g_rep, intype=opt.intype)
         if opt.list:
             if opt.assembly:
                 table = ["\t".join((_compact_key(k),v['name'],str(v['length'])))
@@ -74,7 +74,7 @@ def main():
         if not(opt.assembly):
             return 0
         if opt.regions:
-            seq = g_rep.fasta_from_regions(assembly.chromosomes, regions=regions, out={})[0]
+            seq = assembly.fasta_from_regions(regions=regions, out={})[0]
             for reg in regions:
                 fout.write(">"+assembly.name+"|"+reg[0]+":"+str(reg[1])+"-"+str(reg[2])+"\n")
                 fout.write(seq[reg[0]].pop(0)+"\n")
@@ -83,9 +83,9 @@ def main():
             fout.write(assembly.index_path+"\n")
         if opt.fasta:
             fout.write(">"+str(assembly.id)+":"+assembly.name+" fasta file\n")
-            fout.write(g_rep.fasta_path(assembly)+"\n")
+            fout.write(assembly.fasta_path()+"\n")
         if opt.stats:
-            stats = g_rep.statistics(assembly,frequency=True)
+            stats = assembly.statistics(frequency=True)
             fout.write("\n".join([k+":\t"+str(stats[k]) for k in sorted(stats.keys())])+"\n")
         fout.close()
         if opt.convert:

@@ -82,7 +82,7 @@ def main(argv = None):
             raise ValueError("Need either a job key (-k) or a configuration file (-c).")
         g_rep = genrep.GenRep( url=gl["genrep_url"], root=gl["bwt_root"],
                                intype=job.options.get('input_type_id',0) )
-        assembly = g_rep.assembly( job.assembly_id )
+        assembly = genrep.Assembly( assembly=job.assembly_id, genrep=g_rep )
         if 'lims' in gl:
             dafl = dict((loc,daflims.DAFLIMS( username=gl['lims']['user'], password=pwd ))
                         for loc,pwd in gl['lims']['passwd'].iteritems())
