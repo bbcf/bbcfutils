@@ -90,7 +90,7 @@ def main(argv = None):
             mapseq_url = gl['hts_mapseq']['url']
         job.options['ucsc_bigwig'] = True
         g_rep = genrep.GenRep( gl["genrep_url"], gl.get("bwt_root") )
-        assembly = genrep.Assembly( assembly=job.assembly_id, genrep=g_rep )
+        assembly = g_rep.assembly( job.assembly_id )
         logfile = open(hts_key+".log",'w')
         logfile.write(json.dumps(gl));logfile.flush()
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:

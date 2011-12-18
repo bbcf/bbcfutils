@@ -12,7 +12,6 @@ import sys, os, json, urllib, math, csv, optparse
 import numpy
 from scipy import stats
 import matplotlib.pyplot as plt
-from bbcflib import genrep
 
 class Usage(Exception):
     def __init__(self,  msg):
@@ -242,14 +241,19 @@ def MAplot(dataset, cols=[2,3], annotate=None, mode="normal", data_format="count
 
         # - url for more info on features
         if assembly_id:
-            try:
-                assembly = genrep.Assembly(assembly_id)
-                url_template = assembly.get_links('%3CName%3E')
-                jsdata += "var url_template = "+url_template+";"
-            except:
-                pass
-            else: jsdata = jsdata + "var url_template = null;"
-            print >> sys.stdout, jsdata
+            assemblies = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/assemblies.json").read()
+            assemblies = json.loads(assemblies)
+            try: assembly_id = int(assembly_id)
+            except: pass
+            for a in assemblies:
+                if a['assembly']['name'] == assembly_id or a['assembly']['id'] == assembly_id:
+                    nr_assembly_id =  a['assembly']['nr_assembly_id']
+                    md5 = a['assembly']['md5']; break
+            url_template = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies/" +
+                            "get_links/" + str(nr_assembly_id) + ".json?gene_name=%3CName%3E&md5=" + md5)
+            jsdata = jsdata + "var url_template = " + url_template.read() + ";"
+        else: jsdata = jsdata + "var url_template = null;"
+        print >> sys.stdout, jsdata
 
     return 0
 
