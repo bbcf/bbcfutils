@@ -6,9 +6,9 @@
 # --------
 #  Usage:
 # --------
-# R --slave negbin.test.r --args 'data_file' -s '\t' -d 'design_file' -c 'contrast_file' -o 'output_file'
+# R --slave -f negbin.test.R --args 'data_file' -s ',' -d 'design_file' -c 'contrast_file' -o 'output_file'
 # (On Vital-IT, .bashrc contains: alias R="bsub -qbbcf -Ip -XF R --vanilla")
-# R --slave negbin.test.r --args 'genes_expression.tab' -s '\t' -d 'design_mado' -c 'contrast_mado' -o 'output_file'
+#R --slave -f negbin.test.R --args 'tests/testing_files/genes_expression.tab' -s 'tab' -d 'tests/testing_files/design_mado' -c 'tests_testing_files/contrast_mado' -o 'output_file'
 #
 # The script is made to take as input the files returned by rnaseq.py, which format is the following:
 # - tab-delimited or CSV file containing (maybe normalized) read counts
@@ -43,6 +43,7 @@ design_file = args[grep("-d",args)+1]
 contrast_file = args[grep("-c",args)+1]
 output_file = args[grep("-o",args)+1]
 
+if (sep=='tab') sep='\t'
 
 main <- function(data_file, sep="\t", contrast_file=FALSE, design_file=FALSE, output_file=FALSE){
     data = read.table(data_file, header=T, row.names=1, sep=sep)
@@ -78,11 +79,12 @@ DES <- function(data){  ## DESeq ##
     library(DESeq)
     samples = colnames(data)
     conds = unlist(lapply(strsplit(samples,".",fixed=T), "[[", 2))
+    groups = unique(conds)
 
     result = list()
     cds <- newCountDataSet(data, conds)
     cds <- estimateSizeFactors(cds)
-    cds <- estimateVarianceFunctions(cds)
+    cds <- estimateVarianceFunctions(cds, method='blind')
     couples = combn(unique(groups),2)
     for (i in 1:dim(couples)[2]){
         res <- nbinomTest(cds, couples[1,i], couples[2,i])
@@ -189,4 +191,4 @@ GLM <- function(data, design, contrast, output_file=FALSE){
     }
 }
 
-
+main(data_file,sep=sep,design_file=design_file, contrast_file=contrast_file)
