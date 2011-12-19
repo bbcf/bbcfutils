@@ -6,8 +6,9 @@
 # --------
 #  Usage:
 # --------
-# R --vanilla negbin.test.r --args 'data_file' -s '\t' -d 'design_file' -c 'contrast_file' -o 'output_file'
+# R --slave negbin.test.r --args 'data_file' -s '\t' -d 'design_file' -c 'contrast_file' -o 'output_file'
 # (On Vital-IT, .bashrc contains: alias R="bsub -qbbcf -Ip -XF R --vanilla")
+# R --slave negbin.test.r --args 'genes_expression.tab' -s '\t' -d 'design_mado' -c 'contrast_mado' -o 'output_file'
 #
 # The script is made to take as input the files returned by rnaseq.py, which format is the following:
 # - tab-delimited or CSV file containing (maybe normalized) read counts
