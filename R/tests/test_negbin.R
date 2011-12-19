@@ -1,4 +1,6 @@
 
+set.seed(123)
+
 create_fake_dataset <- function(n){
     samples = c("g1.1","g1.2","g1.3","g2.1","g2.2","g2.3","g3.1","g3.2","g3.3")
     samples = c(paste("counts",samples,sep="."),paste("rpkm",samples,sep="."))

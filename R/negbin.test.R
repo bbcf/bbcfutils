@@ -1,4 +1,4 @@
-#!/bin/env
+#!usr/bin/env
 
 # This script looks for differential expression in RNA-seq data
 # of genomic features in different conditions.
@@ -7,8 +7,10 @@
 #  Usage:
 # --------
 # R --slave -f negbin.test.R --args 'data_file' -s ',' -d 'design_file' -c 'contrast_file' -o 'output_file'
+
+# Personal example:
 # (On Vital-IT, .bashrc contains: alias R="bsub -qbbcf -Ip -XF R --vanilla")
-#R --slave -f negbin.test.R --args 'tests/testing_files/genes_expression.tab' -s 'tab' -d 'tests/testing_files/design_mado' -c 'tests_testing_files/contrast_mado' -o 'output_file'
+# R --slave -f negbin.test.R --args 'tests/testing_files/genes_expression.tab' -s 'tab' -d 'tests/testing_files/design_mado' -c 'tests_testing_files/contrast_mado' -o 'output_file'
 
 # Arguments:
 # -s sep: character separating fields in the input files. Use 'tab' for tab delimiter (not '\t').
@@ -32,17 +34,14 @@
 # If no output_file is provided, output is printed to stdout.
 
 # Still to implement:
-# - DESeq must print output to a file
 # - Automatically generated contrast_file if not provided, just comparing groups (Tukey matrix -> ANOVA)
 
 
 library(MASS)
 library(multcomp)
-#library(lattice)
 
 args=commandArgs(trailingOnly = TRUE)
 args
-set.seed(123)
 
 data_file = args[1]
 sep = args[grep("-s",args)+1]
