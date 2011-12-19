@@ -2,28 +2,35 @@
 
 # This script looks for differential expression in RNA-seq data
 # of genomic features in different conditions.
-#
+
 # --------
 #  Usage:
 # --------
 # R --slave -f negbin.test.R --args 'data_file' -s ',' -d 'design_file' -c 'contrast_file' -o 'output_file'
 # (On Vital-IT, .bashrc contains: alias R="bsub -qbbcf -Ip -XF R --vanilla")
 #R --slave -f negbin.test.R --args 'tests/testing_files/genes_expression.tab' -s 'tab' -d 'tests/testing_files/design_mado' -c 'tests_testing_files/contrast_mado' -o 'output_file'
-#
+
+# Arguments:
+# -s sep: character separating fields in the input files. Use 'tab' for tab delimiter (not '\t').
+# -d design: name of the file containing the design matrix (see below).
+# -c contrast: name of the file containing the contrast matrix (see below).
+# -o output_file: name of the file containing the results. It is either created, or appends the
+#    results at the end of the file if it already exists.
+
 # The script is made to take as input the files returned by rnaseq.py, which format is the following:
 # - tab-delimited or CSV file containing (maybe normalized) read counts
 # - lines representing genomic features
 # - columns represent different samples
 # - the first column contains feature names
 # - columns containing counts are labeled "counts.<groupName>.<sampleIndex>" (e.g. counts.G1.3).
-#
+
 # If each group contains several replicate samples, a General Linear Model is fitted.
 # If at least one group contains no replicates, DESeq is used.
 #
 # To fit the GLM, the user needs to provide a design matrix and a contrast matrix in text format
 # (see tutorial [...]). If not found, DESeq is run.
 # If no output_file is provided, output is printed to stdout.
-#
+
 # Still to implement:
 # - DESeq must print output to a file
 # - Automatically generated contrast_file if not provided, just comparing groups (Tukey matrix -> ANOVA)
@@ -42,8 +49,8 @@ sep = args[grep("-s",args)+1]
 design_file = args[grep("-d",args)+1]
 contrast_file = args[grep("-c",args)+1]
 output_file = args[grep("-o",args)+1]
-
 if (sep=='tab') sep='\t'
+
 
 main <- function(data_file, sep="\t", contrast_file=FALSE, design_file=FALSE, output_file=FALSE){
     data = read.table(data_file, header=T, row.names=1, sep=sep)
@@ -58,10 +65,10 @@ main <- function(data_file, sep="\t", contrast_file=FALSE, design_file=FALSE, ou
         print("GLM")
         design = read_design(design_file, sep)
         contrast = read_contrast(contrast_file, sep)
-        comparisons = GLM(data, design, contrast, output_file)
+        GLM(data, design, contrast, output_file)
     }else{
         print("DESeq")
-        different = DES(data)
+        DES(data, output_file)
     }
 }
 
@@ -75,7 +82,7 @@ read_contrast <- function(contrast_file, sep){
 }
 
 
-DES <- function(data){  ## DESeq ##
+DES <- function(data, output_file=FALSE){  ## DESeq ##
     library(DESeq)
     samples = colnames(data)
     conds = unlist(lapply(strsplit(samples,".",fixed=T), "[[", 2))
@@ -86,13 +93,25 @@ DES <- function(data){  ## DESeq ##
     cds <- estimateSizeFactors(cds)
     cds <- estimateVarianceFunctions(cds, method='blind')
     couples = combn(unique(groups),2)
+    contrast.names = c()
     for (i in 1:dim(couples)[2]){
         res <- nbinomTest(cds, couples[1,i], couples[2,i])
         res = res[order(res[,8]),] # sort w.r.t. adjusted p-value
-        result[[paste(couples[1,i],"-",couples[2,i])]] = res
+        comp = paste(couples[1,i],"-",couples[2,i])
+        contrast.names = c(contrast.names,comp)
+        result[[comp]] = res
     }
     ## Return ##
-    result
+    if (output_file == FALSE){
+        print(result)
+    }else{
+        for (comp in contrast.names) {
+            #result = signif(result[[comp]],4)
+            write(comp,output_file,append=T)
+            write.table(result[[comp]],output_file, quote=F,row.names=T,col.names=T,append=T,sep="\t")
+            write(c(),output_file,append=T)
+        }
+    }
 }
 
 
@@ -191,4 +210,4 @@ GLM <- function(data, design, contrast, output_file=FALSE){
     }
 }
 
-main(data_file,sep=sep,design_file=design_file, contrast_file=contrast_file)
+main(data_file,sep=sep,design_file=design_file, contrast_file=contrast_file, output_file=output_file)
