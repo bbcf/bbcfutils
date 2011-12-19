@@ -62,8 +62,9 @@ def main():
         job.options['ucsc_bigwig'] = job.options.get('ucsc_bigwig') or True
         job.options['gdv_project'] = job.options.get('gdv_project') or False
         job.options['discard_pcr_duplicates'] = job.options.get('discard_pcr_duplicates') or False
-        assembly = genrep.Assembly(assembly=job.assembly_id, intype=1)
+        g_rep = genrep.GenRep( gl.get('genrep_url'), gl.get('bwt_root') )
             #intype is for mapping on the genome (intype=0), exons (intype=1) or transcriptome (intype=2)
+        assembly = genrep.Assembly(assembly=job.assembly_id, genrep=g_rep, intype=1)
 
         # Retrieve mapseq output
         mapseq_url = None
