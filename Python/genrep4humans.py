@@ -60,9 +60,9 @@ def main():
                 regions.append([chrom,int(start),int(end)])
 
         # Program body
-        g_rep = genrep.GenRep(url=genrep_url, root=genrep_root, intype=opt.intype)
+        g_rep = genrep.GenRep(url=genrep_url, root=genrep_root)
         if opt.assembly:
-            assembly = genrep.Assembly(assembly=assembly_id,genrep=g_rep)
+            assembly = genrep.Assembly(assembly=assembly_id,genrep=g_rep,intype=opt.intype)
         if opt.list:
             if opt.assembly:
                 table = ["\t".join((_compact_key(k),v['name'],str(v['length'])))
