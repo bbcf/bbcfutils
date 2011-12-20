@@ -98,7 +98,6 @@ def main():
                                 name = re.sub('\.sql','',str(f)),
                                 gdv_url=gl['gdv']['url'] )
              for k,f in allfiles['sql'].iteritems()]
-        allfiles.pop("pdf")
         print json.dumps(allfiles)
 
         # E-mail
