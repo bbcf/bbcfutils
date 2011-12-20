@@ -90,9 +90,9 @@ def main(argv = None):
         primers_dict=c4seq.loadPrimers(primers_file)
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
             (mapseq_files, job) = mapseq.get_bam_wig_files( ex, job, ms_limspath, mapseq_url, suffix=['merged'],script_path=gl['script_path'], via=via )
-            c4seq_files = c4seq.workflow_groups( ex, job, primers_dict, g_rep,
-                                           mapseq_files, mapseq_url,
-                                           gl['script_path'])
+            c4seq_files = c4seq.workflow_groups( ex, job, primers_dict, assembly,
+                                                 mapseq_files, mapseq_url,
+                                                 gl['script_path'])
             if job.options.get('create_gdv_project'):
                 gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
                                                job.description, assembly.id, 
