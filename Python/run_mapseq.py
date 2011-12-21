@@ -132,7 +132,7 @@ def main(argv = None):
                     logfile.write("GDV project: "+json.dumps(gdv_project)+"\n");logfile.flush()
                     add_pickle( ex, gdv_project, description=set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
         allfiles = get_files( ex.id, M )
-        if 'ucsc_bigwig' and g_rep.intype == 0:
+        if 'ucsc_bigwig' and assembly.intype == 0:
             logfile.write("UCSC track file: "+hts_key+".bed\n");logfile.flush()
             ucscfiles = get_files( ex.id, M, select_param={'ucsc':'1'} )
             with open(hts_key+".bed",'w') as ucscbed:

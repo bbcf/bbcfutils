@@ -98,8 +98,8 @@ def main(argv = None):
             (mapped_files, job) = mapseq.get_bam_wig_files( ex, job, minilims=ms_limspath, hts_url=mapseq_url,
                                                             script_path=gl.get('script_path') or '', via=via )
             logfile.write("Starting workflow.\n");logfile.flush()
-            chipseq_files = workflow_groups( ex, job, mapped_files, assembly.chromosomes,
-                                             gl.get('script_path') or '', g_rep, logfile=logfile, via=via )
+            chipseq_files = workflow_groups( ex, job, mapped_files, assembly,
+                                             gl.get('script_path') or '', logfile=logfile, via=via )
             if job.options.get('create_gdv_project',False):
                 logfile.write("Creating GDV project.\n");logfile.flush()
                 gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'], 
