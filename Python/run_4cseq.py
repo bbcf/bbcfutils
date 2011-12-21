@@ -110,10 +110,14 @@ def main(argv = None):
             gdv_project_url = gl['gdv']['url']+"public/project?k="+str(gdv_project['project']['key'])+"&id="+str(gdv_project['project']['id'])
             allfiles['url'] = {gdv_project_url: 'GDV view'}
             download_url = gl['hts_4cseq']['download']
-            [gdv.new_track( gl['gdv']['email'], gl['gdv']['key'], 
-                            project_id=gdv_project['project']['id'],
-                            url=download_url+str(k), file_names=re.sub('\.sql.*','',str(f)),
-                            serv_url=gl['gdv']['url'] ) for k,v in allfiles['sql'].iteritems()]
+            for k,v in allfiles['sql'].iteritems()
+                try:
+                    gdv.new_track( gl['gdv']['email'], gl['gdv']['key'], 
+                                   project_id=gdv_project['project']['id'],
+                                   url=download_url+str(k), file_names=re.sub('\.sql.*','',str(f)),
+                                   serv_url=gl['gdv']['url'] )
+                except:
+                    pass
         print json.dumps(allfiles)
         with open(hts_key+".done",'w') as done:
             json.dump(allfiles,done)

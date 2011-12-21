@@ -117,11 +117,14 @@ def main(argv = None):
             urls  = [download_url+str(k) for k in allfiles['sql'].keys()]
             names = [re.sub('\.sql.*','',str(f)) for f in allfiles['sql'].values()]
             logfile.write("Uploading GDV tracks:\n"+" ".join(urls)+"\n"+" ".join(names)+"\n");logfile.flush()
-            [gdv.new_track( gl['gdv']['email'], gl['gdv']['key'], 
-                            project_id=gdv_project['project']['id'],
-                            url=url, file_names=names[nurl],
-                            serv_url=gl['gdv']['url'] ) 
-             for nurl,url in enumerate(urls)]
+            for nurl,url in enumerate(urls):
+                try:
+                    gdv.new_track( gl['gdv']['email'], gl['gdv']['key'], 
+                                   project_id=gdv_project['project']['id'],
+                                   url=url, file_names=names[nurl],
+                                   serv_url=gl['gdv']['url'] )
+                except:
+                    pass
         logfile.close()
         print json.dumps(allfiles)
         with open(hts_key+".done",'w') as done:
