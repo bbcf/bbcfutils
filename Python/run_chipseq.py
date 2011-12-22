@@ -89,6 +89,10 @@ def main(argv = None):
         if 'hts_mapseq' in gl:
             mapseq_url = gl['hts_mapseq']['url']
         job.options['ucsc_bigwig'] = True
+        if not('create_gdv_project' in job.options):
+            job.options['create_gdv_project'] = False
+        elif isinstance(job.options['create_gdv_project'],str):
+            job.options['create_gdv_project'] = job.options['create_gdv_project'].lower() in ['1','true','t']
         g_rep = genrep.GenRep( gl.get("genrep_url"), gl.get("bwt_root") )
         assembly = genrep.Assembly( assembly=job.assembly_id, genrep=g_rep )
         logfile = open(hts_key+".log",'w')
@@ -100,7 +104,7 @@ def main(argv = None):
             logfile.write("Starting workflow.\n");logfile.flush()
             chipseq_files = workflow_groups( ex, job, mapped_files, assembly,
                                              gl.get('script_path') or '', logfile=logfile, via=via )
-            if job.options.get('create_gdv_project',False):
+            if job.options.get('create_gdv_project'):
                 logfile.write("Creating GDV project.\n");logfile.flush()
                 gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'], 
                                                job.description, assembly.id,
