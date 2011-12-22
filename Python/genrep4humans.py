@@ -74,7 +74,7 @@ def main():
         if not(opt.assembly):
             return 0
         if opt.regions:
-            seq = g_rep.fasta_from_regions(assembly.chromosomes, regions=regions, out={})[0]
+            seq = assembly.fasta_from_regions(regions=regions, out={})[0]
             for reg in regions:
                 fout.write(">"+assembly.name+"|"+reg[0]+":"+str(reg[1])+"-"+str(reg[2])+"\n")
                 fout.write(seq[reg[0]].pop(0)+"\n")
@@ -83,9 +83,9 @@ def main():
             fout.write(assembly.index_path+"\n")
         if opt.fasta:
             fout.write(">"+str(assembly.id)+":"+assembly.name+" fasta file\n")
-            fout.write(g_rep.fasta_path(assembly)+"\n")
+            fout.write(assembly.fasta_path()+"\n")
         if opt.stats:
-            stats = g_rep.statistics(assembly,frequency=True)
+            stats = assembly.statistics(frequency=True)
             fout.write("\n".join([k+":\t"+str(stats[k]) for k in sorted(stats.keys())])+"\n")
         fout.close()
         if opt.convert:
