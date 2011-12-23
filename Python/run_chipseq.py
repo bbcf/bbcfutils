@@ -112,7 +112,7 @@ def main(argv = None):
                 logfile.write("GDV project: "+str(gdv_project['project']['id'])+"\n");logfile.flush()
                 add_pickle( ex, gdv_project, description=set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
             else:
-                gdv_project = {'message': None}
+                gdv_project = {'message': ''}
         allfiles = get_files( ex.id, M )
         if re.search(r'success',gdv_project['message']) and 'sql' in allfiles:
             gdv_project_url = gl['gdv']['url']+"public/project?k="+str(gdv_project['project']['key'])+"&id="+str(gdv_project['project']['id'])
