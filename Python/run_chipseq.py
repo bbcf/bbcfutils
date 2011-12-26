@@ -5,7 +5,7 @@ A High-throughput ChIP-seq peak analysis workflow.
 
 """
 from bein import execution, MiniLIMS
-from bein.util import use_pickle
+from bein.util import use_pickle, add_pickle
 from bbcflib import genrep, frontend, email, gdv, mapseq
 from bbcflib.common import get_files
 from bbcflib.chipseq import *
@@ -104,6 +104,7 @@ def main(argv = None):
             logfile.write("Starting workflow.\n");logfile.flush()
             chipseq_files = workflow_groups( ex, job, mapped_files, assembly,
                                              gl.get('script_path') or '', logfile=logfile, via=via )
+            gdv_project = {}
             if job.options.get('create_gdv_project'):
                 logfile.write("Creating GDV project.\n");logfile.flush()
                 gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'], 
@@ -111,10 +112,8 @@ def main(argv = None):
                                                gl['gdv']['url'] )
                 logfile.write("GDV project: "+str(gdv_project['project']['id'])+"\n");logfile.flush()
                 add_pickle( ex, gdv_project, description=set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
-            else:
-                gdv_project = {'message': ''}
         allfiles = get_files( ex.id, M )
-        if re.search(r'success',gdv_project['message']) and 'sql' in allfiles:
+        if re.search(r'success',gdv_project.get('message','')) and 'sql' in allfiles:
             gdv_project_url = gl['gdv']['url']+"public/project?k="+str(gdv_project['project']['key'])+"&id="+str(gdv_project['project']['id'])
             allfiles['url'] = {gdv_project_url: 'GDV view'}
             download_url = gl['hts_chipseq']['download']
