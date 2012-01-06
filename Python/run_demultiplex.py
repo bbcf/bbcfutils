@@ -75,6 +75,7 @@ def main(argv = None):
             gl = use_pickle( M, "global variables" )
             htss = frontend.Frontend( url=gl['hts_demultiplex']['url'] )
             job = htss.job( hts_key )
+            [M.delete_execution(x) for x in M.search_executions(with_description=hts_key,fails=True)]
         elif os.path.exists(config_file):
             (job,gl) = frontend.parseConfig( config_file )
         else:
