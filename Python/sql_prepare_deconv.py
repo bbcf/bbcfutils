@@ -24,13 +24,14 @@ class Usage(Exception):
 
 def parse_bed(file_name, seqname=None):
     def select_by_seqname(l):
+        if l.startswith("track"):
+            return False
         if seqname == None:
             return True
         else:
             return re.match(seqname+r'\b',l)
     with open(file_name,'r') as fh:
         bed_list=[l.rstrip('\n').split('\t') for l in fh if select_by_seqname(l)]
-        fh.close()
     return bed_list
 
 def main(argv = None):

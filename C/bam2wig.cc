@@ -296,6 +296,11 @@ inline static int accumulate( const samtools::bam1_t *b, void *d ) {
 // ****************** ref is the target set (therefore current set is the control),
 // ****************** only record at positions present in ref
 	int start = b->core.pos+1, stop = b->core.pos+opts.cut;
+	if (bam1_strand(b)) {
+	    stop = start+b->core.l_qseq-1;
+	    start = stop-opts.cut+1;
+	    if (start<1) start=1;
+	}
 	for ( int i = start; i <= stop; i++ ) {
 	    if (!data->scounts || data->scounts->count(i)) {
 		if (bam1_strand(b)) { // reverse strand
