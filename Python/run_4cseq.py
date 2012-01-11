@@ -103,7 +103,7 @@ def main(argv = None):
                                                job.description, assembly.id, 
                                                gl['gdv']['url'] )
                 add_pickle( ex, gdv_project, 
-                            description=set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
+                            description=common.set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
         ucscfiles = common.get_files( ex.id, M, select_param={'ucsc':'1'} )
         with open(hts_key+".bed",'w') as ucscbed:
             for ftype,fset in ucscfiles.iteritems():
