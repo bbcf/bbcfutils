@@ -124,7 +124,7 @@ def main(argv = None):
             download_url = gl['hts_4cseq']['download']
 	    urls=[]
 	    names=[]
-	    for k,v in allfiles['sql']:
+	    for k,v in allfiles['sql'].iteritems():
 		if re.search(r'admin',v): continue
 	 	urls.append(download_url+str(k))
 		names.append(re.sub('\.sql.*','',str(v)))
