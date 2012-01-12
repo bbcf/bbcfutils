@@ -7,7 +7,7 @@ A High-throughput 4C-seq analysis workflow.
 from bbcflib import genrep, frontend, email, gdv, common, mapseq
 from bein import execution, MiniLIMS
 from bein.util import use_pickle, add_pickle
-import sys, getopt, os, json
+import sys, getopt, os, re, json
 
 from bbcflib import c4seq
 
