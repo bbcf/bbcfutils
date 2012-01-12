@@ -93,15 +93,22 @@ def main(argv = None):
         assembly = genrep.Assembly( assembly=job.assembly_id, genrep=g_rep )
         primers_file='/scratch/cluster/monthly/htsstation/4cseq/'+str(job.id)+'/primers.fa'
         primers_dict=c4seq.loadPrimers(primers_file)
+	logfile = open(hts_key+".log",'w')
+	logfile.write(json.dumps(gl));logfile.flush()
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
+	    logfile.write("Enter execution, fetch bam and wig files.\n");logfile.flush()
             (mapseq_files, job) = mapseq.get_bam_wig_files( ex, job, ms_limspath, mapseq_url, suffix=['merged'],script_path=gl['script_path'], via=via )
-            c4seq_files = c4seq.workflow_groups( ex, job, primers_dict, assembly,
+            logfile.write("Starting workflow.\n");logfile.flush()
+	    c4seq_files = c4seq.workflow_groups( ex, job, primers_dict, assembly,
                                                  mapseq_files, mapseq_url,
                                                  gl['script_path'])
+	    gdv_project = {}
             if job.options.get('create_gdv_project'):
+		logfile.write("Creating GDV project.\n");logfile.flush()
                 gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
                                                job.description, assembly.id, 
                                                gl['gdv']['url'] )
+		logfile.write("GDV project: "+str(gdv_project['project']['id'])+"\n");logfile.flush()
                 add_pickle( ex, gdv_project, 
                             description=common.set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
         ucscfiles = common.get_files( ex.id, M, select_param={'ucsc':'1'} )
@@ -115,14 +122,20 @@ def main(argv = None):
             gdv_project_url = gl['gdv']['url']+"public/project?k="+str(gdv_project['project']['key'])+"&id="+str(gdv_project['project']['id'])
             allfiles['url'] = {gdv_project_url: 'GDV view'}
             download_url = gl['hts_4cseq']['download']
+	    for k,v in allfiles['sql']:
+		if re.search(r'admin',v): continue
+	 	urls.append(download_url+str(k))
+		names.append(re.sub('\.sql.*','',str(v)))
+	    logfile.write("Uploading GDV tracks:\n"+" ".join(urls)+"\n"+" ".join(names)+"\n");logfile.flush()
             for k,v in allfiles['sql'].iteritems():
                 try:
                     gdv.new_track( gl['gdv']['email'], gl['gdv']['key'], 
                                    project_id=gdv_project['project']['id'],
-                                   url=download_url+str(k), file_names=re.sub('\.sql.*','',str(f)),
+                                   url=download_url+str(k), file_names=re.sub('\.sql.*','',str(v)),
                                    serv_url=gl['gdv']['url'] )
                 except:
                     pass
+	logfile.close()
         print json.dumps(allfiles)
         with open(hts_key+".done",'w') as done:
             json.dump(allfiles,done)
