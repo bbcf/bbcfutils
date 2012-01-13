@@ -125,9 +125,10 @@ def main(argv = None):
 	    urls=[]
 	    names=[]
 	    for k,v in allfiles['sql'].iteritems():
-		if re.search(r'admin',v): continue
-	 	urls.append(download_url+str(k))
-		names.append(re.sub('\.sql.*','',str(v)))
+		if re.search(r'gdv',v):
+			urls.append(download_url+str(k))
+			if re.search(r'\.sql',str(v)):names.append(re.sub('\.sql.*','',str(v)))
+			if re.search(r'\.bedGraph',str(v)):names.append(re.sub('\.bedGraph.*','',str(v)))
 	    logfile.write("Uploading GDV tracks:\n"+" ".join(urls)+"\n"+" ".join(names)+"\n");logfile.flush()
             for nurl,url in enumerate(urls):
                 try:
