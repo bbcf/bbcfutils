@@ -124,11 +124,12 @@ def main(argv = None):
             download_url = gl['hts_4cseq']['download']
 	    urls=[]
 	    names=[]
-	    for k,v in allfiles['sql'].iteritems():
-		if re.search(r'gdv',v):
-			urls.append(download_url+str(k))
-			if re.search(r'\.sql',str(v)):names.append(re.sub('\.sql.*','',str(v)))
-			if re.search(r'\.bedGraph',str(v)):names.append(re.sub('\.bedGraph.*','',str(v)))
+	    for l,t in allfiles.iteritems:
+		    for k,v in allfiles[l].iteritems():
+			if re.search(r'gdv',v):
+				urls.append(download_url+str(k))
+				if re.search(r'\.sql',str(v)):names.append(re.sub('\.sql.*','',str(v)))
+				if re.search(r'\.bedGraph',str(v)):names.append(re.sub('\.bedGraph.*','',str(v)))
 	    logfile.write("Uploading GDV tracks:\n"+" ".join(urls)+"\n"+" ".join(names)+"\n");logfile.flush()
             for nurl,url in enumerate(urls):
                 try:
