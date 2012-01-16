@@ -126,8 +126,8 @@ def main(argv = None):
                                    project_id=gdv_project['project']['id'],
                                    url=url, file_names=names[nurl],
                                    serv_url=gl['gdv']['url'] )
-                except:
-                    pass
+                except Exception, e:
+                    logfile.write("Error with %s: %s\n" %(names[nurl],e));logfile.flush()
         logfile.close()
         print json.dumps(allfiles)
         with open(hts_key+".done",'w') as done:
