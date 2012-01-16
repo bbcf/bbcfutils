@@ -60,6 +60,9 @@ main <- function(data_file, sep="\t", contrast_file=FALSE, design_file=FALSE, ou
     ## Choose GLM if every group has replicates, DESeq otherwise ##
     samples = colnames(data)
     conds = unlist(lapply(strsplit(samples,".",fixed=T), "[[", 2))
+    #print(all(table(conds)>1))
+    #print(file.exists(design_file))
+    #print(file.exists(contrast_file))
     if (all(table(conds)>1) && file.exists(design_file) && file.exists(contrast_file)){
         print("GLM")
         design = read_design(design_file, sep)

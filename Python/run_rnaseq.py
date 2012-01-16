@@ -5,7 +5,7 @@ A High-throughput RNA-seq analysis workflow.
 python run_rnaseq.py -v lsf -c config_files/gapdh.txt -d rnaseq -p transcripts
 python run_rnaseq.py -v lsf -c config_files/rnaseq.txt -d rnaseq -p genes -m /scratch/cluster/monthly/jdelafon/mapseq
 """
-import os, sys, json, re
+import os, sys, json
 import optparse
 from bbcflib import rnaseq, frontend, common, mapseq, genrep, email, gdv
 from bein.util import use_pickle
@@ -60,7 +60,7 @@ def main():
         pileup_level = opt.pileup_level.split(',')
 
         job.options['ucsc_bigwig'] = job.options.get('ucsc_bigwig') or True
-        job.options['gdv_project'] = job.options.get('gdv_project') or False
+        job.options['gdv_project'] = job.options.get('gdv_project') or {'project_id':None, 'public_url':None}
         job.options['discard_pcr_duplicates'] = job.options.get('discard_pcr_duplicates') or False
         g_rep = genrep.GenRep( gl.get('genrep_url'), gl.get('bwt_root') )
             #intype is for mapping on the genome (intype=0), exons (intype=1) or transcriptome (intype=2)
@@ -86,18 +86,19 @@ def main():
                 assert bam_files, "Bam files not found."
                 print "Loaded."
             rnaseq.rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=pileup_level, via=opt.via, unmapped=opt.unmapped)
+        allfiles = common.get_files(ex.id, M)
 
         # GDV
-        allfiles = common.get_files(ex.id, M)
-        if 'gdv_project' in job.options and 'sql' in allfiles:
-            allfiles['url'] = {job.options['gdv_project']['public_url']: 'GDV view'}
-            download_url = gl['hts_rnapseq']['download']
-            [gdv.add_gdv_track( gl['gdv']['key'], gl['gdv']['email'],
-                                job.options['gdv_project']['project_id'],
-                                url=download_url+str(k),
-                                name = re.sub('\.sql','',str(f)),
-                                gdv_url=gl['gdv']['url'] )
-             for k,f in allfiles['sql'].iteritems()]
+        #if 'gdv_project' in job.options and 'sql' in allfiles:
+        #    download_url = gl['hts_rnaseq']['download']
+        #    [gdv.add_gdv_track( gl['gdv']['key'], gl['gdv']['email'],
+        #                        job.options['gdv_project']['project_id'],
+        #                        url=download_url+str(k),
+        #                        name = re.sub('\.sql','',str(f)),
+        #                        gdv_url=gl['gdv']['url'] )
+        #       for k,f in allfiles['sql'].iteritems()]
+        #    allfiles['url'] = {job.options['gdv_project']['public_url']: 'GDV view'}
+
         print json.dumps(allfiles)
 
         # E-mail
@@ -120,4 +121,6 @@ def main():
 
 if __name__ == '__main__':
     sys.exit(main())
+
+
 
