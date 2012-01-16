@@ -125,6 +125,7 @@ def main(argv = None):
                     job.options['read_extension'] = mapped_files.values()[0].values()[0]['stats']['read_length']
                 density_files = densities_groups( ex, job, mapped_files, assembly.chromosomes, via=via )
                 logfile.write("Finished computing densities.\n");logfile.flush()
+                gdv_project = {}
                 if job.options['create_gdv_project']:
                     logfile.write("Creating GDV project.\n");logfile.flush()
                     gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
@@ -140,7 +141,7 @@ def main(argv = None):
                     for ffile,descr in fset.iteritems():
                         if re.search(r' \(.*\)',descr): continue
                         ucscbed.write(track_header(descr,ftype,gl['hts_mapseq']['download'],ffile))
-        if job.options['create_gdv_project'] and re.search(r'success',gdv_project['message']):
+        if job.options['create_gdv_project'] and re.search(r'success',gdv_project.get('message','')):
             gdv_project_url = gl['gdv']['url']+"public/project?k="+str(gdv_project['project']['key'])+"&id="+str(gdv_project['project']['id'])
             allfiles['url'] = {gdv_project_url: 'GDV view'}
             download_url = gl['hts_mapseq']['download']
@@ -153,8 +154,8 @@ def main(argv = None):
                                    project_id=gdv_project['project']['id'],
                                    url=url, file_names=names[nurl],
                                    serv_url=gl['gdv']['url'] )
-                except:
-                    pass
+                except Exception, e:
+                    logfile.write("Error with %s: %s\n" %(names[nurl],e));logfile.flush()
         logfile.close()
         print json.dumps(allfiles)
         with open(hts_key+".done",'w') as done:
