@@ -29,10 +29,9 @@ def MAplot(dataset, cols=[2,3], annotate=None, mode="normal", data_format="count
     in two different conditions. It returns the name of the .png file produced,
     and the name of a json containing enough information to reconstruct the plot using Javascript.
 
-    :param cols: list containing the numbers of the two columns containing the numeric data to compare.
-    :param sep: character delimiting the columns.
     :param dataset: list or string, containing names of up to six CSV files with rows
     of the form (feature_name, sample1, sample2, ...).
+    :param cols: list containing the numbers of the two columns containing the numeric data to compare.
     :param annotate: in 'normal' mode, choose which for which datasets you want the
     points to be labeled. In a list, enter 1 to annotate, 0 not to annotate, in the
     same order as datasets were entered. E.g. [0,0,1] to annotate only the third of 3
@@ -40,22 +39,28 @@ def MAplot(dataset, cols=[2,3], annotate=None, mode="normal", data_format="count
     :param mode: (str) display mode:
     * If `normal`, name of genes over 99%/under 1% quantile are displayed.
     * If `interactive`, click on a point to display its name.
-    * If `json`, a .json file is produced that allows to reproduce th graph
+    * If `json`, a .json file is produced that allows to reproduce th graph.
     in a web interface using Javascript.
     :param data_format: `counts` or `rpkm`.
-    :param deg: (int) the degree of the interpolating polynomial splines
-    :param bins: (int) the number of divisions of the x axis for quantiles estimation
+    :param sep: character delimiting the columns.
+    :param limits: (list[4]) bounds of the region displayed on the output graph: [minx,maxx,miny,maxy].
+    :param slimits: (list[2]) left and right bounds of the section of the splines to be displayed.
+    :param deg: (int) the degree of the interpolating polynomial splines.
+    :param bins: (int) the number of divisions of the x axis for quantiles estimation.
     :param assembly_id: (str or int) if an assembly ID is given,
     the json output will provide links to information on genes.
-    :param title: (str), title to be written on top of the graph.
+    :param quantiles: (bool) if False, no quantile splines are drawn.
+    :param title: (str) title to be written on top of the graph.
     :param extremes: (int) create an output file containing features for which ratios were outside the specified
     percentile (two-sided). For the moment, must be 1 or 5. The file is named *extreme_ratios_xxxxx* .
     """
     # Constants:
     if data_format == "counts":
         lower = 1
+        #bounds of what is taken into account for the computation of the splines
         spline_xmin = math.log10(math.sqrt(10)) #counts of 2,3 -> log(sqrt(2*3))
         spline_xmax = None
+        #bounds of the section of the splines that is displayed
         slimits[0] = slimits[0] or 1
     elif data_format == "rpkm":
         lower = 0
@@ -236,6 +241,7 @@ def MAplot(dataset, cols=[2,3], annotate=None, mode="normal", data_format="count
                            "data": spline_coords[i],
                            "lines": {"show":True, "lineWidth":0, "fill": transparencies.next()},
                            "color": rgb_to_hex((255,0,255))})
+
         jsdata = "var data = " + json.dumps(jsdata) + ";\n" \
                  + "var splinelabels = " + json.dumps(splinelabels) + ";\n"
 
