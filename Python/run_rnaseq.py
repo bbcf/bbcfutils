@@ -5,7 +5,7 @@ A High-throughput RNA-seq analysis workflow.
 python run_rnaseq.py -v lsf -c config_files/gapdh.txt -d rnaseq -p transcripts
 python run_rnaseq.py -v lsf -c config_files/rnaseq.txt -d rnaseq -p genes -m /scratch/cluster/monthly/jdelafon/mapseq
 """
-import os, sys, json
+import os, sys, json, re
 import optparse
 from bbcflib import rnaseq, frontend, common, mapseq, genrep, email, gdv
 from bein.util import use_pickle
@@ -59,9 +59,11 @@ def main():
         else: raise ValueError("Need either a job key (-k) or a configuration file (-c).")
         pileup_level = opt.pileup_level.split(',')
 
-        job.options['ucsc_bigwig'] = job.options.get('ucsc_bigwig') or True
-        job.options['gdv_project'] = job.options.get('gdv_project') or {'project_id':None, 'public_url':None}
-        job.options['discard_pcr_duplicates'] = job.options.get('discard_pcr_duplicates') or False
+        job.options['ucsc_bigwig'] = job.options.get('ucsc_bigwig',True)
+        job.options['gdv_project'] = job.options.get('gdv_project',False)
+        if isinstance(job.options['create_gdv_project'],str):
+            job.options['create_gdv_project'] = job.options['create_gdv_project'].lower() in ['1','true','t']
+        job.options['discard_pcr_duplicates'] = False
         g_rep = genrep.GenRep( gl.get('genrep_url'), gl.get('bwt_root') )
             #intype is for mapping on the genome (intype=0), exons (intype=1) or transcriptome (intype=2)
         assembly = genrep.Assembly(assembly=job.assembly_id, genrep=g_rep, intype=1)
@@ -86,19 +88,27 @@ def main():
                 assert bam_files, "Bam files not found."
                 print "Loaded."
             rnaseq.rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=pileup_level, via=opt.via, unmapped=opt.unmapped)
-        allfiles = common.get_files(ex.id, M)
-
+            gdv_project = {}
+            if job.options['create_gdv_project']:
+                gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
+                                               job.description, assembly.id, gl['gdv']['url'] )
+                add_pickle( ex, gdv_project, description=set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
         # GDV
-        #if 'gdv_project' in job.options and 'sql' in allfiles:
-        #    download_url = gl['hts_rnaseq']['download']
-        #    [gdv.add_gdv_track( gl['gdv']['key'], gl['gdv']['email'],
-        #                        job.options['gdv_project']['project_id'],
-        #                        url=download_url+str(k),
-        #                        name = re.sub('\.sql','',str(f)),
-        #                        gdv_url=gl['gdv']['url'] )
-        #       for k,f in allfiles['sql'].iteritems()]
-        #    allfiles['url'] = {job.options['gdv_project']['public_url']: 'GDV view'}
-
+        allfiles = common.get_files(ex.id, M)
+        if job.options['create_gdv_project'] and re.search(r'success',gdv_project.get('message','')):
+            gdv_project_url = gl['gdv']['url']+"public/project?k="+str(gdv_project['project']['key'])+"&id="+str(gdv_project['project']['id'])
+            allfiles['url'] = {gdv_project_url: 'GDV view'}
+            download_url = gl['hts_rnaseq']['download']
+            urls  = [download_url+str(k) for k in allfiles['sql'].keys()]
+            names = [re.sub('\.sql.*','',str(f)) for f in allfiles['sql'].values()]
+            for nurl,url in enumerate(urls):
+                try:
+                    gdv.new_track( gl['gdv']['email'], gl['gdv']['key'], 
+                                   project_id=gdv_project['project']['id'],
+                                   url=url, file_names=names[nurl],
+                                   serv_url=gl['gdv']['url'] )
+                except:
+                    pass
         print json.dumps(allfiles)
 
         # E-mail
@@ -121,6 +131,4 @@ def main():
 
 if __name__ == '__main__':
     sys.exit(main())
-
-
 
