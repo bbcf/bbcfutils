@@ -8,7 +8,7 @@ python run_rnaseq.py -v lsf -c config_files/rnaseq.txt -d rnaseq -p genes -m /sc
 import os, sys, json, re
 import optparse
 from bbcflib import rnaseq, frontend, common, mapseq, genrep, email, gdv
-from bein.util import use_pickle
+from bein.util import use_pickle, add_pickle
 from bein import execution, MiniLIMS
 
 class Usage(Exception):
@@ -60,7 +60,7 @@ def main():
         pileup_level = opt.pileup_level.split(',')
 
         job.options['ucsc_bigwig'] = job.options.get('ucsc_bigwig',True)
-        job.options['gdv_project'] = job.options.get('gdv_project',False)
+        job.options['create_gdv_project'] = job.options.get('create_gdv_project',False)
         if isinstance(job.options['create_gdv_project'],str):
             job.options['create_gdv_project'] = job.options['create_gdv_project'].lower() in ['1','true','t']
         job.options['discard_pcr_duplicates'] = False
@@ -92,18 +92,19 @@ def main():
             if job.options['create_gdv_project']:
                 gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
                                                job.description, assembly.id, gl['gdv']['url'] )
-                add_pickle( ex, gdv_project, description=set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
+                add_pickle( ex, gdv_project, description=common.set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
         # GDV
         allfiles = common.get_files(ex.id, M)
         if job.options['create_gdv_project'] and re.search(r'success',gdv_project.get('message','')):
-            gdv_project_url = gl['gdv']['url']+"public/project?k="+str(gdv_project['project']['key'])+"&id="+str(gdv_project['project']['id'])
+            gdv_project_url = gl['gdv']['url']+"public/project?k="+str(gdv_project['project']['key']) \
+                              +"&id="+str(gdv_project['project']['id'])
             allfiles['url'] = {gdv_project_url: 'GDV view'}
             download_url = gl['hts_rnaseq']['download']
             urls  = [download_url+str(k) for k in allfiles['sql'].keys()]
             names = [re.sub('\.sql.*','',str(f)) for f in allfiles['sql'].values()]
             for nurl,url in enumerate(urls):
                 try:
-                    gdv.new_track( gl['gdv']['email'], gl['gdv']['key'], 
+                    gdv.new_track( gl['gdv']['email'], gl['gdv']['key'],
                                    project_id=gdv_project['project']['id'],
                                    url=url, file_names=names[nurl],
                                    serv_url=gl['gdv']['url'] )

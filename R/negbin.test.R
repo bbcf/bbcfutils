@@ -10,7 +10,10 @@
 
 # Personal example:
 # (On Vital-IT, .bashrc contains: alias R="bsub -qbbcf -Ip -XF R --vanilla")
-# R --slave -f negbin.test.R --args 'tests/testing_files/genes_expression.tab' -s 'tab' -d 'tests/testing_files/design_mado' -c 'tests_testing_files/contrast_mado' -o 'output_file'
+# DESeq:
+# R --slave -f negbin.test.R --args 'tests/testing_files/genes_expression.tab' -s 'tab' -o 'tests/testing_files/output_deseq.txt'
+# GLM:
+# R --slave -f negbin.test.R --args 'tests/testing_files/genes_expression.tab' -s 'tab' -d 'tests/testing_files/design_mado.txt' -c 'tests/testing_files/contrast_mado.txt' -o 'tests/testing_files/output_glm.txt'
 
 # Arguments:
 # -s sep: character separating fields in the input files. Use 'tab' for tab delimiter (not '\t').
@@ -60,16 +63,16 @@ main <- function(data_file, sep="\t", contrast_file=FALSE, design_file=FALSE, ou
     ## Choose GLM if every group has replicates, DESeq otherwise ##
     samples = colnames(data)
     conds = unlist(lapply(strsplit(samples,".",fixed=T), "[[", 2))
-    #print(all(table(conds)>1))
-    #print(file.exists(design_file))
-    #print(file.exists(contrast_file))
+    print(paste("- All groups have several runs: ", all(table(conds)>1)))
+    print(paste("- Design file exists: ", file.exists(design_file)," - ",design_file))
+    print(paste("- Contrast file exists: " ,file.exists(contrast_file)," - ",contrast_file))
     if (all(table(conds)>1) && file.exists(design_file) && file.exists(contrast_file)){
-        print("GLM")
+        print("Method: GLM")
         design = read_design(design_file, sep)
         contrast = read_contrast(contrast_file, sep)
         GLM(data, design, contrast, output_file)
     }else{
-        print("DESeq")
+        print("Method: DESeq (either design/contrast files missing, or at least one group has no replicates.)")
         DES(data, output_file)
     }
 }
@@ -110,7 +113,7 @@ DES <- function(data, output_file=FALSE){  ## DESeq ##
         for (comp in contrast.names) {
             #result = signif(result[[comp]],4)
             write(comp,output_file,append=T)
-            write.table(result[[comp]],output_file, quote=F,row.names=T,col.names=T,append=T,sep="\t")
+            write.table(result[[comp]],output_file,quote=F,row.names=T,col.names=T,append=T,sep="\t")
             write(c(),output_file,append=T)
         }
     }
