@@ -124,7 +124,7 @@ def main(argv = None):
             download_url = gl['hts_4cseq']['download']
 	    urls=[]
 	    names=[]
-	    for l,t in allfiles.iteritems:
+	    for l,t in allfiles.iteritems():
 		    for k,v in allfiles[l].iteritems():
 			if re.search(r'gdv',v):
 				urls.append(download_url+str(k))
