@@ -20,11 +20,10 @@ def main():
 
     opts = (("-v", "--via", "Run executions using method 'via' (can be 'local' or 'lsf')", {'default': "lsf"}),
             ("-k", "--key", "Alphanumeric key of the new RNA-seq job", {'default': None}),
-            ("-d", "--rnaseq-minilims", "MiniLIMS where RNAseq executions and files will be stored.",
-                                     {'default': None, 'dest':"minilims"}),
-            ("-m", "--mapseq-minilims", "MiniLIMS where a previous Mapseq execution and files has been stored. \
+            ("-d", "--rnaseq_minilims", "MiniLIMS where RNAseq executions and files will be stored.", {'default': None}),
+            ("-m", "--mapseq_minilims", "MiniLIMS where a previous Mapseq execution and files has been stored. \
                                      Set it to None to align de novo from read files.",
-                                     {'default': "/data/htsstation/mapseq/mapseq_minilims", 'dest':"ms_limspath"}),
+                                     {'default': "/data/htsstation/mapseq/mapseq_minilims"}),
             ("-w", "--working-directory", "Create execution working directories in wdir",
                                      {'default': os.getcwd(), 'dest':"wdir"}),
             ("-c", "--config", "Config file", {'default': None}),
@@ -44,10 +43,10 @@ def main():
 
         if os.path.exists(opt.wdir): os.chdir(opt.wdir)
         else: parser.error("Working directory '%s' does not exist." % opt.wdir)
-        if not opt.minilims: parser.error("Must specify a MiniLIMS to attach to")
+        if not opt.rnaseq_minilims: parser.error("Must specify a MiniLIMS to attach to")
 
-        # Rna-seq job configuration
-        M = MiniLIMS(opt.minilims)
+        # RNA-seq job configuration
+        M = MiniLIMS(opt.rnaseq_minilims)
         if opt.key:
             gl = use_pickle( M, "global variables" )
             htss = frontend.Frontend( url=gl['hts_rnaseq']['url'] )
@@ -77,7 +76,7 @@ def main():
         # Program body #
         with execution(M, description=description, remote_working_directory=opt.wdir ) as ex:
             print "Current working directory:", ex.working_directory
-            if opt.ms_limspath == "None":
+            if opt.mapseq_minilims == "None":
                 print "Alignment..."
                 job = mapseq.get_fastq_files( job, ex.working_directory)
                 fastq_root = os.path.abspath(ex.working_directory)
@@ -85,7 +84,7 @@ def main():
                 print "Reads aligned."
             else:
                 print "Loading BAM files..."
-                (bam_files, job) = mapseq.get_bam_wig_files(ex, job, minilims=opt.ms_limspath, hts_url=mapseq_url,
+                (bam_files, job) = mapseq.get_bam_wig_files(ex, job, minilims=opt.mapseq_minilims, hts_url=mapseq_url,
                          script_path=gl.get('script_path') or '', via=opt.via, fetch_unmapped=opt.unmapped)
                 assert bam_files, "Bam files not found."
                 print "Loaded."
@@ -95,6 +94,7 @@ def main():
                 gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
                                                job.description, assembly.id, gl['gdv']['url'] )
                 add_pickle( ex, gdv_project, description=common.set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
+
         # GDV
         allfiles = common.get_files(ex.id, M)
         if job.options['create_gdv_project'] and re.search(r'success',gdv_project.get('message','')):
@@ -110,8 +110,8 @@ def main():
                                    project_id=gdv_project['project']['id'],
                                    url=url, file_names=names[nurl],
                                    serv_url=gl['gdv']['url'] )
-                except:
-                    pass
+                except: pass
+
         print json.dumps(allfiles)
 
         # E-mail
@@ -134,4 +134,6 @@ def main():
 
 if __name__ == '__main__':
     sys.exit(main())
+
+
 
