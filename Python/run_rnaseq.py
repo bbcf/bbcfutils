@@ -53,9 +53,11 @@ def main():
             job = htss.job(opt.key) # new *RNA-seq* job instance
             [M.delete_execution(x) for x in M.search_executions(with_description=opt.key,fails=True)]
             description = "Job run with mapseq key %s" % opt.key
+            unmapped = True
         elif os.path.exists(opt.config):
             (job,gl) = frontend.parseConfig(opt.config)
             description = "Job run with config file %s" % opt.config
+            unmapped = opt.unmapped
         else: raise ValueError("Need either a job key (-k) or a configuration file (-c).")
         pileup_level = opt.pileup_level.split(',')
 
@@ -88,7 +90,7 @@ def main():
                          script_path=gl.get('script_path') or '', via=opt.via, fetch_unmapped=opt.unmapped)
                 assert bam_files, "Bam files not found."
                 print "Loaded."
-            rnaseq.rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=pileup_level, via=opt.via, unmapped=opt.unmapped)
+            rnaseq.rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=pileup_level, via=opt.via, unmapped=unmapped)
             gdv_project = {}
             if job.options['create_gdv_project']:
                 gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
