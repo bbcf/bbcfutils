@@ -1,4 +1,11 @@
 
+
+# Command-line tests (from `bbcfutils/R`):
+# DESeq:
+# R --slave -f negbin.test.R --args 'tests/testing_files/genes_expression.tab' -s 'tab' -o 'tests/testing_files/output_deseq.txt'
+# GLM:
+# R --slave -f negbin.test.R --args 'tests/testing_files/genes_expression.tab' -s 'tab' -d 'tests/testing_files/design_mado.txt' -c 'tests/testing_files/contrast_mado.txt' -o 'tests/testing_files/output_glm.txt'
+
 set.seed(123)
 
 create_fake_dataset <- function(n){
