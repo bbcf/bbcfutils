@@ -53,7 +53,7 @@ contrast_file = args[grep("-c",args)+1]
 output_file = args[grep("-o",args)+1]
 if (sep=='tab') sep='\t'
 
-options(error = quote({dump.frames(to.file=TRUE); q()}))
+#options(error = quote({dump.frames(to.file=TRUE); q()})) # creates an error log file `last.dump.rda`
 
 main <- function(data_file, sep="\t", contrast_file=FALSE, design_file=FALSE, output_file=FALSE){
     data = read.table(data_file, header=T, row.names=1, sep=sep)
@@ -67,6 +67,7 @@ main <- function(data_file, sep="\t", contrast_file=FALSE, design_file=FALSE, ou
     print(paste("- All groups have several runs: ", all(table(conds)>1)))
     print(paste("- Design file exists: ", file.exists(design_file)," - ",design_file))
     print(paste("- Contrast file exists: " ,file.exists(contrast_file)," - ",contrast_file))
+
     if (all(table(conds)>1) && file.exists(design_file) && file.exists(contrast_file)){
         print("Method: GLM")
         design = read_design(design_file, sep)
@@ -146,6 +147,7 @@ GLM <- function(data, design, contrast, output_file=FALSE){
     ## Calculate the model for each feature ##
     models = list() #contains all nbmodels
     comparisons = list() #contains all contrast summaries
+    valid_features = c()
     for (i in 1:nrow(data)){
         f = features[i]
         Y = t(data[f,])
@@ -174,12 +176,12 @@ GLM <- function(data, design, contrast, output_file=FALSE){
 
         ## Contrasts ##
         comp = try(glht(nbmodel, linfct=mcp(All=contrast)), silent=T)
-        if (class(comp) != "try-error") next
+        if (class(comp) == "try-error") next
         comp.summ = summary(comp)
         estimate = comp.summ$test$coefficients
         pval = comp.summ$test$pvalues
         comparisons[[f]] = data.frame("Estimate"=estimate, "Pvalue"=pval)
-        }
+        valid_features = c(valid_features, f)
     }
 
     ## Compute adjusted p-values ##
@@ -197,11 +199,11 @@ GLM <- function(data, design, contrast, output_file=FALSE){
     comparisons.t = lapply(comparisons,FUN=t)
     for (i in 1:ncomp){
         a = c()
-        for (f in features){
+        for (f in valid_features){
             a = cbind(a,comparisons.t[[f]][,i])
         }
         b = as.data.frame(t(a))
-        rownames(b) = features
+        rownames(b) = valid_features
         b = b[order(b[,3]),] # sort w.r.t adjusted p-value
         bycomp[[contrast.names[i]]] = b
     }
