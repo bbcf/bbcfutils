@@ -59,6 +59,7 @@ def main():
         else: raise ValueError("Need either a job key (-k) or a configuration file (-c).")
         pileup_level = opt.pileup_level.split(',')
 
+        job.options['unmapped'] = job.options.get('unmapped',True)
         job.options['ucsc_bigwig'] = job.options.get('ucsc_bigwig',True)
         job.options['create_gdv_project'] = job.options.get('create_gdv_project',False)
         if isinstance(job.options['create_gdv_project'],str):

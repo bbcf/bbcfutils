@@ -53,6 +53,7 @@ contrast_file = args[grep("-c",args)+1]
 output_file = args[grep("-o",args)+1]
 if (sep=='tab') sep='\t'
 
+options(error = quote({dump.frames(to.file=TRUE); q()}))
 
 main <- function(data_file, sep="\t", contrast_file=FALSE, design_file=FALSE, output_file=FALSE){
     data = read.table(data_file, header=T, row.names=1, sep=sep)
@@ -151,7 +152,8 @@ GLM <- function(data, design, contrast, output_file=FALSE){
         g = data.frame(Y=Y,All=as.factor(t(X)))
         regressionFormula = formula(paste(features[i],"~",as.name("All")))
 
-        nbmodel = glm.nb(regressionFormula, data=g) # AIC must be minimal
+        nbmodel = try(glm.nb(regressionFormula, data=g), silent=T) # AIC must be minimal
+        if (class(nbmodel) == "try-error") next # skip and go to next feature
         nbmodel.summ = summary.glm(nbmodel)
         coeff = as.data.frame(nbmodel.summ$coefficients)
         lvls = rownames(coeff)
@@ -171,11 +173,13 @@ GLM <- function(data, design, contrast, output_file=FALSE){
         models[[f]] = result
 
         ## Contrasts ##
-        comp = glht(nbmodel, linfct=mcp(All=contrast))
+        comp = try(glht(nbmodel, linfct=mcp(All=contrast)), silent=T)
+        if (class(comp) != "try-error") next
         comp.summ = summary(comp)
         estimate = comp.summ$test$coefficients
         pval = comp.summ$test$pvalues
         comparisons[[f]] = data.frame("Estimate"=estimate, "Pvalue"=pval)
+        }
     }
 
     ## Compute adjusted p-values ##
