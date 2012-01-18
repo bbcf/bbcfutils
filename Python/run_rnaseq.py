@@ -20,7 +20,8 @@ def main():
 
     opts = (("-v", "--via", "Run executions using method 'via' (can be 'local' or 'lsf')", {'default': "lsf"}),
             ("-k", "--key", "Alphanumeric key of the new RNA-seq job", {'default': None}),
-            ("-d", "--minilims", "MiniLIMS where RNAseq executions and files will be stored.", {'default': None}),
+            ("-d", "--rnaseq-minilims", "MiniLIMS where RNAseq executions and files will be stored.",
+                                     {'default': None, 'dest':"minilims"}),
             ("-m", "--mapseq-minilims", "MiniLIMS where a previous Mapseq execution and files has been stored. \
                                      Set it to None to align de novo from read files.",
                                      {'default': "/data/htsstation/mapseq/mapseq_minilims", 'dest':"ms_limspath"}),
