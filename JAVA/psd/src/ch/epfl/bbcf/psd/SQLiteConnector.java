@@ -16,7 +16,6 @@ public class SQLiteConnector {
 
 
 	
-	
 	public static Connection getConnection(String path) throws ClassNotFoundException, SQLException{
 		Class.forName("org.sqlite.JDBC");
 		Connection conn = DriverManager.getConnection("jdbc:sqlite:/" + path);
@@ -74,28 +73,31 @@ public class SQLiteConnector {
 	protected static String protect(String str){
 		return "\""+str+"\"";
 	}
-
+	
 	public static void filldb(String chromosome, float[] tab,
 			int imageNumber, int zoom, ConnectionStore connectionStore, boolean finish) throws SQLException {
 		
 		
 		String database = chromosome + "_" + zoom + ".db";
 		Connection conn = connectionStore.getConnection(database);
-
-		if (null == conn){
+		
+		if (null == conn || conn.isClosed()){
 			System.err.println("cannot find connection for " + database);
 			return;
 		}
 		PreparedStatement prep = connectionStore.getPreparedStatement(database);
+		if(null == prep){
+			System.err.println("cannot find prepared statement for " + database);
+			return;
+		}
 		float val = tab[0];
-		System.out.println("score : "+val);
 		int pos = 0;
 		for(int i=1;i<tab.length;i++){
 			if(!Main.floatEquals(val, tab[i])){
 				prep.setInt(1, imageNumber);
 				prep.setInt(2,pos);
 				prep.setFloat(3, val);
-				prep.execute();
+				prep.executeUpdate();
 				pos=i;
 				val=tab[i];
 			}
@@ -104,7 +106,7 @@ public class SQLiteConnector {
 			prep.setInt(1, imageNumber);
 			prep.setInt(2,pos);
 			prep.setFloat(3, val);
-			prep.execute();
+			prep.executeUpdate();
 		} catch(SQLException e){}
 
 		int nbQueries = connectionStore.getNbQueries(database);

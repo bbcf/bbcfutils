@@ -36,6 +36,9 @@ public class ConnectionStore {
 	public PreparedStatement getPreparedStatement(String database){
 		return statements.get(indexes.get(database));
 	}
+	public void setPreparedStatement(String database, PreparedStatement prep) {
+		statements.set(indexes.get(database), prep);
+	}
 	public int getNbQueries(String database){
 		return queries.get(indexes.get(database));
 	}
@@ -46,9 +49,12 @@ public class ConnectionStore {
 
 	public void destruct() throws SQLException {
 		for(Connection c : connections){
+			c.commit();
 			c.close();
 		}
 		
 	}
+
+	
 	
 }

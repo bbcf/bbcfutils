@@ -43,7 +43,6 @@ public class Tree {
 			int start = scores.getInt(1);
 			int stop = scores.getInt(2);
 			float score = scores.getFloat(3);
-			System.out.println(start +" "+stop+" "+score);
 			for(int j=start;j<stop;j++){
 				this.imageNumber = getImageNumber(j);
 				leaf.fill(j, score, imageNumber);

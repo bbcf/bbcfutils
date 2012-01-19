@@ -56,7 +56,6 @@ public class Node {
 	 * @throws SQLException 
 	 */
 	protected void fill(int position, float score,int currentImageNumber) throws SQLException{
-		
 		if(first){
 			this.imageNumber = currentImageNumber;
 			this.first = false;

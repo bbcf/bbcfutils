@@ -18,7 +18,7 @@ public class Main {
 
 	private static final int[] zooms = {1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000};
 	public static final int TAB_WIDTH = 100;
-	public static final int LIMIT_QUERY_SIZE = 100000000;
+	public static final int LIMIT_QUERY_SIZE = 1000000;
 	
 	public static final String decimals = "%.2f";
 
@@ -67,6 +67,8 @@ public class Main {
 							el.getClassName() + "::" + el.getMethodName() 
 							+" at line " + el.getLineNumber());
 				}
+				System.err.println("Class not found Exception");
+				System.exit(1);
 			} catch (SQLException e) {
 				logger.error(e);
 				for (StackTraceElement el : e.getStackTrace()){
@@ -74,6 +76,8 @@ public class Main {
 							el.getClassName() + "::" + el.getMethodName() 
 							+" at line " + el.getLineNumber());
 				}
+				System.err.println("Java.sql.SQLException " + e.getMessage());
+				System.exit(1);
 			}
 
 		}
@@ -101,7 +105,7 @@ public class Main {
 		for(Map.Entry<String, Integer> entry : chromosomes.entrySet()){
 			
 			String chromosome = entry.getKey();
-			logger.trace("doing chromosome " + chromosome);
+			logger.debug("doing chromosome " + chromosome);
 			
 			ConnectionStore connectionStore = SQLiteConnector.createOutputDatabases(output.getAbsolutePath(), chromosome, zooms);
 
