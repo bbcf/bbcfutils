@@ -75,13 +75,14 @@ def main(argv = None):
             gl = use_pickle( M, "global variables" )
             htss = frontend.Frontend( url=gl['hts_demultiplex']['url'] )
             job = htss.job( hts_key )
+            [M.delete_execution(x) for x in M.search_executions(with_description=hts_key,fails=True)]
         elif os.path.exists(config_file):
             (job,gl) = frontend.parseConfig( config_file )
         else:
             raise ValueError("Need either a job key (-k) or a configuration file (-c).")
         job.options['ucsc_bigwig'] = True
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
-            demultiplex_files = demultiplex.workflow_groups( ex, job, gl['script_path'])
+            demultiplex_files = demultiplex.workflow_groups( ex, job, gl)
         allfiles = common.get_files( ex.id, M )
 
 #        gdv_project = gdv.create_gdv_project( gl['gdv']['key'], gl['gdv']['email'],

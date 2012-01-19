@@ -5,7 +5,7 @@ A High-throughput ChIP-seq peak analysis workflow.
 
 """
 from bein import execution, MiniLIMS
-from bein.util import use_pickle
+from bein.util import use_pickle, add_pickle
 from bbcflib import genrep, frontend, email, gdv, mapseq
 from bbcflib.common import get_files
 from bbcflib.chipseq import *
@@ -89,6 +89,10 @@ def main(argv = None):
         if 'hts_mapseq' in gl:
             mapseq_url = gl['hts_mapseq']['url']
         job.options['ucsc_bigwig'] = True
+        if not('create_gdv_project' in job.options):
+            job.options['create_gdv_project'] = False
+        elif isinstance(job.options['create_gdv_project'],str):
+            job.options['create_gdv_project'] = job.options['create_gdv_project'].lower() in ['1','true','t']
         g_rep = genrep.GenRep( gl.get("genrep_url"), gl.get("bwt_root") )
         assembly = genrep.Assembly( assembly=job.assembly_id, genrep=g_rep )
         logfile = open(hts_key+".log",'w')
@@ -98,27 +102,32 @@ def main(argv = None):
             (mapped_files, job) = mapseq.get_bam_wig_files( ex, job, minilims=ms_limspath, hts_url=mapseq_url,
                                                             script_path=gl.get('script_path') or '', via=via )
             logfile.write("Starting workflow.\n");logfile.flush()
-            chipseq_files = workflow_groups( ex, job, mapped_files, assembly.chromosomes,
-                                             gl.get('script_path') or '', g_rep, logfile=logfile, via=via )
-            if job.options.get('create_gdv_project',False):
+            chipseq_files = workflow_groups( ex, job, mapped_files, assembly,
+                                             gl.get('script_path') or '', logfile=logfile, via=via )
+            gdv_project = {}
+            if job.options.get('create_gdv_project'):
                 logfile.write("Creating GDV project.\n");logfile.flush()
                 gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'], 
                                                job.description, assembly.id,
                                                gl['gdv']['url'] )
                 logfile.write("GDV project: "+str(gdv_project['project']['id'])+"\n");logfile.flush()
                 add_pickle( ex, gdv_project, description=set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
-            else:
-                gdv_project = {'message': None}
         allfiles = get_files( ex.id, M )
-        if re.search(r'success',gdv_project['message']) and 'sql' in allfiles:
+        if re.search(r'success',gdv_project.get('message','')) and 'sql' in allfiles:
             gdv_project_url = gl['gdv']['url']+"public/project?k="+str(gdv_project['project']['key'])+"&id="+str(gdv_project['project']['id'])
             allfiles['url'] = {gdv_project_url: 'GDV view'}
             download_url = gl['hts_chipseq']['download']
-            logfile.write("Uploading GDV tracks:\n"+urls+"\n"+names+"\n");logfile.flush()
-            [gdv.new_track( gl['gdv']['email'], gl['gdv']['key'], 
-                            project_id=gdv_project['project']['id'],
-                            url=download_url+str(k), file_names=re.sub('\.sql.*','',str(f)),
-                            serv_url=gl['gdv']['url'] ) for k,v in allfiles['sql'].iteritems()]
+            urls  = [download_url+str(k) for k in allfiles['sql'].keys()]
+            names = [re.sub('\.sql.*','',str(f)) for f in allfiles['sql'].values()]
+            logfile.write("Uploading GDV tracks:\n"+" ".join(urls)+"\n"+" ".join(names)+"\n");logfile.flush()
+            for nurl,url in enumerate(urls):
+                try:
+                    gdv.new_track( gl['gdv']['email'], gl['gdv']['key'], 
+                                   project_id=gdv_project['project']['id'],
+                                   url=url, file_names=names[nurl],
+                                   serv_url=gl['gdv']['url'] )
+                except Exception, e:
+                    logfile.write("Error with %s: %s\n" %(names[nurl],e));logfile.flush()
         logfile.close()
         print json.dumps(allfiles)
         with open(hts_key+".done",'w') as done:

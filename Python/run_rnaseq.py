@@ -8,7 +8,7 @@ python run_rnaseq.py -v lsf -c config_files/rnaseq.txt -d rnaseq -p genes -m /sc
 import os, sys, json, re
 import optparse
 from bbcflib import rnaseq, frontend, common, mapseq, genrep, email, gdv
-from bein.util import use_pickle
+from bein.util import use_pickle, add_pickle
 from bein import execution, MiniLIMS
 
 class Usage(Exception):
@@ -20,10 +20,10 @@ def main():
 
     opts = (("-v", "--via", "Run executions using method 'via' (can be 'local' or 'lsf')", {'default': "lsf"}),
             ("-k", "--key", "Alphanumeric key of the new RNA-seq job", {'default': None}),
-            ("-d", "--minilims", "MiniLIMS where RNAseq executions and files will be stored.", {'default': None}),
-            ("-m", "--mapseq-minilims", "MiniLIMS where a previous Mapseq execution and files has been stored. \
+            ("-d", "--rnaseq_minilims", "MiniLIMS where RNAseq executions and files will be stored.", {'default': None}),
+            ("-m", "--mapseq_minilims", "MiniLIMS where a previous Mapseq execution and files has been stored. \
                                      Set it to None to align de novo from read files.",
-                                     {'default': "/data/htsstation/mapseq/mapseq_minilims", 'dest':"ms_limspath"}),
+                                     {'default': "/data/htsstation/mapseq/mapseq_minilims"}),
             ("-w", "--working-directory", "Create execution working directories in wdir",
                                      {'default': os.getcwd(), 'dest':"wdir"}),
             ("-c", "--config", "Config file", {'default': None}),
@@ -43,25 +43,30 @@ def main():
 
         if os.path.exists(opt.wdir): os.chdir(opt.wdir)
         else: parser.error("Working directory '%s' does not exist." % opt.wdir)
-        if not opt.minilims: parser.error("Must specify a MiniLIMS to attach to")
+        if not opt.rnaseq_minilims: parser.error("Must specify a MiniLIMS to attach to")
 
-        # Rna-seq job configuration
-        M = MiniLIMS(opt.minilims)
+        # RNA-seq job configuration
+        M = MiniLIMS(opt.rnaseq_minilims)
         if opt.key:
             gl = use_pickle( M, "global variables" )
             htss = frontend.Frontend( url=gl['hts_rnaseq']['url'] )
             job = htss.job(opt.key) # new *RNA-seq* job instance
             [M.delete_execution(x) for x in M.search_executions(with_description=opt.key,fails=True)]
             description = "Job run with mapseq key %s" % opt.key
+            unmapped = True
         elif os.path.exists(opt.config):
             (job,gl) = frontend.parseConfig(opt.config)
             description = "Job run with config file %s" % opt.config
+            unmapped = opt.unmapped
         else: raise ValueError("Need either a job key (-k) or a configuration file (-c).")
         pileup_level = opt.pileup_level.split(',')
 
-        job.options['ucsc_bigwig'] = job.options.get('ucsc_bigwig') or True
-        job.options['gdv_project'] = job.options.get('gdv_project') or False
-        job.options['discard_pcr_duplicates'] = job.options.get('discard_pcr_duplicates') or False
+        job.options['unmapped'] = job.options.get('unmapped',True)
+        job.options['ucsc_bigwig'] = job.options.get('ucsc_bigwig',True)
+        job.options['create_gdv_project'] = job.options.get('create_gdv_project',False)
+        if isinstance(job.options['create_gdv_project'],str):
+            job.options['create_gdv_project'] = job.options['create_gdv_project'].lower() in ['1','true','t']
+        job.options['discard_pcr_duplicates'] = False
         g_rep = genrep.GenRep( gl.get('genrep_url'), gl.get('bwt_root') )
             #intype is for mapping on the genome (intype=0), exons (intype=1) or transcriptome (intype=2)
         assembly = genrep.Assembly(assembly=job.assembly_id, genrep=g_rep, intype=1)
@@ -73,7 +78,7 @@ def main():
         # Program body #
         with execution(M, description=description, remote_working_directory=opt.wdir ) as ex:
             print "Current working directory:", ex.working_directory
-            if opt.ms_limspath == "None":
+            if opt.mapseq_minilims == "None":
                 print "Alignment..."
                 job = mapseq.get_fastq_files( job, ex.working_directory)
                 fastq_root = os.path.abspath(ex.working_directory)
@@ -81,23 +86,34 @@ def main():
                 print "Reads aligned."
             else:
                 print "Loading BAM files..."
-                (bam_files, job) = mapseq.get_bam_wig_files(ex, job, minilims=opt.ms_limspath, hts_url=mapseq_url,
+                (bam_files, job) = mapseq.get_bam_wig_files(ex, job, minilims=opt.mapseq_minilims, hts_url=mapseq_url,
                          script_path=gl.get('script_path') or '', via=opt.via, fetch_unmapped=opt.unmapped)
                 assert bam_files, "Bam files not found."
                 print "Loaded."
-            rnaseq.rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=pileup_level, via=opt.via, unmapped=opt.unmapped)
+            rnaseq.rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=pileup_level, via=opt.via, unmapped=unmapped)
+            gdv_project = {}
+            if job.options['create_gdv_project']:
+                gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
+                                               job.description, assembly.id, gl['gdv']['url'] )
+                add_pickle( ex, gdv_project, description=common.set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
 
         # GDV
         allfiles = common.get_files(ex.id, M)
-        if 'gdv_project' in job.options and 'sql' in allfiles:
-            allfiles['url'] = {job.options['gdv_project']['public_url']: 'GDV view'}
-            download_url = gl['hts_rnapseq']['download']
-            [gdv.add_gdv_track( gl['gdv']['key'], gl['gdv']['email'],
-                                job.options['gdv_project']['project_id'],
-                                url=download_url+str(k),
-                                name = re.sub('\.sql','',str(f)),
-                                gdv_url=gl['gdv']['url'] )
-             for k,f in allfiles['sql'].iteritems()]
+        if job.options['create_gdv_project'] and re.search(r'success',gdv_project.get('message','')):
+            gdv_project_url = gl['gdv']['url']+"public/project?k="+str(gdv_project['project']['key']) \
+                              +"&id="+str(gdv_project['project']['id'])
+            allfiles['url'] = {gdv_project_url: 'GDV view'}
+            download_url = gl['hts_rnaseq']['download']
+            urls  = [download_url+str(k) for k in allfiles['sql'].keys()]
+            names = [re.sub('\.sql.*','',str(f)) for f in allfiles['sql'].values()]
+            for nurl,url in enumerate(urls):
+                try:
+                    gdv.new_track( gl['gdv']['email'], gl['gdv']['key'],
+                                   project_id=gdv_project['project']['id'],
+                                   url=url, file_names=names[nurl],
+                                   serv_url=gl['gdv']['url'] )
+                except: pass
+
         print json.dumps(allfiles)
 
         # E-mail
@@ -120,4 +136,6 @@ def main():
 
 if __name__ == '__main__':
     sys.exit(main())
+
+
 

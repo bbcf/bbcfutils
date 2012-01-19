@@ -125,6 +125,7 @@ def main(argv = None):
                     job.options['read_extension'] = mapped_files.values()[0].values()[0]['stats']['read_length']
                 density_files = densities_groups( ex, job, mapped_files, assembly.chromosomes, via=via )
                 logfile.write("Finished computing densities.\n");logfile.flush()
+                gdv_project = {}
                 if job.options['create_gdv_project']:
                     logfile.write("Creating GDV project.\n");logfile.flush()
                     gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
@@ -132,7 +133,7 @@ def main(argv = None):
                     logfile.write("GDV project: "+json.dumps(gdv_project)+"\n");logfile.flush()
                     add_pickle( ex, gdv_project, description=set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
         allfiles = get_files( ex.id, M )
-        if 'ucsc_bigwig' and g_rep.intype == 0:
+        if 'ucsc_bigwig' and assembly.intype == 0:
             logfile.write("UCSC track file: "+hts_key+".bed\n");logfile.flush()
             ucscfiles = get_files( ex.id, M, select_param={'ucsc':'1'} )
             with open(hts_key+".bed",'w') as ucscbed:
@@ -140,15 +141,21 @@ def main(argv = None):
                     for ffile,descr in fset.iteritems():
                         if re.search(r' \(.*\)',descr): continue
                         ucscbed.write(track_header(descr,ftype,gl['hts_mapseq']['download'],ffile))
-        if job.options['create_gdv_project'] and re.search(r'success',gdv_project['message']):
+        if job.options['create_gdv_project'] and re.search(r'success',gdv_project.get('message','')):
             gdv_project_url = gl['gdv']['url']+"public/project?k="+str(gdv_project['project']['key'])+"&id="+str(gdv_project['project']['id'])
             allfiles['url'] = {gdv_project_url: 'GDV view'}
             download_url = gl['hts_mapseq']['download']
-            logfile.write("Uploading GDV tracks:\n"+urls+"\n"+names+"\n");logfile.flush()
-            [gdv.new_track( gl['gdv']['email'], gl['gdv']['key'], 
-                            project_id=gdv_project['project']['id'],
-                            url=download_url+str(k), file_names=re.sub('\.sql.*','',str(f)),
-                            serv_url=gl['gdv']['url'] ) for k,v in allfiles['sql'].iteritems()]
+            urls  = [download_url+str(k) for k in allfiles['sql'].keys()]
+            names = [re.sub('\.sql.*','',str(f)) for f in allfiles['sql'].values()]
+            logfile.write("Uploading GDV tracks:\n"+" ".join(urls)+"\n"+" ".join(names)+"\n");logfile.flush()
+            for nurl,url in enumerate(urls):
+                try:
+                    gdv.new_track( gl['gdv']['email'], gl['gdv']['key'], 
+                                   project_id=gdv_project['project']['id'],
+                                   url=url, file_names=names[nurl],
+                                   serv_url=gl['gdv']['url'] )
+                except Exception, e:
+                    logfile.write("Error with %s: %s\n" %(names[nurl],e));logfile.flush()
         logfile.close()
         print json.dumps(allfiles)
         with open(hts_key+".done",'w') as done:
