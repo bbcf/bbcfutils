@@ -55,26 +55,29 @@ if (sep=='tab') sep='\t'
 
 #options(error = quote({dump.frames(to.file=TRUE); q()})) # creates an error log file `last.dump.rda`
 
-main <- function(data_file, sep="\t", contrast_file=FALSE, design_file=FALSE, output_file=FALSE){
+main <- function(data_file, sep="\t", output_file, contrast_file='', design_file=''){
     data = read.table(data_file, header=T, row.names=1, sep=sep)
     header = colnames(data)
     counts = grep("counts",header,fixed=T)
     data = round(data[,counts])
 
+    if (length(design_file) == 0) design_file = ''
+    if (length(contrast_file) == 0) contrast_file = ''
+
     ## Choose GLM if every group has replicates, DESeq otherwise ##
     samples = colnames(data)
     conds = unlist(lapply(strsplit(samples,".",fixed=T), "[[", 2))
-    print(paste("- All groups have several runs: ", all(table(conds)>1)))
-    print(paste("- Design file exists: ", file.exists(design_file)," - ",design_file))
-    print(paste("- Contrast file exists: " ,file.exists(contrast_file)," - ",contrast_file))
+    print(paste(" - All groups have several runs: ", all(table(conds)>1)))
+    print(paste(" - Design file exists: ", file.exists(design_file)))
+    print(paste(" - Contrast file exists: " , file.exists(contrast_file)))
 
     if (all(table(conds)>1) && file.exists(design_file) && file.exists(contrast_file)){
-        print("Method: GLM")
+        print(" => Method: GLM")
         design = read_design(design_file, sep)
         contrast = read_contrast(contrast_file, sep)
         GLM(data, design, contrast, output_file)
     }else{
-        print("Method: DESeq (either design/contrast files missing, or at least one group has no replicates.)")
+        print(" => Method: DESeq (either design/contrast files missing, or at least one group has no replicates.)")
         DES(data, output_file)
     }
 }
@@ -86,6 +89,16 @@ read_design <- function(design_file, sep){
 }
 read_contrast <- function(contrast_file, sep){
     contrast = as.matrix(read.table(contrast_file, header=T, row.names=1, sep=sep))
+}
+write_result <- function(output_file, res_list, sep='\t'){
+    for (x in names(res_list)){
+        xs = unlist(strsplit(x,' '))
+        xs = paste(xs[1],xs[2],xs[3],sep='')
+        output_file = paste(output_file,xs,sep='_')
+        #res_list[[x]] = signif(res_list[[x]],4)
+        write(x,output_file)
+        write.table(res_list[[x]],output_file,quote=F,row.names=T,col.names=T,append=T,sep="\t")
+    }
 }
 
 
@@ -112,12 +125,7 @@ DES <- function(data, output_file=FALSE){  ## DESeq ##
     if (output_file == FALSE){
         print(result)
     }else{
-        for (comp in contrast.names) {
-            #result = signif(result[[comp]],4)
-            write(comp,output_file,append=T)
-            write.table(result[[comp]],output_file,quote=F,row.names=T,col.names=T,append=T,sep="\t")
-            write(c(),output_file,append=T)
-        }
+        write_result(output_file, result)
     }
 }
 
@@ -212,13 +220,8 @@ GLM <- function(data, design, contrast, output_file=FALSE){
     if (output_file == FALSE){
         print(bycomp)
     }else{
-        for (comp in contrast.names) {
-            result = signif(bycomp[[comp]],4)
-            write(comp,output_file,append=T)
-            write.table(result,output_file, quote=F,row.names=T,col.names=T,append=T,sep="\t")
-            write(c(),output_file,append=T)
-        }
+        write_result(output_file, bycomp)
     }
 }
 
-main(data_file,sep=sep,design_file=design_file, contrast_file=contrast_file, output_file=output_file)
+main(data_file,sep=sep,output_file,design_file=design_file,contrast_file=contrast_file)
