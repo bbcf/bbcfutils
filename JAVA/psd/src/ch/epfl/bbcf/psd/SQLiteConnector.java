@@ -94,7 +94,13 @@ public class SQLiteConnector {
 		int pos = 0;
 		for(int i=1;i<tab.length;i++){
 			if(!Main.floatEquals(val, tab[i])){
-				prep.setInt(1, imageNumber);
+				try {
+					prep.setInt(1, imageNumber);
+				} catch(SQLException e){
+					prep = conn.prepareStatement("insert into sc values(?, ?, ?);");
+					connectionStore.setPreparedStatement(database, prep);
+					prep.setInt(1, imageNumber);
+				}
 				prep.setInt(2,pos);
 				prep.setFloat(3, val);
 				prep.executeUpdate();
