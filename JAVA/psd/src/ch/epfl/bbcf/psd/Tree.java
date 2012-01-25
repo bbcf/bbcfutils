@@ -3,6 +3,7 @@ package ch.epfl.bbcf.psd;
 import java.io.File;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.zip.DataFormatException;
 
 import org.apache.log4j.Logger;
 
@@ -36,13 +37,19 @@ public class Tree {
 	}
 
 
-	public void process(ResultSet scores) throws SQLException {
+	public void process(ResultSet scores) throws SQLException, DataFormatException {
 		logger.trace("processing scores");
 		boolean hasScore = false;
 		while(scores.next()){
 			int start = scores.getInt(1);
 			int stop = scores.getInt(2);
 			float score = scores.getFloat(3);
+			if(start > stop){
+				throw new DataFormatException("Features cannot end before they start :" +
+						" (start: " + start + ", end: " + stop + ", score: " + score + "). ");
+			}
+			
+			
 			for(int j=start;j<stop;j++){
 				this.imageNumber = getImageNumber(j);
 				leaf.fill(j, score, imageNumber);
