@@ -104,11 +104,11 @@ def main(argv = None):
         logfile.write(json.dumps(gl));logfile.flush()
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
             logfile.write("Enter execution, fetch fastq files.\n");logfile.flush()
-            job = get_fastq_files( job, ex.working_directory, dafl )
+            job = get_fastq_files( ex, job, dafl )
             logfile.write("Generate QC report.\n");logfile.flush()
             run_fastqc( ex, job, via=via )
             logfile.write("Map reads.\n");logfile.flush()
-            mapped_files = map_groups( ex, job, ex.working_directory, assembly, map_args )
+            mapped_files = map_groups( ex, job, assembly, map_args )
             logfile.write("Make stats:\n");logfile.flush()
             for k,v in job.groups.iteritems():
                 logfile.write(str(k)+"_"+str(v['name'])+"\t");logfile.flush()
