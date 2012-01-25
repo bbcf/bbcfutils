@@ -87,7 +87,7 @@ def main():
             else:
                 print "Loading BAM files..."
                 (bam_files, job) = mapseq.get_bam_wig_files(ex, job, minilims=opt.mapseq_minilims, hts_url=mapseq_url,
-                         script_path=gl.get('script_path') or '', via=opt.via, fetch_unmapped=opt.unmapped)
+                                                            script_path=gl.get('script_path',''), via=opt.via, fetch_unmapped=unmapped)
                 assert bam_files, "Bam files not found."
                 print "Loaded."
             rnaseq.rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=pileup_level, via=opt.via, unmapped=unmapped)

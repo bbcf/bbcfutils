@@ -96,7 +96,7 @@ def main(argv = None):
         g_rep = genrep.GenRep( gl.get("genrep_url"), gl.get("bwt_root") )
         assembly = genrep.Assembly( assembly=job.assembly_id, genrep=g_rep )
         logfile = open(hts_key+".log",'w')
-        logfile.write(json.dumps(gl));logfile.flush()
+        logfile.write(json.dumps(gl)+"\n");logfile.flush()
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
             logfile.write("Enter execution, fetch bam and wig files.\n");logfile.flush()
             (mapped_files, job) = mapseq.get_bam_wig_files( ex, job, minilims=ms_limspath, hts_url=mapseq_url,

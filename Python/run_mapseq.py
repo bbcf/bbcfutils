@@ -101,7 +101,7 @@ def main(argv = None):
         map_args = job.options.get('map_args',{})
         map_args['via']=via
         logfile = open(hts_key+".log",'w')
-        logfile.write(json.dumps(gl));logfile.flush()
+        logfile.write(json.dumps(gl)+"\n");logfile.flush()
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
             logfile.write("Enter execution, fetch fastq files.\n");logfile.flush()
             job = get_fastq_files( ex, job, dafl )
