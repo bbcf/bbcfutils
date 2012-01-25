@@ -88,30 +88,27 @@ def main(argv = None):
                         for loc,pwd in gl['lims']['passwd'].iteritems())
         else:
             dafl = None
-        if not('compute_densities' in job.options):
-            job.options['compute_densities'] = True
-        elif isinstance(job.options['compute_densities'],str):
+        job.options['compute_densities'] = job.options.get('compute_densities',True)
+        if isinstance(job.options['compute_densities'],basestring):
             job.options['compute_densities'] = job.options['compute_densities'].lower() in ['1','true','t']
-        if not('ucsc_bigwig' in job.options):
-            job.options['ucsc_bigwig'] = True
-        elif isinstance(job.options['ucsc_bigwig'],str):
+        job.options['ucsc_bigwig'] = job.options.get('ucsc_bigwig',True)
+        if isinstance(job.options['ucsc_bigwig'],basestring):
             job.options['ucsc_bigwig'] = job.options['ucsc_bigwig'].lower() in ['1','true','t']
         job.options['ucsc_bigwig'] = job.options['ucsc_bigwig'] and job.options['compute_densities']
-        if not('create_gdv_project' in job.options):
-            job.options['create_gdv_project'] = False
-        elif isinstance(job.options['create_gdv_project'],str):
+        job.options['create_gdv_project'] = job.options.get('create_gdv_project',False)
+        if isinstance(job.options['create_gdv_project'],basestring):
             job.options['create_gdv_project'] = job.options['create_gdv_project'].lower() in ['1','true','t']
-        if job.options.get('read_extension'):
-            job.options['read_extension'] = int(job.options['read_extension'])
-        if job.options.get('merge_strands'):
-            job.options['merge_strands'] = int(job.options['merge_strands'])
+        map_args = job.options.get('map_args',{})
+        map_args['via']=via
         logfile = open(hts_key+".log",'w')
         logfile.write(json.dumps(gl));logfile.flush()
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
             logfile.write("Enter execution, fetch fastq files.\n");logfile.flush()
             job = get_fastq_files( job, ex.working_directory, dafl )
+            logfile.write("Generate QC report.\n");logfile.flush()
+            run_fastqc( ex, job, via=via )
             logfile.write("Map reads.\n");logfile.flush()
-            mapped_files = map_groups( ex, job, ex.working_directory, assembly, {'via': via} )
+            mapped_files = map_groups( ex, job, ex.working_directory, assembly, map_args )
             logfile.write("Make stats:\n");logfile.flush()
             for k,v in job.groups.iteritems():
                 logfile.write(str(k)+"_"+str(v['name'])+"\t");logfile.flush()
@@ -121,7 +118,7 @@ def main(argv = None):
                                      description=set_file_descr(v['name']+"_mapping_report.pdf",groupId=k,step='stats',type='pdf') )
             if job.options['compute_densities']:
                 logfile.write("\ncomputing densities.\n");logfile.flush()
-                if not(job.options.get('read_extension')>0):
+                if int(job.options.get('read_extension',-1))<=0:
                     job.options['read_extension'] = mapped_files.values()[0].values()[0]['stats']['read_length']
                 density_files = densities_groups( ex, job, mapped_files, assembly.chromosomes, via=via )
                 logfile.write("Finished computing densities.\n");logfile.flush()

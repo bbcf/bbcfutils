@@ -91,7 +91,7 @@ def main(argv = None):
         job.options['ucsc_bigwig'] = True
         if not('create_gdv_project' in job.options):
             job.options['create_gdv_project'] = False
-        elif isinstance(job.options['create_gdv_project'],str):
+        elif isinstance(job.options['create_gdv_project'],basestring):
             job.options['create_gdv_project'] = job.options['create_gdv_project'].lower() in ['1','true','t']
         g_rep = genrep.GenRep( gl.get("genrep_url"), gl.get("bwt_root") )
         assembly = genrep.Assembly( assembly=job.assembly_id, genrep=g_rep )
