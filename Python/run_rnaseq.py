@@ -70,6 +70,8 @@ def main():
         g_rep = genrep.GenRep( gl.get('genrep_url'), gl.get('bwt_root') )
             #intype is for mapping on the genome (intype=0), exons (intype=1) or transcriptome (intype=2)
         assembly = genrep.Assembly(assembly=job.assembly_id, genrep=g_rep, intype=1)
+        logfile = open((opt.key or opt.config)+".log",'w')
+        logfile.write(json.dumps(gl)+"\n");logfile.flush()
 
         # Retrieve mapseq output
         mapseq_url = None
@@ -77,35 +79,42 @@ def main():
 
         # Program body #
         with execution(M, description=description, remote_working_directory=opt.wdir ) as ex:
+            logfile.write("Enter execution. Current working directory: %s \n" % ex.working_directory);logfile.flush()
             print "Current working directory:", ex.working_directory
             if opt.mapseq_minilims == "None":
+                logfile.write("No mapseq MiliLIMS found. Aligning reads.\n");logfile.flush()
                 print "Alignment..."
                 job = mapseq.get_fastq_files( job, ex.working_directory)
                 fastq_root = os.path.abspath(ex.working_directory)
                 bam_files = mapseq.map_groups(ex, job, fastq_root, assembly_or_dict=assembly, map_args=map_args)
                 print "Reads aligned."
             else:
+                logfile.write("Fetch bam and wig files");logfile.flush()
                 print "Loading BAM files..."
                 (bam_files, job) = mapseq.get_bam_wig_files(ex, job, minilims=opt.mapseq_minilims, hts_url=mapseq_url,
-                                                            script_path=gl.get('script_path',''), via=opt.via, fetch_unmapped=unmapped)
+                                            script_path=gl.get('script_path',''), via=opt.via, fetch_unmapped=unmapped)
                 assert bam_files, "Bam files not found."
                 print "Loaded."
+            logfile.write("Starting workflow.\n");logfile.flush()
             rnaseq.rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=pileup_level, via=opt.via, unmapped=unmapped)
+
             gdv_project = {}
-            if job.options['create_gdv_project']:
+            if job.options.get('create_gdv_project'):
+                logfile.write("Creating GDV project.\n");logfile.flush()
                 gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
                                                job.description, assembly.id, gl['gdv']['url'] )
                 add_pickle( ex, gdv_project, description=common.set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
 
         # GDV
         allfiles = common.get_files(ex.id, M)
-        if job.options['create_gdv_project'] and re.search(r'success',gdv_project.get('message','')):
+        if re.search(r'success',gdv_project.get('message','')) and 'sql' in allfiles:
             gdv_project_url = gl['gdv']['url']+"public/project?k="+str(gdv_project['project']['key']) \
                               +"&id="+str(gdv_project['project']['id'])
             allfiles['url'] = {gdv_project_url: 'GDV view'}
             download_url = gl['hts_rnaseq']['download']
             urls  = [download_url+str(k) for k in allfiles['sql'].keys()]
             names = [re.sub('\.sql.*','',str(f)) for f in allfiles['sql'].values()]
+            logfile.write("Uploading GDV tracks:\n"+" ".join(urls)+"\n"+" ".join(names)+"\n");logfile.flush()
             for nurl,url in enumerate(urls):
                 try:
                     gdv.new_track( gl['gdv']['email'], gl['gdv']['key'],
@@ -114,6 +123,7 @@ def main():
                                    serv_url=gl['gdv']['url'] )
                 except: pass
 
+        logfile.close()
         print json.dumps(allfiles)
 
         # E-mail
@@ -136,6 +146,8 @@ def main():
 
 if __name__ == '__main__':
     sys.exit(main())
+
+
 
 
 
