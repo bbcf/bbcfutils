@@ -9,7 +9,7 @@ from bein.util import use_pickle, add_pickle
 from bbcflib import genrep, frontend, email, gdv, mapseq
 from bbcflib.common import get_files
 from bbcflib.chipseq import *
-import sys, getopt, os, json, re
+import sys, optparse, os, json, re
 
 usage = """run_chipseq.py [-h] [-u via] [-w wdir] [-k job_key] [-c config_file] [-m mapseq_minilims] -d minilims
 

@@ -9,7 +9,7 @@ from bein.util import use_pickle, add_pickle
 from bbcflib import daflims, genrep, frontend, email, gdv
 from bbcflib.common import get_files, set_file_descr, track_header
 from bbcflib.mapseq import *
-import sys, getopt, os, re, json
+import sys, optparse, os, re, json
 
 class Usage(Exception):
     def __init__(self,  msg):
