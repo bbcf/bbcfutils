@@ -77,6 +77,8 @@ public class Main {
 					logger.debug(el.getFileName() + " .. " +
 							el.getClassName() + "::" + el.getMethodName() 
 							+" at line " + el.getLineNumber());
+					System.err.println("SQLException : " + e.getMessage());
+					System.exit(1);
 				}
 				System.err.println("Java.sql.SQLException " + e.getMessage());
 			} catch (DataFormatException e) {
