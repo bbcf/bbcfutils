@@ -84,7 +84,7 @@ def main():
             if opt.mapseq_minilims == "None":
                 logfile.write("No mapseq MiliLIMS found. Aligning reads.\n");logfile.flush()
                 print "Alignment..."
-                job = mapseq.get_fastq_files( job, ex.working_directory)
+                job = mapseq.get_fastq_files( ex, job )
                 fastq_root = os.path.abspath(ex.working_directory)
                 bam_files = mapseq.map_groups(ex, job, fastq_root, assembly_or_dict=assembly, map_args=map_args)
                 print "Reads aligned."
