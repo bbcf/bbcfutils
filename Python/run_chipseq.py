@@ -27,83 +27,59 @@ class Usage(Exception):
         self.msg = msg
 
 def main(argv = None):
-    via = "lsf"
-    limspath = None
-    ms_limspath = "/data/htsstation/mapseq/mapseq_minilims"
-    hts_key = ''
-    working_dir = None
-    config_file = None
-    if argv is None:
-        argv = sys.argv
+    opts = (("-v", "--via", "Run executions using method 'via' (can be 'local' or 'lsf')", {'default': "lsf"}),
+            ("-k", "--key", "Alphanumeric key specifying the job", {'default': None}),
+            ("-d", "--minilims", "MiniLIMS where chipseq executions and files will be stored.", {'default': None}),
+            ("-m", "--mapseq_minilims", "MiniLIMS where a previous Mapseq execution and files has been stored.",
+             {'default': "/data/htsstation/mapseq/mapseq_minilims"}),
+            ("-w", "--working-directory", "Create execution working directories in wdir", {'default': os.getcwd(), 'dest':"wdir"}),
+            ("-c", "--config", "Config file", {'default': None}))
     try:
-        try:
-            opts,args = getopt.getopt(sys.argv[1:],"hu:k:d:w:m:c:",
-                                      ["help","via=","key=","minilims=",
-                                       "mapseq_minilims=",
-                                       "working-directory=","config="])
-        except getopt.error, msg:
-            raise Usage(msg)
-        for o, a in opts:
-            if o in ("-h", "--help"):
-                print __doc__
-                print usage
-                return 0
-            elif o in ("-u", "--via"):
-                if a=="local":
-                    via = "local"
-                elif a=="lsf":
-                    via = "lsf"
-                else:
-                    raise Usage("Via (-u) can only be \"local\" or \"lsf\", got %s." % (a,))
-            elif o in ("-w", "--working-directory"):
-                if os.path.exists(a):
-                    os.chdir(a)
-                    working_dir = a
-                else:
-                    raise Usage("Working directory '%s' does not exist." % a)
-            elif o in ("-d", "--minilims"):
-                limspath = a
-            elif o in ("-m", "--mapseq_minilims"):
-                ms_limspath = a
-            elif o in ("-k", "--key"):
-                hts_key = a
-            elif o in ("-c", "--config"):
-                config_file = a
-            else:
-                raise Usage("Unhandled option: " + o)
-        if not(limspath and os.path.exists(limspath)
-               and (hts_key != None or (config_file and os.path.exists(config_file)))):
+        usage = "run_chipseq.py [-h] [-u via] [-w wdir] [-k job_key] [-c config_file] [-m mapseq_minilims] -d minilims"
+        desc = """A ChIP-seq peak analysis workflow."""
+        parser = optparse.OptionParser(usage=usage, description=desc)
+        for opt in opts:
+            parser.add_option(opt[0],opt[1],help=opt[2],**opt[3])
+        (opt, args) = parser.parse_args()
+
+        if os.path.exists(opt.wdir): os.chdir(opt.wdir)
+        else: parser.error("Working directory '%s' does not exist." % opt.wdir)
+        if not(opt.minilims and os.path.exists(opt.minilims)
+               and (opt.key != None or (opt.config and os.path.exists(opt.config)))):
             raise Usage("Need a minilims and a job key or a configuration file")
-        M = MiniLIMS( limspath )
-        if len(hts_key)>1:
-            gl = use_pickle( M, "global variables" )
+        M = MiniLIMS( opt.minilims )
+        if opt.key:
+            gl = use_pickle(M, "global variables")
             htss = frontend.Frontend( url=gl['hts_chipseq']['url'] )
-            job = htss.job( hts_key )
-            [M.delete_execution(x) for x in M.search_executions(with_description=hts_key,fails=True)]
-        elif os.path.exists(config_file):
-            (job,gl) = frontend.parseConfig( config_file )
-            hts_key = job.description
+            job = htss.job( opt.key )
+            [M.delete_execution(x) for x in M.search_executions(with_description=opt.key,fails=True)]
+        elif os.path.exists(opt.config):
+            (job,gl) = frontend.parseConfig( opt.config )
+            opt.key = job.description
         else:
             raise ValueError("Need either a job key (-k) or a configuration file (-c).")
         mapseq_url = None
         if 'hts_mapseq' in gl:
             mapseq_url = gl['hts_mapseq']['url']
-        job.options['ucsc_bigwig'] = True
-        if not('create_gdv_project' in job.options):
-            job.options['create_gdv_project'] = False
-        elif isinstance(job.options['create_gdv_project'],basestring):
+
+        job.options['ucsc_bigwig'] = job.options.get('ucsc_bigwig',True)
+        if isinstance(job.options['ucsc_bigwig'],basestring):
+            job.options['ucsc_bigwig'] = job.options['ucsc_bigwig'].lower() in ['1','true','t']
+        job.options['create_gdv_project'] = job.options.get('create_gdv_project',False)
+        if isinstance(job.options['create_gdv_project'],basestring):
             job.options['create_gdv_project'] = job.options['create_gdv_project'].lower() in ['1','true','t']
+
         g_rep = genrep.GenRep( gl.get("genrep_url"), gl.get("bwt_root") )
         assembly = genrep.Assembly( assembly=job.assembly_id, genrep=g_rep )
-        logfile = open(hts_key+".log",'w')
+        logfile = open(opt.key+".log",'w')
         logfile.write(json.dumps(gl)+"\n");logfile.flush()
-        with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
+        with execution( M, description=opt.key, remote_working_directory=opt.wdir ) as ex:
             logfile.write("Enter execution, fetch bam and wig files.\n");logfile.flush()
-            (mapped_files, job) = mapseq.get_bam_wig_files( ex, job, minilims=ms_limspath, hts_url=mapseq_url,
-                                                            script_path=gl.get('script_path') or '', via=via )
+            (mapped_files, job) = mapseq.get_bam_wig_files( ex, job, minilims=opt.mapseq_minilims, hts_url=mapseq_url,
+                                                            script_path=gl.get('script_path',''), via=opt.via )
             logfile.write("Starting workflow.\n");logfile.flush()
             chipseq_files = workflow_groups( ex, job, mapped_files, assembly,
-                                             gl.get('script_path') or '', logfile=logfile, via=via )
+                                             gl.get('script_path',''), logfile=logfile, via=opt.via )
             gdv_project = {}
             if job.options.get('create_gdv_project'):
                 logfile.write("Creating GDV project.\n");logfile.flush()
@@ -130,7 +106,7 @@ def main(argv = None):
                     logfile.write("Error with %s: %s\n" %(names[nurl],e));logfile.flush()
         logfile.close()
         print json.dumps(allfiles)
-        with open(hts_key+".done",'w') as done:
+        with open(opt.key+".done",'w') as done:
             json.dump(allfiles,done)
         if 'email' in gl:
             r = email.EmailReport( sender=gl['email']['sender'],
@@ -142,10 +118,10 @@ Your chip-seq job has finished.
 
 The description was:
 '''+str(job.description)+'''
-and its unique key is '''+hts_key+'''.
+and its unique key is '''+opt.key+'''.
 
 You can retrieve the results at this url:
-'''+gl['hts_chipseq']['url']+"jobs/"+hts_key+"/get_results")
+'''+gl['hts_chipseq']['url']+"jobs/"+opt.key+"/get_results")
             r.send()
         return 0
     except Usage, err:

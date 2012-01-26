@@ -11,73 +11,38 @@ from bbcflib.common import get_files, set_file_descr, track_header
 from bbcflib.mapseq import *
 import sys, getopt, os, re, json
 
-usage = """run_mapseq.py [-h] [-u via] [-w wdir] [-k job_key] [-c config_file] -d minilims
-
--h           Print this message and exit
--u via       Run executions using method 'via' (can be "local" or "lsf")
--w wdir      Create execution working directories in wdir
--d minilims  MiniLIMS where mapseq executions and files will be stored.
--k job_key   Alphanumeric key specifying the job
--c file      Config file
-"""
-
 class Usage(Exception):
     def __init__(self,  msg):
         self.msg = msg
 
-def main(argv = None):
-    via = "lsf"
-    limspath = None
-    hts_key = ''
-    working_dir = None
-    config_file = None
-    if argv is None:
-        argv = sys.argv
+def main():
+    opts = (("-v", "--via", "Run executions using method 'via' (can be 'local' or 'lsf')", {'default': "lsf"}),
+            ("-k", "--key", "Alphanumeric key specifying the job", {'default': None}),
+            ("-d", "--minilims", "MiniLIMS where mapseq executions and files will be stored.", {'default': None}),
+            ("-w", "--working-directory", "Create execution working directories in wdir", {'default': os.getcwd(), 'dest':"wdir"}),
+            ("-c", "--config", "Config file", {'default': None}))
     try:
-        try:
-            opts,args = getopt.getopt(sys.argv[1:],"hu:k:d:w:c:",
-                                      ["help","via=","key=","minilims=",
-                                       "working-directory=","config="])
-        except getopt.error, msg:
-            raise Usage(msg)
-        for o, a in opts:
-            if o in ("-h", "--help"):
-                print __doc__
-                print usage
-                return 0
-            elif o in ("-u", "--via"):
-                if a=="local":
-                    via = "local"
-                elif a=="lsf":
-                    via = "lsf"
-                else:
-                    raise Usage("Via (-u) can only be \"local\" or \"lsf\", got %s." % (a,))
-            elif o in ("-w", "--working-directory"):
-                if os.path.exists(a):
-                    os.chdir(a)
-                    working_dir = a
-                else:
-                    raise Usage("Working directory '%s' does not exist." % a)
-            elif o in ("-d", "--minilims"):
-                limspath = a
-            elif o in ("-k", "--key"):
-                hts_key = a
-            elif o in ("-c", "--config"):
-                config_file = a
-            else:
-                raise Usage("Unhandled option: " + o)
-        if not(limspath and os.path.exists(limspath)
-               and (hts_key != None or (config_file and os.path.exists(config_file)))):
+        usage = "run_mapseq.py [-h] [-u via] [-w wdir] [-k job_key] [-c config_file] -d minilims"
+        desc = """A High-throughput sequencing data mapping workflow."""
+        parser = optparse.OptionParser(usage=usage, description=desc)
+        for opt in opts:
+            parser.add_option(opt[0],opt[1],help=opt[2],**opt[3])
+        (opt, args) = parser.parse_args()
+
+        if os.path.exists(opt.wdir): os.chdir(opt.wdir)
+        else: parser.error("Working directory '%s' does not exist." % opt.wdir)
+        if not(opt.minilims and os.path.exists(opt.minilims)
+               and (opt.key != None or (opt.config and os.path.exists(opt.config)))):
             raise Usage("Need a minilims and a job key or a configuration file")
-        M = MiniLIMS( limspath )
-        if len(hts_key)>1:
+        M = MiniLIMS( opt.minilims )
+        if opt.key:
             gl = use_pickle(M, "global variables")
             htss = frontend.Frontend( url=gl['hts_mapseq']['url'] )
-            job = htss.job( hts_key )
-            [M.delete_execution(x) for x in M.search_executions(with_description=hts_key,fails=True)]
-        elif os.path.exists(config_file):
-            (job,gl) = frontend.parseConfig( config_file )
-            hts_key = job.description
+            job = htss.job( opt.key )
+            [M.delete_execution(x) for x in M.search_executions(with_description=opt.key,fails=True)]
+        elif os.path.exists(opt.config):
+            (job,gl) = frontend.parseConfig( opt.config )
+            opt.key = job.description
         else:
             raise ValueError("Need either a job key (-k) or a configuration file (-c).")
         g_rep = genrep.GenRep( url=gl.get("genrep_url"), root=gl.get("bwt_root") )
@@ -94,19 +59,19 @@ def main(argv = None):
         job.options['ucsc_bigwig'] = job.options.get('ucsc_bigwig',True)
         if isinstance(job.options['ucsc_bigwig'],basestring):
             job.options['ucsc_bigwig'] = job.options['ucsc_bigwig'].lower() in ['1','true','t']
-        job.options['ucsc_bigwig'] = job.options['ucsc_bigwig'] and job.options['compute_densities']
         job.options['create_gdv_project'] = job.options.get('create_gdv_project',False)
         if isinstance(job.options['create_gdv_project'],basestring):
             job.options['create_gdv_project'] = job.options['create_gdv_project'].lower() in ['1','true','t']
+        job.options['create_gdv_project'] = job.options['create_gdv_project'] and job.options['compute_densities']
         map_args = job.options.get('map_args',{})
-        map_args['via']=via
-        logfile = open(hts_key+".log",'w')
+        map_args['via'] = opt.via
+        logfile = open(opt.key+".log",'w')
         logfile.write(json.dumps(gl)+"\n");logfile.flush()
-        with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
+        with execution( M, description=opt.key, remote_working_directory=opt.wdir ) as ex:
             logfile.write("Enter execution, fetch fastq files.\n");logfile.flush()
             job = get_fastq_files( ex, job, dafl )
             logfile.write("Generate QC report.\n");logfile.flush()
-            run_fastqc( ex, job, via=via )
+            run_fastqc( ex, job, via=opt.via )
             logfile.write("Map reads.\n");logfile.flush()
             mapped_files = map_groups( ex, job, assembly, map_args )
             logfile.write("Make stats:\n");logfile.flush()
@@ -120,7 +85,7 @@ def main(argv = None):
                 logfile.write("\ncomputing densities.\n");logfile.flush()
                 if int(job.options.get('read_extension',-1))<=0:
                     job.options['read_extension'] = mapped_files.values()[0].values()[0]['stats']['read_length']
-                density_files = densities_groups( ex, job, mapped_files, assembly.chromosomes, via=via )
+                density_files = densities_groups( ex, job, mapped_files, assembly.chromosomes, via=opt.via )
                 logfile.write("Finished computing densities.\n");logfile.flush()
                 gdv_project = {}
                 if job.options['create_gdv_project']:
@@ -131,9 +96,9 @@ def main(argv = None):
                     add_pickle( ex, gdv_project, description=set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
         allfiles = get_files( ex.id, M )
         if 'ucsc_bigwig' and assembly.intype == 0:
-            logfile.write("UCSC track file: "+hts_key+".bed\n");logfile.flush()
+            logfile.write("UCSC track file: "+opt.key+".bed\n");logfile.flush()
             ucscfiles = get_files( ex.id, M, select_param={'ucsc':'1'} )
-            with open(hts_key+".bed",'w') as ucscbed:
+            with open(opt.key+".bed",'w') as ucscbed:
                 for ftype,fset in ucscfiles.iteritems():
                     for ffile,descr in fset.iteritems():
                         if re.search(r' \(.*\)',descr): continue
@@ -155,7 +120,7 @@ def main(argv = None):
                     logfile.write("Error with %s: %s\n" %(names[nurl],e));logfile.flush()
         logfile.close()
         print json.dumps(allfiles)
-        with open(hts_key+".done",'w') as done:
+        with open(opt.key+".done",'w') as done:
             json.dump(allfiles,done)
         if 'email' in gl:
             r = email.EmailReport( sender=gl['email']['sender'],
@@ -167,10 +132,10 @@ Your mapseq job has finished.
 
 The description was:
 '''+str(job.description)+'''
-and its unique key is '''+hts_key+'''.
+and its unique key is '''+opt.key+'''.
 
 You can now retrieve the results at this url:
-'''+gl['hts_mapseq']['url']+"jobs/"+hts_key+"/get_results")
+'''+gl['hts_mapseq']['url']+"jobs/"+opt.key+"/get_results")
             r.send()
         return 0
     except Usage, err:
