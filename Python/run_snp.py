@@ -6,7 +6,7 @@ SNP detection workflow.
 
 """
 from bein import execution, MiniLIMS
-from bein.util import use_pickle, add_pickle
+from bein.util import use_pickle, add_pickle, pause
 from bbcflib import daflims, genrep, frontend, gdv, mapseq, common, snp
 from bbcflib import email
 import sys, os, json, optparse
@@ -18,15 +18,15 @@ class Usage(Exception):
 
 def main(argv = None):
     opts = (("-v", "--via", "Run executions using method 'via' (can be 'local' or 'lsf')", {'default': "lsf"}),
-            ("-k", "--key", "Alphanumeric key of the new RNA-seq job", {'default': ''}),
+            ("-k", "--key", "Alphanumeric key of the new RNA-seq job", {'default': None}),
             ("-m", "--mapseq_limspath", "MiniLIMS where a previous Mapseq execution and files has been stored. \
                                      Set it to None to align de novo from read files.",
-                                     {'default': "/data/htsstation/mapseq/mapseq_minilims", 'dest':"ms_limspath"}),
+                                     {'default': "/data/htsstation/mapseq/mapseq_minilims"}),
             ("-w", "--working-directory", "Create execution working directories in wdir",
                                      {'default': os.getcwd(), 'dest':"wdir"}),
             ("-c", "--config", "Config file", {'default': None}),
             ("-s", "--snp_limspath", "MiniLIMS where snp executions and files will be stored.", \
-                                     {'default': "/Users/carat/Desktop/postdoc/bbcf/data/snp_minilims"}))
+                                     {'default': "/home/scarat/repos/data/snp_minilims"}))
     try:
         usage = "run_snp.py [OPTIONS]"
         desc = """........."""
@@ -41,7 +41,7 @@ def main(argv = None):
                and (opt.key != None or (opt.config and os.path.exists(opt.config)))):
             raise Usage("Need a minilims and a job key or a configuration file")
         M = MiniLIMS( opt.snp_limspath )
-        if len(opt.key)>1:
+        if opt.key:
             hts_key = opt.key
             gl = use_pickle( M, "global variables" )
             htss = frontend.Frontend( url=gl['hts_snp']['url'] )
@@ -68,17 +68,44 @@ def main(argv = None):
 
         # Program body
         with execution( M, description=hts_key, remote_working_directory=opt.wdir ) as ex:
-            logfile.write("test\n")
             #print assembly.id
             (bam_files, job) = mapseq.get_bam_wig_files(ex, job, minilims=opt.mapseq_limspath, hts_url=mapseq_url, \
                                                         script_path=gl.get('script_path') or '', via=opt.via)
             assert bam_files, "Bam files not found."
-            (snp_files,job)=snp.pileup(ex, job, bam_files, minilims=opt.snp_limspath, hts_url=mapseq_url, \
-                                       script_path=gl.get('script_path') or '', via=opt.via)
-            logfile.flush()
-            logfile.close()
+            print "cat genome fasta files"
+            genomeRef=snp.untar_cat(ex,assembly.fasta_path())
+            print "done"
+
+            
+            #pause()
+            # for each group
+            listPileupFile=[]
+            for idGroup,dictRuns in job.groups.iteritems():
+                nbRuns=len(dictRuns["runs"].keys())
+                # for each run
+                listFormatedFile=[]
+                for idRun,dictRun in dictRuns["runs"].iteritems():
+                    pileupFilename=common.unique_filename_in()
+                    #launch pileup
+                    snp.sam_pileup(ex,job,dictRun["url"],genomeRef,via=opt.via,stdout=pileupFilename)
+                    listPileupFile.append(pileupFilename)
+                #formate pileup file
+                if(nbRuns>1):
+                    # stat and correlation
+                    print "many runs, need statistics"
+ 
+            posAllUniqSNPFile=snp.posAllUniqSNP(ex,job,listPileupFile)
+            formatedPileupFilename=snp.parse_pileupFile(ex,job,listPileupFile,posAllUniqSNPFile,via=opt.via)
+            
+            #pileupFilename=common.unique_filename_in()+".pileup"
+            #print bam_files
+            #snp.sam_pileup(ex,job,bam_files[1][11]['bam'],genomeRef,ex.working_directory,via=opt.via,stdout=pileupFilename)
+            #snp.sam_pileup(ex,job,bam_files[1][11]['bam'],genomeRef,via=opt.via,stdout=pileupFilename)
+            pause()
+            ex.add(pileupFilename)
 
         allfiles = common.get_files(ex.id, M)
+        logfile.close()
         print json.dumps(allfiles)
 
         return 0
@@ -89,4 +116,5 @@ def main(argv = None):
 
 if __name__ == '__main__':
     sys.exit(main())
+
 
