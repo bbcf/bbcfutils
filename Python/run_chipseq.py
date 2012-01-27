@@ -11,17 +11,6 @@ from bbcflib.common import get_files
 from bbcflib.chipseq import *
 import sys, optparse, os, json, re
 
-usage = """run_chipseq.py [-h] [-u via] [-w wdir] [-k job_key] [-c config_file] [-m mapseq_minilims] -d minilims
-
--h           Print this message and exit
--u via       Run executions using method 'via' (can be "local" or "lsf")
--w wdir      Create execution working directories in wdir
--d minilims  MiniLIMS where Chipseq executions and files will be stored.
--m minilims  MiniLIMS where a previous Mapseq execution and files has been stored.
--k job_key   Alphanumeric key specifying the job
--c file      Config file
-"""
-
 class Usage(Exception):
     def __init__(self,  msg):
         self.msg = msg
