@@ -110,7 +110,7 @@ def main():
                     gdv.new_track( gl['gdv']['email'], gl['gdv']['key'],
                                    project_id=gdv_project['project']['id'],
                                    url=url, file_names=names[nurl],
-                                   serv_url=gl['gdv']['url'] )
+                                   serv_url=gl['gdv']['url'], force=True )
                 except: pass
 
         logfile.close()
