@@ -91,7 +91,7 @@ def main(argv = None):
             job.options['create_gdv_project'] = job.options['create_gdv_project'].lower() in ['1','true','t']
         g_rep = genrep.GenRep( gl.get("genrep_url"), gl.get("bwt_root") )
         assembly = genrep.Assembly( assembly=job.assembly_id, genrep=g_rep )
-        primers_file='/scratch/cluster/monthly/htsstation/4cseq/'+str(job.id)+'/primers.fa'
+        primers_file=os.path.join(working_dir,'primers.fa')
         primers_dict=c4seq.loadPrimers(primers_file)
 	logfile = open(hts_key+".log",'w')
 	logfile.write(json.dumps(gl));logfile.flush()
