@@ -108,13 +108,15 @@ if(nchar(regToExclude)<=2)
 	header=paste("track type=bedGraph name='",curName," (all smoothed windows - ",nFragsPerWin," fragments per window)' description='",curName," (all smoothed windows - ",nFragsPerWin," fragments per window)' visibility=full windowingFunction=maximum",sep="")
 }
 
+
+
 print("Will write file")
 write.table(header,resFile,row.names=FALSE,col.names=FALSE,quote=FALSE)
-lapply(1:length(allSmoothedWindows),function(i){write.table(cbind(rep(names(allSmoothedWindows)[i],nrow(allSmoothedWindows[[i]])),allSmoothedWindows[[i]]),resFile,row.names=FALSE,col.names=FALSE,quote=FALSE,append=TRUE);return(nrow(allSmoothedWindows[[i]]))})
-
+#lapply(1:length(allSmoothedWindows),function(i){write.table(cbind(rep(names(allSmoothedWindows)[i],nrow(allSmoothedWindows[[i]])),allSmoothedWindows[[i]]),resFile,row.names=FALSE,col.names=FALSE,quote=FALSE,append=TRUE);return(nrow(allSmoothedWindows[[i]]))})
+lapply(1:length(allSmoothedWindows),function(i){j=which(allSmoothedWindows[[i]][,3]>0);write.table(cbind(rep(names(allSmoothedWindows)[i],length(j)),allSmoothedWindows[[i]][j,]),resFile,row.names=FALSE,col.names=FALSE,quote=FALSE,append=TRUE);return(nrow(allSmoothedWindows[[i]][j,]))})
 
 print("*****************")
-print(paste("Profile Correction of ",fragsFile," done!"))
+print(paste("Smoothing of ",fragsFile," done!"))
 print(paste("resfile=",resFile))
 print("*****************")
 
