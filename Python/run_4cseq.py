@@ -129,7 +129,7 @@ def main(argv = None):
 			if re.search(r'gdv:1',v):
 				urls.append(download_url+str(k))
 				if re.search(r'\.sql',str(v)):names.append(re.sub('\.sql.*','',str(v)))
-				if re.search(r'\.bedGraph',str(v)):names.append(re.sub('\.bedGraph.*','',str(v)))
+				if re.search(r'\.bedGraph',str(v)):names.append(re.sub('\.bedGraph.*','\.bedGraph',str(v)))
 	    logfile.write("Uploading GDV tracks:\n"+" ".join(urls)+"\n"+" ".join(names)+"\n");logfile.flush()
             for nurl,url in enumerate(urls):
                 try:
