@@ -7,7 +7,7 @@ python run_rnaseq.py -v lsf -c config_files/rnaseq.txt -d rnaseq -p genes -m /sc
 """
 import os, sys, json, re
 import optparse
-from bbcflib import rnaseq, frontend, common, mapseq, genrep, email, gdv
+from bbcflib import rnaseq, frontend, common, mapseq, email, gdv
 from bein.util import use_pickle, add_pickle
 from bein import execution, MiniLIMS
 
@@ -65,9 +65,6 @@ def main():
         if isinstance(job.options['create_gdv_project'],str):
             job.options['create_gdv_project'] = job.options['create_gdv_project'].lower() in ['1','true','t']
         job.options['discard_pcr_duplicates'] = False
-        g_rep = genrep.GenRep( gl.get('genrep_url'), gl.get('bwt_root') )
-            #intype is for mapping on the genome (intype=0), exons (intype=1) or transcriptome (intype=2)
-        assembly = genrep.Assembly(assembly=job.assembly_id, genrep=g_rep, intype=1)
         logfile = open((opt.key or opt.config)+".log",'w')
         logfile.write(json.dumps(gl)+"\n");logfile.flush()
 
@@ -82,17 +79,17 @@ def main():
             print "Current working directory:", ex.working_directory
             print "Loading BAM files..."
             (bam_files, job) = mapseq.get_bam_wig_files(ex, job, minilims=opt.mapseq_minilims, hts_url=mapseq_url,
-                                        script_path=gl.get('script_path',''), via=opt.via, fetch_unmapped=unmapped)
+                                                        script_path=gl.get('script_path',''), via=opt.via, fetch_unmapped=unmapped)
             assert bam_files, "Bam files not found."
             print "Loaded."
             logfile.write("Starting workflow.\n");logfile.flush()
-            rnaseq.rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=pileup_level, via=opt.via, unmapped=unmapped)
+            rnaseq.rnaseq_workflow(ex, job, bam_files, pileup_level=pileup_level, via=opt.via, unmapped=unmapped)
 
             gdv_project = {}
             if job.options.get('create_gdv_project'):
                 logfile.write("Creating GDV project.\n");logfile.flush()
                 gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
-                                               job.description, assembly.id, gl['gdv']['url'] )
+                                               job.description, job.assembly_id, gl['gdv']['url'] )
                 add_pickle( ex, gdv_project, description=common.set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
 
         # GDV
