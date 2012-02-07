@@ -25,7 +25,7 @@ def main(argv = None):
             ("-w", "--working-directory", "Create execution working directories in wdir",
                                      {'default': os.getcwd(), 'dest':"wdir"}),
             ("-c", "--config", "Config file", {'default': None}),
-            ("-s", "--snp_limspath", "MiniLIMS where snp executions and files will be stored.", \
+            ("-d", "--snp_limspath", "MiniLIMS where snp executions and files will be stored.", \
                                      {'default': "/home/scarat/repos/data/snp_minilims"}))
     try:
         usage = "run_snp.py [OPTIONS]"
