@@ -16,11 +16,10 @@ class Usage(Exception):
         self.msg = msg
 
 def main():
-    map_args = None # {'bwt_args':["-n",str(3),"-p",str(4),"-d",str(50),"--chunkmbs",str(1024),"-m",str(5)]}
-
     opts = (("-v", "--via", "Run executions using method 'via' (can be 'local' or 'lsf')", {'default': "lsf"}),
             ("-k", "--key", "Alphanumeric key of the new RNA-seq job", {'default': None}),
-            ("-d", "--rnaseq_minilims", "MiniLIMS where RNAseq executions and files will be stored.", {'default': None}),
+            ("-d", "--rnaseq_minilims", "MiniLIMS where RNAseq executions and files will be stored.",
+                                     {'default': "/data/htsstation/rnaseq/rnaseq_minilims"}),
             ("-m", "--mapseq_minilims", "MiniLIMS where a previous Mapseq execution and files has been stored. \
                                      Set it to None to align de novo from read files.",
                                      {'default': "/data/htsstation/mapseq/mapseq_minilims"}),
@@ -52,13 +51,12 @@ def main():
             htss = frontend.Frontend( url=gl['hts_rnaseq']['url'] )
             job = htss.job(opt.key) # new *RNA-seq* job instance
             [M.delete_execution(x) for x in M.search_executions(with_description=opt.key,fails=True)]
-            description = "Job run with mapseq key %s" % opt.key
             unmapped = True
         elif os.path.exists(opt.config):
             (job,gl) = frontend.parseConfig(opt.config)
-            description = "Job run with config file %s" % opt.config
             unmapped = opt.unmapped
         else: raise ValueError("Need either a job key (-k) or a configuration file (-c).")
+        description = opt.key or opt.config
         pileup_level = opt.pileup_level.split(',')
 
         job.options['unmapped'] = job.options.get('unmapped',True)
@@ -80,21 +78,13 @@ def main():
         # Program body #
         with execution(M, description=description, remote_working_directory=opt.wdir ) as ex:
             logfile.write("Enter execution. Current working directory: %s \n" % ex.working_directory);logfile.flush()
+            logfile.write("Fetch bam and wig files");logfile.flush()
             print "Current working directory:", ex.working_directory
-            if opt.mapseq_minilims == "None":
-                logfile.write("No mapseq MiliLIMS found. Aligning reads.\n");logfile.flush()
-                print "Alignment..."
-                job = mapseq.get_fastq_files( job, ex.working_directory)
-                fastq_root = os.path.abspath(ex.working_directory)
-                bam_files = mapseq.map_groups(ex, job, fastq_root, assembly_or_dict=assembly, map_args=map_args)
-                print "Reads aligned."
-            else:
-                logfile.write("Fetch bam and wig files");logfile.flush()
-                print "Loading BAM files..."
-                (bam_files, job) = mapseq.get_bam_wig_files(ex, job, minilims=opt.mapseq_minilims, hts_url=mapseq_url,
-                                            script_path=gl.get('script_path',''), via=opt.via, fetch_unmapped=unmapped)
-                assert bam_files, "Bam files not found."
-                print "Loaded."
+            print "Loading BAM files..."
+            (bam_files, job) = mapseq.get_bam_wig_files(ex, job, minilims=opt.mapseq_minilims, hts_url=mapseq_url,
+                                        script_path=gl.get('script_path',''), via=opt.via, fetch_unmapped=unmapped)
+            assert bam_files, "Bam files not found."
+            print "Loaded."
             logfile.write("Starting workflow.\n");logfile.flush()
             rnaseq.rnaseq_workflow(ex, job, assembly, bam_files, pileup_level=pileup_level, via=opt.via, unmapped=unmapped)
 
@@ -120,7 +110,7 @@ def main():
                     gdv.new_track( gl['gdv']['email'], gl['gdv']['key'],
                                    project_id=gdv_project['project']['id'],
                                    url=url, file_names=names[nurl],
-                                   serv_url=gl['gdv']['url'] )
+                                   serv_url=gl['gdv']['url'], force=True )
                 except: pass
 
         logfile.close()

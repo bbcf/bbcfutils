@@ -91,7 +91,7 @@ def main(argv = None):
             job.options['create_gdv_project'] = job.options['create_gdv_project'].lower() in ['1','true','t']
         g_rep = genrep.GenRep( gl.get("genrep_url"), gl.get("bwt_root") )
         assembly = genrep.Assembly( assembly=job.assembly_id, genrep=g_rep )
-        primers_file='/scratch/cluster/monthly/htsstation/4cseq/'+str(job.id)+'/primers.fa'
+        primers_file=os.path.join(working_dir,'primers.fa')
         primers_dict=c4seq.loadPrimers(primers_file)
 	logfile = open(hts_key+".log",'w')
 	logfile.write(json.dumps(gl));logfile.flush()
@@ -126,17 +126,17 @@ def main(argv = None):
 	    names=[]
 	    for l,t in allfiles.iteritems():
 		    for k,v in allfiles[l].iteritems():
-			if re.search(r'gdv',v):
+			if re.search(r'gdv:1',v):
 				urls.append(download_url+str(k))
 				if re.search(r'\.sql',str(v)):names.append(re.sub('\.sql.*','',str(v)))
-				if re.search(r'\.bedGraph',str(v)):names.append(re.sub('\.bedGraph.*','',str(v)))
+				if re.search(r'\.bedGraph',str(v)):names.append(re.sub('\.bedGraph.*','\.bedGraph',str(v)))
 	    logfile.write("Uploading GDV tracks:\n"+" ".join(urls)+"\n"+" ".join(names)+"\n");logfile.flush()
             for nurl,url in enumerate(urls):
                 try:
                     gdv.new_track( gl['gdv']['email'], gl['gdv']['key'], 
                                    project_id=gdv_project['project']['id'],
                                    url=url, file_names=names[nurl],
-                                   serv_url=gl['gdv']['url'] )
+                                   serv_url=gl['gdv']['url'], force=True )
                 except:
                     pass
 	logfile.close()
