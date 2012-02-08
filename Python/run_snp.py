@@ -9,6 +9,7 @@ from bein import execution, MiniLIMS
 from bein.util import use_pickle, add_pickle, pause
 from bbcflib import daflims, genrep, frontend, gdv, mapseq, common, snp
 from bbcflib import email
+from bbcflib.common import set_file_descr
 import sys, os, json, optparse
 
 
@@ -104,7 +105,9 @@ def main(argv = None):
                 ex.add(k)
 
             formatedPileupFilename=snp.parse_pileupFile(ex,job,dictPileupFile,posAllUniqSNPFile,via=opt.via)
-            ex.add(formatedPileupFilename)
+            description="SNP analysis for "+" ".join(dictPileupFile.values())+" samples"
+            description=set_file_descr("allSNP.txt",step="SNPs",type="txt",comment=description)
+            ex.add(formatedPileupFilename,description=description)
         
         allfiles = common.get_files(ex.id, M)
         logfile.close()
