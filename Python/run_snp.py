@@ -105,8 +105,8 @@ def main(argv = None):
                 ex.add(k)
 
             formatedPileupFilename=snp.parse_pileupFile(ex,job,dictPileupFile,posAllUniqSNPFile,via=opt.via)
-            description="SNP analysis for "+" ".join(dictPileupFile.values())+" samples"
-            description=set_file_descr("allSNP.txt",step="SNPs",type="txt",comment=description)
+            description="SNP analysis for samples: "+", ".join(dictPileupFile.values())
+            description=set_file_descr("allSNP.txt",step="SNPs",type="txt")
             ex.add(formatedPileupFilename,description=description)
         
         allfiles = common.get_files(ex.id, M)
