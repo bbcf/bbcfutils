@@ -7,8 +7,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
 
 
@@ -22,14 +22,13 @@ public class SQLiteConnector {
 		return conn;
 	}
 
-	public static Map<String, Integer> getChromosomesAndLength(Connection conn) throws ClassNotFoundException, SQLException {
-		Map<String,Integer> result = new HashMap<String,Integer>();
+	public static List<String> getChromosomes(Connection conn) throws ClassNotFoundException, SQLException {
+		List<String> result = new ArrayList<String>();
 		Statement stat = conn.createStatement();
-		String query = "SELECT t1.name, t1.length FROM chrNames as t1;";
+		String query = "SELECT t1.name FROM chrNames as t1;";
 		ResultSet rs = stat.executeQuery(query);
 		while (rs.next()) {
-			result.put(rs.getString("name"),
-					rs.getInt("length"));
+			result.add(rs.getString("name"));
 		}
 		rs.close();
 		return result;

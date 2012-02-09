@@ -4,7 +4,7 @@ import java.io.File;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Map;
+import java.util.List;
 import java.util.zip.DataFormatException;
 
 import org.apache.log4j.ConsoleAppender;
@@ -103,19 +103,18 @@ public class Main {
 	 */
 	private static void process(File database, String sha1, String outputDir) throws ClassNotFoundException, SQLException, DataFormatException {
 
-		Map<String, Integer> chromosomes; // contains all chromosomes and length in the database
+		List<String> chromosomes; // contains all chromosomes and length in the database
 		Connection principal; // the connection to the main database
 
 		principal = SQLiteConnector.getConnection(database.getAbsolutePath());
-		chromosomes = SQLiteConnector.getChromosomesAndLength(principal);
+		chromosomes = SQLiteConnector.getChromosomes(principal);
 
 		File output = new File(outputDir + File.separator + sha1);
 		output.mkdir();
 		logger.trace("output is " + output);
 
-		for(Map.Entry<String, Integer> entry : chromosomes.entrySet()){
+		for(String chromosome : chromosomes){
 
-			String chromosome = entry.getKey();
 			logger.debug("doing chromosome " + chromosome);
 
 			ConnectionStore connectionStore = SQLiteConnector.createOutputDatabases(output.getAbsolutePath(), chromosome, zooms);
