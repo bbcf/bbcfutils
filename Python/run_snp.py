@@ -9,6 +9,7 @@ from bein import execution, MiniLIMS
 from bein.util import use_pickle, add_pickle, pause
 from bbcflib import daflims, genrep, frontend, gdv, mapseq, common, snp
 from bbcflib import email
+from bbcflib.common import set_file_descr
 import sys, os, json, optparse
 
 
@@ -25,7 +26,7 @@ def main(argv = None):
             ("-w", "--working-directory", "Create execution working directories in wdir",
                                      {'default': os.getcwd(), 'dest':"wdir"}),
             ("-c", "--config", "Config file", {'default': None}),
-            ("-s", "--snp_limspath", "MiniLIMS where snp executions and files will be stored.", \
+            ("-d", "--snp_limspath", "MiniLIMS where snp executions and files will be stored.", \
                                      {'default': "/home/scarat/repos/data/snp_minilims"}))
     try:
         usage = "run_snp.py [OPTIONS]"
@@ -68,7 +69,6 @@ def main(argv = None):
 
         # Program body
         with execution( M, description=hts_key, remote_working_directory=opt.wdir ) as ex:
-            #print assembly.id
             (bam_files, job) = mapseq.get_bam_wig_files(ex, job, minilims=opt.mapseq_limspath, hts_url=mapseq_url, \
                                                         script_path=gl.get('script_path') or '', via=opt.via)
             assert bam_files, "Bam files not found."
@@ -76,10 +76,8 @@ def main(argv = None):
             genomeRef=snp.untar_cat(ex,assembly.fasta_path())
             print "done"
 
-            
-            #pause()
             # for each group
-            listPileupFile=[]
+            dictPileupFile={}
             for idGroup,dictRuns in job.groups.iteritems():
                 nbRuns=len(dictRuns["runs"].keys())
                 # for each run
@@ -88,22 +86,29 @@ def main(argv = None):
                     pileupFilename=common.unique_filename_in()
                     #launch pileup
                     snp.sam_pileup(ex,job,dictRun["url"],genomeRef,via=opt.via,stdout=pileupFilename)
-                    listPileupFile.append(pileupFilename)
+                    
+                    sampleName=job.groups[idGroup]['name']
+                    if(nbRuns>1):
+                        sampleName+=group['run_names'].get(idRun,str(idRun))
+                    
+                    dictPileupFile[pileupFilename]=sampleName
+
                 #formate pileup file
                 if(nbRuns>1):
                     # stat and correlation
                     print "many runs, need statistics"
  
-            posAllUniqSNPFile=snp.posAllUniqSNP(ex,job,listPileupFile)
-            formatedPileupFilename=snp.parse_pileupFile(ex,job,listPileupFile,posAllUniqSNPFile,via=opt.via)
-            
-            #pileupFilename=common.unique_filename_in()+".pileup"
-            #print bam_files
-            #snp.sam_pileup(ex,job,bam_files[1][11]['bam'],genomeRef,ex.working_directory,via=opt.via,stdout=pileupFilename)
-            #snp.sam_pileup(ex,job,bam_files[1][11]['bam'],genomeRef,via=opt.via,stdout=pileupFilename)
-            pause()
-            ex.add(pileupFilename)
+            posAllUniqSNPFile=snp.posAllUniqSNP(ex,job,dictPileupFile)
+            ex.add(posAllUniqSNPFile)
 
+            for k in dictPileupFile.keys():
+                ex.add(k)
+
+            formatedPileupFilename=snp.parse_pileupFile(ex,job,dictPileupFile,posAllUniqSNPFile,via=opt.via)
+            description="SNP analysis for samples: "+", ".join(dictPileupFile.values())
+            description=set_file_descr("allSNP.txt",step="SNPs",type="txt")
+            ex.add(formatedPileupFilename,description=description)
+        
         allfiles = common.get_files(ex.id, M)
         logfile.close()
         print json.dumps(allfiles)
