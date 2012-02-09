@@ -80,6 +80,14 @@ public class SQLiteConnector {
 		String database = chromosome + "_" + zoom + ".db";
 		Connection conn = connectionStore.getConnection(database);
 		
+		boolean bool = false;
+		if (database.equalsIgnoreCase("1_2.db") && imageNumber == 26741){bool=true;
+			for (Float f : tab){
+				System.out.print(f + " ");
+			}
+			System.out.println(" ");
+		};
+		
 		if (null == conn || conn.isClosed()){
 			System.err.println("cannot find connection for " + database);
 			return;
