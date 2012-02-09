@@ -119,11 +119,15 @@ public class Main {
 			logger.debug("doing chromosome " + chromosome);
 
 			ConnectionStore connectionStore = SQLiteConnector.createOutputDatabases(output.getAbsolutePath(), chromosome, zooms);
-
-			ResultSet scores = SQLiteConnector.getScores(principal, chromosome);
-			Tree tree = new Tree(connectionStore, chromosome, output.getAbsolutePath()	);
-			tree.process(scores);
-			scores.close();
+			ResultSet scores = null;
+			try {
+				scores = SQLiteConnector.getScores(principal, chromosome);
+			} catch (SQLException e) {}
+			if (null!=scores){
+				Tree tree = new Tree(connectionStore, chromosome, output.getAbsolutePath());
+				tree.process(scores);
+				scores.close();
+			}
 			connectionStore.destruct();
 
 		}
