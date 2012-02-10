@@ -22,6 +22,7 @@ public class Node {
 
 	private boolean last;
 	private int prevIndex;
+	private float prevScore;
 
 
 
@@ -62,20 +63,19 @@ public class Node {
 			this.first = false;
 			this.previousPosition = position;
 			this.prevIndex = 0;
+			this.prevScore = 0;
 		}
 
 		int index = getTabIndex(position);
 		
 		if(currentImageNumber == this.imageNumber){//fill the tab
 			for (int i=this.prevIndex + 1; i < index;i++){
-				tab[i] = score;
+				tab[i] = this.prevScore;
 			}
 			tab[index] = score;
 			this.prevIndex = index;
+			this.prevScore = score;
 		} else {//draw the tab then reset it then fill it
-			if (currentImageNumber == 26742 && this.zoom == 2){
-				System.out.println("WRITEEEE");
-			}
 			tree.writeValues(this);
 			if(!last){
 				this.updateParents();
