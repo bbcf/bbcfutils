@@ -14,6 +14,7 @@ class Usage(Exception):
     def __init__(self,  msg):
         self.msg = msg
 
+
 @program
 def run_glm(data_file, options=[]):
     output_file = unique_filename_in()
