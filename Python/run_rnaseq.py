@@ -29,7 +29,8 @@ def main():
             ("-p", "--pileup_level", "Target features, inside of quotes, separated by commas.\
                                      E.g. 'genes,exons,transcripts'",{'default': "genes,exons,transcripts"}),
             ("-u", "--unmapped", "If True, add junction reads to the pileups.",
-                                     {'action':'store_true', 'default': False}))
+                                     {'action':'store_true', 'default': False})
+           )
     try:
         usage = "run_rnaseq.py [OPTIONS]"
         desc = """A High-throughput RNA-seq analysis workflow. It returns a file containing
@@ -83,7 +84,7 @@ def main():
             assert bam_files, "Bam files not found."
             print "Loaded."
             logfile.write("Starting workflow.\n");logfile.flush()
-            rnaseq.rnaseq_workflow(ex, job, bam_files, pileup_level=pileup_level, via=opt.via, unmapped=unmapped)
+            rnaseq.rnaseq_workflow(ex, job, bam_files, pileup_level=pileup_level, via=opt.via)
 
             gdv_project = {}
             if job.options.get('create_gdv_project'):
