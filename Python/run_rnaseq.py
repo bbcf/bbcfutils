@@ -80,7 +80,7 @@ def main():
             print "Current working directory:", ex.working_directory
             print "Loading BAM files..."
             (bam_files, job) = mapseq.get_bam_wig_files(ex, job, minilims=opt.mapseq_minilims, hts_url=mapseq_url,
-                                                        script_path=gl.get('script_path',''), via=opt.via, fetch_unmapped=unmapped)
+                                     script_path=gl.get('script_path',''), via=opt.via, fetch_unmapped=unmapped)
             assert bam_files, "Bam files not found."
             print "Loaded."
             logfile.write("Starting workflow.\n");logfile.flush()
@@ -91,7 +91,7 @@ def main():
                 logfile.write("Creating GDV project.\n");logfile.flush()
                 gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
                                                job.description, job.assembly_id, gl['gdv']['url'] )
-                add_pickle( ex, gdv_project, description=common.set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
+                add_pickle(ex, gdv_project, description=common.set_file_descr("gdv_json",step='gdv',type='py',view='admin'))
 
         # GDV
         allfiles = common.get_files(ex.id, M)
