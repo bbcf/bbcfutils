@@ -53,7 +53,7 @@ def main():
             job = htss.job(opt.key) # new *RNA-seq* job instance
             [M.delete_execution(x) for x in M.search_executions(with_description=opt.key,fails=True)]
             unmapped = True
-        elif os.path.exists(opt.config):
+        elif opt.config and os.path.exists(opt.config):
             (job,gl) = frontend.parseConfig(opt.config)
             unmapped = opt.unmapped
         else: raise ValueError("Need either a job key (-k) or a configuration file (-c).")

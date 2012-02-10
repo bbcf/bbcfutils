@@ -18,26 +18,30 @@ class Usage(Exception):
 def run_glm(data_file, options=[]):
     output_file = unique_filename_in()
     options += ["-o",output_file]
-    return {'arguments': ["R","--slave","-f","negbin.test.R","--args"]+data_file+options,
+    return {'arguments': ["R","--slave","-f","negbin.test.R","--args",data_file]+options,
             'return_value': output_file}
 
 def main():
     opts = (("-v", "--via", "Run executions using method 'via' (can be 'local' or 'lsf')", {'default': "lsf"}),
             ("-k", "--key", "Alphanumeric key of the new RNA-seq job", {'default': None}),
-            ("-m", "--rnaseq_minilims", "MiniLIMS where RNAseq executions and files will be stored.",
+            ("-d", "--rnaseq_minilims", "MiniLIMS where RNAseq executions and files will be stored.",
                                      {'default': "/data/htsstation/rnaseq/rnaseq_minilims"}),
             ("-w", "--wdir", "Create execution working directories in wdir", {'default': os.getcwd()}),
+            ("-c", "--config", "Config file", {'default': None}),
             ("-s", "--sep", "Character separating fields in the input files. Use 'tab' for tab delimiter (not '\t').",
                                      {'default': "tab"}),
-            ("-d", "--design", "name of the file containing the design matrix (see below).", {'default': None}),
-            ("-c", "--contrast", "name of the file containing the contrast matrix (see below).", {'default': None}),
+            ("--design", "name of the file containing the design matrix (see below).", {'default': None}),
+            ("--contrast", "name of the file containing the contrast matrix (see below).", {'default': None}),
            )
     try:
-        usage = "run_glm.py data_file output_file [OPTIONS]"
+        usage = "run_glm.py data_file [OPTIONS]"
         desc = """  """
         parser = optparse.OptionParser(usage=usage, description=desc)
         for opt in opts:
-            parser.add_option(opt[0],opt[1],help=opt[2],**opt[3])
+            if len(opt) == 4:
+                parser.add_option(opt[0],opt[1],help=opt[2],**opt[3])
+            elif len(opt) == 3:
+                parser.add_option(opt[0],help=opt[1],**opt[2])
         (opt, args) = parser.parse_args()
 
         # Treat arguments and options #
@@ -47,8 +51,8 @@ def main():
         else: parser.error("Working directory '%s' does not exist." % opt.wdir)
         if not opt.rnaseq_minilims: parser.error("Must specify a MiniLIMS to attach to")
         options = []
-        if opt.design: options += ["-d",opt.design]
-        if opt.contrast: options += ["-c",opt.contrast]
+        if opt.design: options += ["-d",os.path.abspath(opt.design)]
+        if opt.contrast: options += ["-c",os.path.abspath(opt.contrast)]
         options += ["-s",opt.sep]
 
         # Job, MiniLIMS and execution #
@@ -59,7 +63,7 @@ def main():
             job = htss.job(opt.key)
             [M.delete_execution(x) for x in M.search_executions(with_description=opt.key,fails=True)]
             description = opt.key
-        elif os.path.exists(opt.config):
+        elif opt.config and os.path.exists(opt.config):
             (job,gl) = frontend.parseConfig(opt.config)
             description = opt.config
         else:
@@ -87,6 +91,8 @@ def main():
 
 if __name__ == '__main__':
     sys.exit(main())
+
+
 
 
 
