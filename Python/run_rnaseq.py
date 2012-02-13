@@ -37,10 +37,8 @@ def main():
             ("-c", "--config", "Config file", {'default': None}),
             ("-p", "--pileup_level", "Target features, inside of quotes, separated by commas.\
                                      E.g. 'genes,exons,transcripts'",{'default': "genes,exons,transcripts"}),
-            ("-u", "--unmapped", "If True, add junction reads to the pileups.",
-                                     {'action':'store_true', 'default': False}),
-            ("--design", "name of the file containing the design matrix (see below).", {'default': None}),
-            ("--contrast", "name of the file containing the contrast matrix (see below).", {'default': None}),
+            ("--design", "name of the file containing the design matrix.", {'default': None}),
+            ("--contrast", "name of the file containing the contrast matrix.", {'default': None}),
            )
     try:
         usage = "run_rnaseq.py [OPTIONS]"
@@ -66,15 +64,12 @@ def main():
             htss = frontend.Frontend( url=gl['hts_rnaseq']['url'] )
             job = htss.job(opt.key) # new *RNA-seq* job instance
             [M.delete_execution(x) for x in M.search_executions(with_description=opt.key,fails=True)]
-            unmapped = True
         elif opt.config and os.path.exists(opt.config):
             (job,gl) = frontend.parseConfig(opt.config)
-            unmapped = opt.unmapped
         else: raise ValueError("Need either a job key (-k) or a configuration file (-c).")
         description = opt.key or opt.config
         pileup_level = opt.pileup_level.split(',')
 
-        job.options['unmapped'] = job.options.get('unmapped',True)
         job.options['ucsc_bigwig'] = job.options.get('ucsc_bigwig',True)
         job.options['create_gdv_project'] = job.options.get('create_gdv_project',False)
         if isinstance(job.options['create_gdv_project'],str):
@@ -94,7 +89,7 @@ def main():
             print "Current working directory:", ex.working_directory
             print "Loading BAM files..."
             (bam_files, job) = mapseq.get_bam_wig_files(ex, job, minilims=opt.mapseq_minilims, hts_url=mapseq_url,
-                                     script_path=gl.get('script_path',''), via=opt.via, fetch_unmapped=unmapped)
+                                     script_path=gl.get('script_path',''), via=opt.via, fetch_unmapped=True)
             assert bam_files, "Bam files not found."
             print "Loaded."
             logfile.write("Starting workflow.\n");logfile.flush()
@@ -115,7 +110,7 @@ def main():
                                     comment='Differential analysis between groups %s' % o.split(glmfile)[1].strip('_'))
                             ex.add(o, description=desc)
                     except:
-                        print """Skipped differential analysis"""
+                        print "Skipped differential analysis."
                         logfile.write("Skipped differential analysis");logfile.flush()
 
             # Create GDV project #
@@ -175,5 +170,7 @@ if __name__ == '__main__':
 # http://bbcf.epfl.ch/                                 #
 # webmaster.bbcf@epfl.ch                               #
 #------------------------------------------------------#
+
+
 
 
