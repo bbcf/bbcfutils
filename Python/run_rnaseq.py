@@ -30,8 +30,7 @@ def main():
             ("-k", "--key", "Alphanumeric key of the new RNA-seq job", {'default': None}),
             ("-d", "--rnaseq_minilims", "MiniLIMS where RNAseq executions and files will be stored.",
                                      {'default': "/data/htsstation/rnaseq/rnaseq_minilims"}),
-            ("-m", "--mapseq_minilims", "MiniLIMS where a previous Mapseq execution and files has been stored. \
-                                     Set it to None to align de novo from read files.",
+            ("-m", "--mapseq_minilims", "MiniLIMS where a previous Mapseq execution and files has been stored.",
                                      {'default': "/data/htsstation/mapseq/mapseq_minilims"}),
             ("-w", "--working-directory", "Create execution working directories in wdir",
                                      {'default': os.getcwd(), 'dest':"wdir"}),
