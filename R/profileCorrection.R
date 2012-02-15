@@ -33,8 +33,8 @@ profileCorrection <- function(fragsFile,baitCoord,plotFile=NA,all=FALSE)
         baitCoordSplit <- unlist(strsplit(gsub("-",":",baitCoord,perl=TRUE),":"))
         bait=as.numeric(baitCoordSplit[2:3])
         baitChr=baitCoordSplit[1]
-        bed=read.delim(infile, skip=1,header=F,stringsAsFactors=F)
-	if(ncol(bed)<4){bed=read.delim(infile, skip=1,header=F,stringsAsFactors=F,sep=" ")}
+        bed=read.delim(fragsFile, skip=1,header=F,stringsAsFactors=F)
+	if(ncol(bed)<4){bed=read.delim(fragsFile, skip=1,header=F,stringsAsFactors=F,sep=" ")}
 
         I.down=which(bed[,1]==baitChr & bed[,2]>bait[2])
         data.down=data.frame(start=bed[I.down,2]-bait[2],end=bed[I.down,3]-bait[2],val=bed[I.down,4])
