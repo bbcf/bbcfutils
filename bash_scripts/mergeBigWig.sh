@@ -1,5 +1,6 @@
+#!/bin/sh
 arguments=$*
-echo "arguments:"${arguments}
+echo "arguments: "${arguments}
 
 #mergeBigWig.sh -i file1,file2,file3...filen -o outputfile
 #./mergeBigWig.sh -i density_file_CHAN1_2nM_A_filtered_sorted.bw,density_file_CHAN1_2nM_B_filtered_sorted.bw -o fileres
