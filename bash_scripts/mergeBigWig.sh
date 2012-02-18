@@ -42,7 +42,7 @@ infiles=`echo $infiles | sed 's/,/ /g'`
 #echo "infiles="$infiles
 tmpfile=$outputFile".tmp"
 #echo "tmpfile="$tmpfile
-`cat $infiles  | awk '{for(i=$2;i<=$3;i++){print $1"\t"i"\t"$4}}' | sort -k 1,1 -k2,2n | groupBy -i stdin -grp 1,2 -c 3 -o mean > $tmpfile`
-awk '{if(NR==1){ch=$1;s=$2;e=$2;curScore=$3} if($1==ch && $3==curScore){e=$2;new=0}else{print ch"\t"s"\t"e"\t"curScore; ch=$1;s=$2;e=$2;curScore=$3;new=1}} END{print ch"\t"s"\t"e"\t"curScore}' $tmpfile  > $outputFile 
+`cat $infiles  | awk '{for(i=$2;i<$3;i++){print $1"\t"i"\t"$4}}' | sort -k 1,1 -k2,2n | groupBy -i stdin -grp 1,2 -c 3 -o mean > $tmpfile`
+awk '{if(NR==1){ch=$1;s=$2;e=$2;curScore=$3} if($1==ch && $3==curScore){e=$2}else{e++;print ch"\t"s"\t"e"\t"curScore; ch=$1;s=$2;e=$2;curScore=$3}} END{e++;print ch"\t"s"\t"e"\t"curScore}' $tmpfile  > $outputFile 
 rm $tmpfile
 rm $infiles
