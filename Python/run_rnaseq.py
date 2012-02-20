@@ -12,10 +12,10 @@ from bbcflib.common import unique_filename_in, set_file_descr
 from bein.util import use_pickle, add_pickle
 from bein import execution, MiniLIMS, program
 
+
 class Usage(Exception):
     def __init__(self,  msg):
         self.msg = msg
-
 
 @program
 def run_glm(rpath, data_file, options=[]):

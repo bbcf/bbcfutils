@@ -81,7 +81,10 @@ def MAplot(dataset, cols=[2,3], annotate=None, mode="normal", data_format="count
             header = 'None'
             if csv.Sniffer().has_header(f.readline()):
                 f.seek(0); header=f.readline()
-            csvreader = csv.reader(f, dialect=dialect, quoting=csv.QUOTE_NONE)
+            try:
+                csvreader = csv.reader(f, dialect=dialect, quoting=csv.QUOTE_NONE)
+            except TypeError:
+                csvreader = csv.reader(f, dialect='excel-tab', quoting=csv.QUOTE_NONE)
             n=[]; m=[]; r=[]; p=[]
             if all([c in header.split(dialect.delimiter) for c in cols]):
                 cols = [header.split(dialect.delimiter).index(c)+1 for c in cols]
@@ -340,14 +343,14 @@ class AnnoteFinder:
 
 usage = """
 
-maplot.py [-h] [-c --cols] [-m --mode] [-f --format] [-d --deg] [-b --bins] [-a --assembly]
+maplot.py [-h] [-c --cols] [-m --mode] [-f --format] [-s --sep] [-d --deg] [-b --bins] [-a --assembly]
           [-q --noquantiles] [-n --annotate] [--xmin --xmax --ymin --ymax] [--smin --smax]
           [-t --title] [-e --extremes]
           data_1 .. data_n
 
 **Input**: CSV files containing at least two numeric columns representing the two
            samples to compare, all in the same format. By default they are columns 2 and 3,
-           the first one containing names. Else, precise which columns to use with the
+           whilst column 1 contains the names. Else, precise which columns to use with the
            `--cols` argument.
 
 **Output**: depending on the chosen `--mode`, prints to stdout the name of the .png file produced,
@@ -362,7 +365,7 @@ commas. E.g. --cols 3,5.""",
 'json' - json output to stdout for Javascript web interface.""",
 """Data type: 'counts' for raw count data (default), 'rpkm' for normalized data.""",
 """The character delimiting the columns of the file. If not specified, the program tries
-to detect it automatically. Use C^V <tab> to use a <tab> delimiter.""",
+to detect it automatically. Use C^V or '\t' for a <tab> delimiter.""",
 """Degree of the interpolant percentile splines.""",
 """Number of divisions of the x axis to calculate percentiles.""",
 """Identifier for the Genrep assembly (e.g. 'hg19' or 7) used to add more
