@@ -104,6 +104,7 @@ def main(argv = None):
                                                  gl['script_path'])
 	    gdv_project = {}
             if job.options.get('create_gdv_project'):
+		if()
 		logfile.write("Creating GDV project.\n");logfile.flush()
                 gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
                                                job.description, assembly.id, 
@@ -129,13 +130,13 @@ def main(argv = None):
 			if re.search(r'gdv:1',v):
 				urls.append(download_url+str(k))
 				if re.search(r'\.sql',str(v)):names.append(re.sub('\.sql.*','',str(v)))
-				if re.search(r'\.bedGraph',str(v)):names.append(re.sub('\.bedGraph.*','\.bedGraph',str(v)))
+				if re.search(r'\.bedGraph',str(v)):names.append(re.sub('\.bedGraph.*','.bedGraph',str(v)))
 	    logfile.write("Uploading GDV tracks:\n"+" ".join(urls)+"\n"+" ".join(names)+"\n");logfile.flush()
             for nurl,url in enumerate(urls):
                 try:
-                    gdv.new_track( gl['gdv']['email'], gl['gdv']['key'], 
+                    gdv.single_track( gl['gdv']['email'], gl['gdv']['key'], 
                                    project_id=gdv_project['project']['id'],
-                                   url=url, file_names=names[nurl],
+                                   url=url, file_name=names[nurl],
                                    serv_url=gl['gdv']['url'], force=True )
                 except:
                     pass
