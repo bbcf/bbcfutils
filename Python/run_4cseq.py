@@ -103,15 +103,19 @@ def main(argv = None):
                                                  mapseq_files, mapseq_url,
                                                  gl['script_path'])
 	    gdv_project = {}
+	    job.options['gdv_key'] = False
             if job.options.get('create_gdv_project'):
-		if()
-		logfile.write("Creating GDV project.\n");logfile.flush()
-                gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
-                                               job.description, assembly.id, 
-                                               gl['gdv']['url'] )
-		logfile.write("GDV project: "+str(gdv_project['project']['id'])+"\n");logfile.flush()
-                add_pickle( ex, gdv_project, 
-                            description=common.set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
+		if job.options.get('gdv_key'):
+#			gdv_project = gdv.checkKey(job.options.get('gdv_key'))
+			gdv_project = -1
+			if gdv_project < 0:
+                            logfile.write("Creating GDV project.\n");logfile.flush()
+	                    gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
+                		                               job.description, assembly.id, 
+                                		               gl['gdv']['url'] )
+			    logfile.write("GDV project: "+str(gdv_project['project']['id'])+"\n");logfile.flush()
+                	    add_pickle( ex, gdv_project, description=common.set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
+
         ucscfiles = common.get_files( ex.id, M, select_param={'ucsc':'1'} )
         with open(hts_key+".bed",'w') as ucscbed:
             for ftype,fset in ucscfiles.iteritems():
