@@ -78,21 +78,17 @@ def main(argv = None):
                 logfile.write("GDV project: "+str(gdv_project['project']['id'])+"\n");logfile.flush()
                 add_pickle( ex, gdv_project, description=set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
         allfiles = get_files( ex.id, M )
-        if re.search(r'success',gdv_project.get('message','')) and 'sql' in allfiles:
+        if gdv_project.get('project',{}).get('id',0)>0 and 'sql' in allfiles:
             gdv_project_url = gl['gdv']['url']+"public/project?k="+str(gdv_project['project']['key'])+"&id="+str(gdv_project['project']['id'])
             allfiles['url'] = {gdv_project_url: 'GDV view'}
             download_url = gl['hts_chipseq']['download']
             urls  = [download_url+str(k) for k in allfiles['sql'].keys()]
             names = [re.sub('\.sql.*','',str(f)) for f in allfiles['sql'].values()]
             logfile.write("Uploading GDV tracks:\n"+" ".join(urls)+"\n"+" ".join(names)+"\n");logfile.flush()
-            for nurl,url in enumerate(urls):
-                try:
-                    gdv.new_track( gl['gdv']['email'], gl['gdv']['key'], 
-                                   project_id=gdv_project['project']['id'],
-                                   url=url, file_names=names[nurl],
-                                   serv_url=gl['gdv']['url'], force=True )
-                except Exception, e:
-                    logfile.write("Error with %s: %s\n" %(names[nurl],e));logfile.flush()
+            tr = gdv.multiple_tracks(mail=gl['gdv']['email'], key=gl['gdv']['key'], serv_url=gl['gdv']['url'], 
+                                     project_id=gdv_project['project']['id'], 
+                                     urls=urls, tracknames=names, force=True )
+            logfile.write("\n".join([str(v) for v in tr])+"\n");logfile.flush()
         logfile.close()
         print json.dumps(allfiles)
         with open(opt.key+".done",'w') as done:
