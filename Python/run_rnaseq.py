@@ -131,14 +131,10 @@ def main():
             urls  = [download_url+str(k) for k in allfiles['sql'].keys()]
             names = [re.sub('\.sql.*','',str(f)) for f in allfiles['sql'].values()]
             logfile.write("Uploading GDV tracks:\n"+" ".join(urls)+"\n"+" ".join(names)+"\n");logfile.flush()
-            for nurl,url in enumerate(urls):
-                try:
-                    gdv.new_track( gl['gdv']['email'], gl['gdv']['key'],
-                                   project_id=gdv_project['project']['id'],
-                                   url=url, file_names=names[nurl],
-                                   serv_url=gl['gdv']['url'], force=True )
-                except: pass
-
+            tr = gdv.multiple_tracks(mail=gl['gdv']['email'], key=gl['gdv']['key'], serv_url=gl['gdv']['url'], 
+                                     project_id=gdv_project['project']['id'], 
+                                     urls=urls, tracknames=names, force=True )
+            logfile.write("\n".join([str(v) for v in tr])+"\n");logfile.flush()
         logfile.close()
         print json.dumps(allfiles)
 
