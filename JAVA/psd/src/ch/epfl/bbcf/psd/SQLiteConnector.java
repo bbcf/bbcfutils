@@ -52,6 +52,8 @@ public class SQLiteConnector {
 		for(int zoom : zooms){
 			String database = chromosome + "_" + zoom + ".db";
 			conn = getConnection(outputDir + File.separator + database);
+			Statement s = conn.createStatement();
+			s.execute("drop table if exists sc;");
 			PreparedStatement stat = conn.prepareStatement(
 					"create table sc (number INT,pos INT,score REAL,PRIMARY KEY(number,pos));");
 			stat.execute();

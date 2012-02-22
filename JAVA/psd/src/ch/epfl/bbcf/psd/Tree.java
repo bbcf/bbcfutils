@@ -48,8 +48,6 @@ public class Tree {
 				throw new DataFormatException("Features cannot end before they start :" +
 						" (start: " + start + ", end: " + stop + ", score: " + score + "). ");
 			}
-			
-			
 			for(int j=start;j<stop;j++){
 				this.imageNumber = getImageNumber(j);
 				leaf.fill(j, score, imageNumber);
