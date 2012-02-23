@@ -217,11 +217,10 @@ def MAplot(dataset, cols=[2,3], annotate=None, mode="normal", data_format="count
         jsdata = []
         # - data points
         for data in dataset:
-            name = os.path.basename(data)
             gdata = zip(*groups[data])
             pvals = gdata[3]
             datapts = zip(*gdata[1:3])
-            jsdata.append({"label": "Data points from file "+name,
+            jsdata.append({"label": "Data points",
                            "data": datapts,
                            "labels": annotes.get(data),
                            "points": {"symbol":"circle", "show":True},
