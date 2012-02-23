@@ -69,11 +69,6 @@ public class Node {
 		}
 
 		int index = getTabIndex(position);
-		if (this.zoom == 2){
-			System.out.println(position);
-			System.out.println(currentImageNumber);
-			System.out.println(index);
-		}
 		if(currentImageNumber == this.imageNumber){//fill the tab
 			for (int i=this.prevIndex + 1; i < index;i++){
 				tab[i] = this.prevScore;
@@ -135,7 +130,6 @@ public class Node {
 				max5 = Math.max(max5, tab[i]);
 
 				if(i%2==1){//update parent 2
-					System.out.println("fill : " + startPosition + " sc = " + max2 + "im : " +(int)Math.ceil((double)imageNumber / 2));
 					two.fill(startPosition, max2, (int)Math.ceil((double)imageNumber / 2));
 					if(i<tab.length-1){
 						max2=tab[i+1];
