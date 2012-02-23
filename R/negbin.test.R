@@ -97,7 +97,7 @@ main <- function(data_file, sep="\t", output_file='', contrast_file='', design_f
     if (length(contrast_file) == 0) contrast_file = ''
 
     ## Choose GLM if every group has replicates, DESeq otherwise ##
-    samples = colnames(data)
+    samples = header[counts]
     conds = unlist(lapply(strsplit(samples,".",fixed=T), "[[", 2))
     print(paste(" - All groups have several runs: ", all(table(conds)>1)))
     print(paste(" - Design file exists: ", file.exists(design_file)))
@@ -110,7 +110,7 @@ main <- function(data_file, sep="\t", output_file='', contrast_file='', design_f
         GLM(data, design, contrast, output_file)
     }else{
         print(" => Method: DESeq (either design/contrast files missing, or at least one group has no replicates.)")
-        DES(data, output_file)
+        try(DES(data, samples, output_file), silent=F)
     }
 }
 
@@ -130,7 +130,7 @@ write_result <- function(output_file, res_list, sep='\t'){
             xs = unlist(strsplit(x,' '))
             xs = paste(xs[1],xs[2],xs[3],sep='')
             output_file = paste(output_file,xs,sep='_')
-            #res_list[[x]] = signif(res_list[[x]],4)
+            res_list[[x]] = signif(res_list[[x]],4)
             write(x,output_file)
             write.table(res_list[[x]],output_file,quote=F,row.names=T,col.names=T,append=T,sep="\t")
         }
@@ -138,9 +138,8 @@ write_result <- function(output_file, res_list, sep='\t'){
 }
 
 
-DES <- function(data, output_file=FALSE){  ## DESeq ##
+DES <- function(data, samples, output_file=FALSE){  ## DESeq ##
     library(DESeq)
-    samples = colnames(data)
     conds = unlist(lapply(strsplit(samples,".",fixed=T), "[[", 2))
     groups = unique(conds)
 
@@ -194,7 +193,7 @@ GLM <- function(data, design, contrast, output_file=FALSE){
         g = data.frame(Y=Y,All=as.factor(t(X)))
         regressionFormula = formula(paste(features[i],"~",as.name("All")))
 
-        nbmodel = try(glm.nb(regressionFormula, data=g), silent=T) # AIC must be minimal
+        nbmodel = try(glm.nb(regressionFormula, data=g), silent=F) # AIC must be minimal
         if (class(nbmodel) == "try-error") next # skip and go to next feature
         nbmodel.summ = summary.glm(nbmodel)
         coeff = as.data.frame(nbmodel.summ$coefficients)
@@ -253,3 +252,12 @@ GLM <- function(data, design, contrast, output_file=FALSE){
 }
 
 main(data_file,sep=sep,output_file,design_file=design_file,contrast_file=contrast_file)
+
+
+#------------------------------------------------------#
+# This code was written by Julien Delafontaine         #
+# Bioinformatics and Biostatistics Core Facility, EPFL #
+# http://bbcf.epfl.ch/                                 #
+# webmaster.bbcf@epfl.ch                               #
+#------------------------------------------------------#
+
