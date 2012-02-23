@@ -103,14 +103,19 @@ def main(argv = None):
                                                  mapseq_files, mapseq_url,
                                                  gl['script_path'])
 	    gdv_project = {}
+	    job.options['gdv_key'] = False
             if job.options.get('create_gdv_project'):
-		logfile.write("Creating GDV project.\n");logfile.flush()
-                gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
-                                               job.description, assembly.id, 
-                                               gl['gdv']['url'] )
-		logfile.write("GDV project: "+str(gdv_project['project']['id'])+"\n");logfile.flush()
-                add_pickle( ex, gdv_project, 
-                            description=common.set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
+		if job.options.get('gdv_key'):
+#			gdv_project = gdv.checkKey(job.options.get('gdv_key'))
+			gdv_project = -1
+			if gdv_project < 0:
+                            logfile.write("Creating GDV project.\n");logfile.flush()
+	                    gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
+                		                               job.description, assembly.id, 
+                                		               gl['gdv']['url'] )
+			    logfile.write("GDV project: "+str(gdv_project['project']['id'])+"\n");logfile.flush()
+                	    add_pickle( ex, gdv_project, description=common.set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
+
         ucscfiles = common.get_files( ex.id, M, select_param={'ucsc':'1'} )
         with open(hts_key+".bed",'w') as ucscbed:
             for ftype,fset in ucscfiles.iteritems():
@@ -124,21 +129,21 @@ def main(argv = None):
             download_url = gl['hts_4cseq']['download']
 	    urls=[]
 	    names=[]
+            exts=[]
 	    for l,t in allfiles.iteritems():
 		    for k,v in allfiles[l].iteritems():
 			if re.search(r'gdv:1',v):
 				urls.append(download_url+str(k))
-				if re.search(r'\.sql',str(v)):names.append(re.sub('\.sql.*','',str(v)))
-				if re.search(r'\.bedGraph',str(v)):names.append(re.sub('\.bedGraph.*','\.bedGraph',str(v)))
+				if re.search(r'\.sql',str(v)):
+                                    names.append(re.sub('\.sql.*','',str(v)))
+                                    exts.append('sql')
+				if re.search(r'\.bedGraph',str(v)):
+                                    names.append(re.sub('\.bedGraph.*','',str(v)))
+                                    exts.append('bedGraph')
 	    logfile.write("Uploading GDV tracks:\n"+" ".join(urls)+"\n"+" ".join(names)+"\n");logfile.flush()
-            for nurl,url in enumerate(urls):
-                try:
-                    gdv.new_track( gl['gdv']['email'], gl['gdv']['key'], 
-                                   project_id=gdv_project['project']['id'],
-                                   url=url, file_names=names[nurl],
-                                   serv_url=gl['gdv']['url'], force=True )
-                except:
-                    pass
+            gdv.multiple_tracks(mail=gl['gdv']['email'], key=gl['gdv']['key'], serv_url=gl['gdv']['url'], 
+                                project_id=gdv_project['project']['id'], 
+                                urls=urls, tracknames=names, extensions=exts, force=True )
 	logfile.close()
         print json.dumps(allfiles)
         with open(hts_key+".done",'w') as done:

@@ -59,6 +59,7 @@ def main():
         job.options['ucsc_bigwig'] = job.options.get('ucsc_bigwig',True)
         if isinstance(job.options['ucsc_bigwig'],basestring):
             job.options['ucsc_bigwig'] = job.options['ucsc_bigwig'].lower() in ['1','true','t']
+        job.options['ucsc_bigwig'] &= (assembly.intype == 0)
         job.options['create_gdv_project'] = job.options.get('create_gdv_project',False)
         if isinstance(job.options['create_gdv_project'],basestring):
             job.options['create_gdv_project'] = job.options['create_gdv_project'].lower() in ['1','true','t']
@@ -81,13 +82,13 @@ def main():
                                      {k:v['name']},
                                      gl.get('script_path',''),
                                      description=set_file_descr(v['name']+"_mapping_report.pdf",groupId=k,step='stats',type='pdf') )
+            gdv_project = {}
             if job.options['compute_densities']:
                 logfile.write("\ncomputing densities.\n");logfile.flush()
                 if int(job.options.get('read_extension',-1))<=0:
                     job.options['read_extension'] = mapped_files.values()[0].values()[0]['stats']['read_length']
                 density_files = densities_groups( ex, job, mapped_files, assembly.chromosomes, via=opt.via )
                 logfile.write("Finished computing densities.\n");logfile.flush()
-                gdv_project = {}
                 if job.options['create_gdv_project']:
                     logfile.write("Creating GDV project.\n");logfile.flush()
                     gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
@@ -95,7 +96,7 @@ def main():
                     logfile.write("GDV project: "+json.dumps(gdv_project)+"\n");logfile.flush()
                     add_pickle( ex, gdv_project, description=set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
         allfiles = get_files( ex.id, M )
-        if 'ucsc_bigwig' and assembly.intype == 0:
+        if job.options['ucsc_bigwig']:
             logfile.write("UCSC track file: "+opt.key+".bed\n");logfile.flush()
             ucscfiles = get_files( ex.id, M, select_param={'ucsc':'1'} )
             with open(opt.key+".bed",'w') as ucscbed:
@@ -103,21 +104,17 @@ def main():
                     for ffile,descr in fset.iteritems():
                         if re.search(r' \(.*\)',descr): continue
                         ucscbed.write(track_header(descr,ftype,gl['hts_mapseq']['download'],ffile))
-        if job.options['create_gdv_project'] and re.search(r'success',gdv_project.get('message','')):
+        if gdv_project.get('project',{}).get('id',0)>0:
             gdv_project_url = gl['gdv']['url']+"public/project?k="+str(gdv_project['project']['key'])+"&id="+str(gdv_project['project']['id'])
             allfiles['url'] = {gdv_project_url: 'GDV view'}
             download_url = gl['hts_mapseq']['download']
             urls  = [download_url+str(k) for k in allfiles['sql'].keys()]
             names = [re.sub('\.sql.*','',str(f)) for f in allfiles['sql'].values()]
             logfile.write("Uploading GDV tracks:\n"+" ".join(urls)+"\n"+" ".join(names)+"\n");logfile.flush()
-            for nurl,url in enumerate(urls):
-                try:
-                    gdv.new_track( gl['gdv']['email'], gl['gdv']['key'], 
-                                   project_id=gdv_project['project']['id'],
-                                   url=url, file_names=names[nurl],
-                                   serv_url=gl['gdv']['url'], force=True )
-                except Exception, e:
-                    logfile.write("Error with %s: %s\n" %(names[nurl],e));logfile.flush()
+            tr = gdv.multiple_tracks(mail=gl['gdv']['email'], key=gl['gdv']['key'], serv_url=gl['gdv']['url'], 
+                                     project_id=gdv_project['project']['id'], 
+                                     urls=urls, tracknames=names, force=True )
+            logfile.write("\n".join([str(v) for v in tr])+"\n");logfile.flush()
         logfile.close()
         print json.dumps(allfiles)
         with open(opt.key+".done",'w') as done:

@@ -58,6 +58,8 @@ public class Node {
 	 * @throws SQLException 
 	 */
 	protected void fill(int position, float score,int currentImageNumber) throws SQLException{
+		currentImageNumber = getImageNumber(position);
+		
 		if(first){
 			this.imageNumber = currentImageNumber;
 			this.first = false;
@@ -67,7 +69,11 @@ public class Node {
 		}
 
 		int index = getTabIndex(position);
-		
+		if (this.zoom == 2){
+			System.out.println(position);
+			System.out.println(currentImageNumber);
+			System.out.println(index);
+		}
 		if(currentImageNumber == this.imageNumber){//fill the tab
 			for (int i=this.prevIndex + 1; i < index;i++){
 				tab[i] = this.prevScore;
@@ -90,6 +96,11 @@ public class Node {
 	}
 
 
+	private int getImageNumber(int position) {
+		double nb = (double)position / TAB_WIDTH / zoom + 0.01;
+		return (int)Math.ceil(nb);
+	}
+
 	/**
 	 * Propagate score to the parents
 	 * @throws SQLException 
@@ -97,7 +108,8 @@ public class Node {
 	protected void updateParents() throws SQLException{
 		int position = previousPosition;
 		int ind = getTabIndex(position);
-		int startPosition = getStartPosition(position);
+//		int startPosition = getStartPosition(position);
+		int startPosition = position;
 		if(one != null){
 			float max1 = tab[ind];
 			for(int i=ind;i<tab.length;i++){
@@ -113,8 +125,6 @@ public class Node {
 			}
 
 
-
-
 		} else if(this.two != null){
 			float max2 = tab[ind];
 			float max5 = tab[ind];
@@ -125,6 +135,7 @@ public class Node {
 				max5 = Math.max(max5, tab[i]);
 
 				if(i%2==1){//update parent 2
+					System.out.println("fill : " + startPosition + " sc = " + max2 + "im : " +(int)Math.ceil((double)imageNumber / 2));
 					two.fill(startPosition, max2, (int)Math.ceil((double)imageNumber / 2));
 					if(i<tab.length-1){
 						max2=tab[i+1];
