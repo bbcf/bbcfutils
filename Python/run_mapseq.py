@@ -59,6 +59,7 @@ def main():
         job.options['ucsc_bigwig'] = job.options.get('ucsc_bigwig',True)
         if isinstance(job.options['ucsc_bigwig'],basestring):
             job.options['ucsc_bigwig'] = job.options['ucsc_bigwig'].lower() in ['1','true','t']
+        job.options['ucsc_bigwig'] &= (assembly.intype == 0)
         job.options['create_gdv_project'] = job.options.get('create_gdv_project',False)
         if isinstance(job.options['create_gdv_project'],basestring):
             job.options['create_gdv_project'] = job.options['create_gdv_project'].lower() in ['1','true','t']
@@ -95,7 +96,7 @@ def main():
                     logfile.write("GDV project: "+json.dumps(gdv_project)+"\n");logfile.flush()
                     add_pickle( ex, gdv_project, description=set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
         allfiles = get_files( ex.id, M )
-        if 'ucsc_bigwig' and assembly.intype == 0:
+        if job.options['ucsc_bigwig']:
             logfile.write("UCSC track file: "+opt.key+".bed\n");logfile.flush()
             ucscfiles = get_files( ex.id, M, select_param={'ucsc':'1'} )
             with open(opt.key+".bed",'w') as ucscbed:

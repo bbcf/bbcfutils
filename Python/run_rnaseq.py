@@ -106,8 +106,7 @@ def main():
                         glmfile = run_glm(ex, rpath, res_file, options)
                         output_files = [f for f in os.listdir(ex.working_directory) if glmfile in f]
                         for o in output_files:
-                            desc = set_file_descr(o, step='stats', type='txt',
-                                    comment='Differential analysis between groups %s' % o.split(glmfile)[1].strip('_'))
+                            desc = set_file_descr(o.split(glmfile)[1].strip('_')+"_differential.txt", step='stats', type='txt')
                             ex.add(o, description=desc)
                     except:
                         print "Skipped differential analysis."
@@ -119,6 +118,7 @@ def main():
                 logfile.write("Creating GDV project.\n");logfile.flush()
                 gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
                                                job.description, job.assembly_id, gl['gdv']['url'] )
+                logfile.write("GDV project: "+json.dumps(gdv_project)+"\n");logfile.flush()
                 add_pickle(ex, gdv_project, description=common.set_file_descr("gdv_json",step='gdv',type='py',view='admin'))
 
         # Upload tracks to GDV #
@@ -137,6 +137,8 @@ def main():
             logfile.write("\n".join([str(v) for v in tr])+"\n");logfile.flush()
         logfile.close()
         print json.dumps(allfiles)
+        with open((opt.key or opt.config)+".done",'w') as done:
+            json.dump(allfiles,done)
 
         # E-mail #
         if 'email' in gl:
