@@ -60,6 +60,6 @@ if(length(regCoord)<2)
 print("####resfiles####")
 print(paste(resfiles,collapse="\n"))
 
-write.table(print(paste("####resfiles####:",paste(resfiles,collapse="\n"),sep="\n")),file=paste(prefName,".log",sep="",quote=FALSE))
+write.table(print(paste("####resfiles####:",paste(resfiles,collapse="\n"),sep="\n")),file=paste(prefName,".log",sep=""),quote=FALSE)
 
 # return: list of created files
