@@ -89,6 +89,7 @@ def main(argv = None):
             job.options['create_gdv_project'] = False
         elif isinstance(job.options['create_gdv_project'],str):
             job.options['create_gdv_project'] = job.options['create_gdv_project'].lower() in ['1','true','t']
+        gdv_project = {'project':{'id': job.options.get('gdv_project_id',0)}}
         g_rep = genrep.GenRep( gl.get("genrep_url"), gl.get("bwt_root") )
         assembly = genrep.Assembly( assembly=job.assembly_id, genrep=g_rep )
         primers_file=os.path.join(working_dir,'primers.fa')
@@ -102,19 +103,16 @@ def main(argv = None):
 	    c4seq_files = c4seq.workflow_groups( ex, job, primers_dict, assembly,
                                                  mapseq_files, mapseq_url,
                                                  gl['script_path'])
-	    gdv_project = {}
 	    job.options['gdv_key'] = False
             if job.options.get('create_gdv_project'):
-		if job.options.get('gdv_key'):
+		if gdv_project.get('project',{}).get('id',0)<1:
 #			gdv_project = gdv.checkKey(job.options.get('gdv_key'))
-			gdv_project = -1
-			if gdv_project < 0:
-                            logfile.write("Creating GDV project.\n");logfile.flush()
-	                    gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
-                		                               job.description, assembly.id, 
-                                		               gl['gdv']['url'] )
-			    logfile.write("GDV project: "+str(gdv_project['project']['id'])+"\n");logfile.flush()
-                	    add_pickle( ex, gdv_project, description=common.set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
+                    logfile.write("Creating GDV project.\n");logfile.flush()
+                    gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
+                                                   job.description, assembly.id, 
+                                                   gl['gdv']['url'] )
+                    logfile.write("GDV project: "+str(gdv_project['project']['id'])+"\n");logfile.flush()
+                    add_pickle( ex, gdv_project, description=common.set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
 
         ucscfiles = common.get_files( ex.id, M, select_param={'ucsc':'1'} )
         with open(hts_key+".bed",'w') as ucscbed:
