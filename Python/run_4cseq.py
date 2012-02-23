@@ -123,7 +123,7 @@ def main(argv = None):
                     ucscbed.write(common.track_header(descr,ftype,gl['hts_4cseq']['download'],ffile))
 
         allfiles = common.get_files( ex.id, M )
-        if job.options['create_gdv_project'] and re.search(r'success',gdv_project['message']):
+        if gdv_project.get('project',{}).get('id',0)>0:
             gdv_project_url = gl['gdv']['url']+"public/project?k="+str(gdv_project['project']['key'])+"&id="+str(gdv_project['project']['id'])
             allfiles['url'] = {gdv_project_url: 'GDV view'}
             download_url = gl['hts_4cseq']['download']
