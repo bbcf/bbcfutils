@@ -95,14 +95,15 @@ def main(argv = None):
         primers_file=os.path.join(working_dir,'primers.fa')
         primers_dict=c4seq.loadPrimers(primers_file)
 	logfile = open(hts_key+".log",'w')
-	logfile.write(json.dumps(gl));logfile.flush()
+	debugfile = open(opt.key+".debug",'w')
+	debugfile.write(json.dumps(job.options)+"\n\n"+json.dumps(gl)+"\n");debugfile.flush()
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
 	    logfile.write("Enter execution, fetch bam and wig files.\n");logfile.flush()
             (mapseq_files, job) = mapseq.get_bam_wig_files( ex, job, ms_limspath, mapseq_url, suffix=['merged'],script_path=gl['script_path'], via=via )
             logfile.write("Starting workflow.\n");logfile.flush()
 	    c4seq_files = c4seq.workflow_groups( ex, job, primers_dict, assembly,
                                                  mapseq_files, mapseq_url,
-                                                 gl['script_path'])
+                                                 gl['script_path'],logfile=logfile)
 	    job.options['gdv_key'] = False
             if job.options.get('create_gdv_project'):
 		if gdv_project.get('project',{}).get('id',0)<1:
@@ -111,7 +112,7 @@ def main(argv = None):
                     gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
                                                    job.description, assembly.id, 
                                                    gl['gdv']['url'] )
-                    logfile.write("GDV project: "+str(gdv_project['project']['id'])+"\n");logfile.flush()
+                    debugfile.write("GDV project: "+str(gdv_project['project']['id'])+"\n");debugfile.flush()
                     add_pickle( ex, gdv_project, description=common.set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
 
         ucscfiles = common.get_files( ex.id, M, select_param={'ucsc':'1'} )
@@ -138,11 +139,14 @@ def main(argv = None):
 				if re.search(r'\.bedGraph',str(v)):
                                     names.append(re.sub('\.bedGraph.*','',str(v)))
                                     exts.append('bedGraph')
-	    logfile.write("Uploading GDV tracks:\n"+" ".join(urls)+"\n"+" ".join(names)+"\n");logfile.flush()
+	
+	    logfile.write("Uploading GDV tracks:\n");logfile.flush()
+	    debugfile.write("Uploading GDV tracks:\n"+" ".join(urls)+"\n"+" ".join(names)+"\n");debugfile.flush()
             gdv.multiple_tracks(mail=gl['gdv']['email'], key=gl['gdv']['key'], serv_url=gl['gdv']['url'], 
                                 project_id=gdv_project['project']['id'], 
                                 urls=urls, tracknames=names, extensions=exts, force=True )
 	logfile.close()
+	debugfile.close()
         print json.dumps(allfiles)
         with open(hts_key+".done",'w') as done:
             json.dump(allfiles,done)
