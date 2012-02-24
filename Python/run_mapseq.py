@@ -67,7 +67,8 @@ def main():
         map_args = job.options.get('map_args',{})
         map_args['via'] = opt.via
         logfile = open(opt.key+".log",'w')
-        logfile.write(json.dumps(gl)+"\n");logfile.flush()
+        debugfile = open(opt.key+".debug",'w')
+        debugfile.write(json.dumps(job.options)+"\n\n"+json.dumps(gl)+"\n");debugfile.flush()
         with execution( M, description=opt.key, remote_working_directory=opt.wdir ) as ex:
             logfile.write("Enter execution, fetch fastq files.\n");logfile.flush()
             job = get_fastq_files( ex, job, dafl )
@@ -76,8 +77,9 @@ def main():
             logfile.write("Map reads.\n");logfile.flush()
             mapped_files = map_groups( ex, job, assembly, map_args )
             logfile.write("Make stats:\n");logfile.flush()
+            debugfile.write("GroupId_GroupName:\t")
             for k,v in job.groups.iteritems():
-                logfile.write(str(k)+"_"+str(v['name'])+"\t");logfile.flush()
+                debugfile.write(str(k)+"_"+str(v['name'])+"\t");debugfile.flush()
                 pdf = add_pdf_stats( ex, mapped_files,
                                      {k:v['name']},
                                      gl.get('script_path',''),
@@ -93,7 +95,7 @@ def main():
                     logfile.write("Creating GDV project.\n");logfile.flush()
                     gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
                                                    job.description, assembly.id, gl['gdv']['url'] )
-                    logfile.write("GDV project: "+json.dumps(gdv_project)+"\n");logfile.flush()
+                    debugfile.write("GDV project: "+json.dumps(gdv_project)+"\n");debugfile.flush()
                     add_pickle( ex, gdv_project, description=set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
         allfiles = get_files( ex.id, M )
         if job.options['ucsc_bigwig']:
@@ -114,8 +116,9 @@ def main():
             tr = gdv.multiple_tracks(mail=gl['gdv']['email'], key=gl['gdv']['key'], serv_url=gl['gdv']['url'], 
                                      project_id=gdv_project['project']['id'], 
                                      urls=urls, tracknames=names, force=True )
-            logfile.write("\n".join([str(v) for v in tr])+"\n");logfile.flush()
+            debugfile.write("GDV Tracks Status\n"+"\n".join([str(v) for v in tr])+"\n");debugfile.flush()
         logfile.close()
+        debugfile.close()
         print json.dumps(allfiles)
         with open(opt.key+".done",'w') as done:
             json.dump(allfiles,done)

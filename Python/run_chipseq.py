@@ -61,7 +61,8 @@ def main(argv = None):
         g_rep = genrep.GenRep( gl.get("genrep_url"), gl.get("bwt_root") )
         assembly = genrep.Assembly( assembly=job.assembly_id, genrep=g_rep )
         logfile = open(opt.key+".log",'w')
-        logfile.write(json.dumps(gl)+"\n");logfile.flush()
+        debugfile = open(opt.key+".debug",'w')
+        debugfile.write(json.dumps(job.options)+"\n\n"+json.dumps(gl)+"\n");debugfile.flush()
         with execution( M, description=opt.key, remote_working_directory=opt.wdir ) as ex:
             logfile.write("Enter execution, fetch bam and wig files.\n");logfile.flush()
             (mapped_files, job) = mapseq.get_bam_wig_files( ex, job, minilims=opt.mapseq_minilims, hts_url=mapseq_url,
@@ -75,7 +76,7 @@ def main(argv = None):
                 gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'], 
                                                job.description, assembly.id,
                                                gl['gdv']['url'] )
-                logfile.write("GDV project: "+str(gdv_project['project']['id'])+"\n");logfile.flush()
+                debugfile.write("GDV project: "+str(gdv_project['project']['id'])+"\n");debugfile.flush()
                 add_pickle( ex, gdv_project, description=set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
         allfiles = get_files( ex.id, M )
         if gdv_project.get('project',{}).get('id',0)>0 and 'sql' in allfiles:
@@ -88,8 +89,9 @@ def main(argv = None):
             tr = gdv.multiple_tracks(mail=gl['gdv']['email'], key=gl['gdv']['key'], serv_url=gl['gdv']['url'], 
                                      project_id=gdv_project['project']['id'], 
                                      urls=urls, tracknames=names, force=True )
-            logfile.write("\n".join([str(v) for v in tr])+"\n");logfile.flush()
+            debugfile.write("GDV Tracks Status\n"+"\n".join([str(v) for v in tr])+"\n");debugfile.flush()
         logfile.close()
+        debugfile.close()
         print json.dumps(allfiles)
         with open(opt.key+".done",'w') as done:
             json.dump(allfiles,done)
