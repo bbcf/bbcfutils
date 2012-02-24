@@ -76,7 +76,8 @@ def main():
             job.options['create_gdv_project'] = job.options['create_gdv_project'].lower() in ['1','true','t']
         job.options['discard_pcr_duplicates'] = False
         logfile = open((opt.key or opt.config)+".log",'w')
-        logfile.write(json.dumps(gl)+"\n");logfile.flush()
+        debugfile = open(opt.key+".debug",'w')
+        debugfile.write(json.dumps(job.options)+"\n\n"+json.dumps(gl)+"\n");debugfile.flush()
 
         # Retrieve mapseq output
         mapseq_url = None
@@ -84,14 +85,11 @@ def main():
 
         # Program body #
         with execution(M, description=description, remote_working_directory=opt.wdir ) as ex:
-            logfile.write("Enter execution. Current working directory: %s \n" % ex.working_directory);logfile.flush()
+            debugfile.write("Enter execution. Current working directory: %s \n" % ex.working_directory);debugfile.flush()
             logfile.write("Fetch bam and wig files");logfile.flush()
-            print "Current working directory:", ex.working_directory
-            print "Loading BAM files..."
             (bam_files, job) = mapseq.get_bam_wig_files(ex, job, minilims=opt.mapseq_minilims, hts_url=mapseq_url,
                                      script_path=gl.get('script_path',''), via=opt.via, fetch_unmapped=True)
             assert bam_files, "Bam files not found."
-            print "Loaded."
             logfile.write("Starting workflow.\n");logfile.flush()
             result = rnaseq.rnaseq_workflow(ex, job, bam_files, pileup_level=pileup_level, via=opt.via)
 
@@ -109,7 +107,6 @@ def main():
                             desc = set_file_descr(o.split(glmfile)[1].strip('_')+"_differential.txt", step='stats', type='txt')
                             ex.add(o, description=desc)
                     except:
-                        print "Skipped differential analysis."
                         logfile.write("Skipped differential analysis");logfile.flush()
 
             # Create GDV project #
@@ -118,7 +115,7 @@ def main():
                 logfile.write("Creating GDV project.\n");logfile.flush()
                 gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
                                                job.description, job.assembly_id, gl['gdv']['url'] )
-                logfile.write("GDV project: "+json.dumps(gdv_project)+"\n");logfile.flush()
+                debugfile.write("GDV project: "+json.dumps(gdv_project)+"\n");debugfile.flush()
                 add_pickle(ex, gdv_project, description=common.set_file_descr("gdv_json",step='gdv',type='py',view='admin'))
 
         # Upload tracks to GDV #
@@ -134,8 +131,9 @@ def main():
             tr = gdv.multiple_tracks(mail=gl['gdv']['email'], key=gl['gdv']['key'], serv_url=gl['gdv']['url'], 
                                      project_id=gdv_project['project']['id'], 
                                      urls=urls, tracknames=names, force=True )
-            logfile.write("\n".join([str(v) for v in tr])+"\n");logfile.flush()
+            debugfile.write("GDV Tracks Status\n"+"\n".join([str(v) for v in tr])+"\n");debugfile.flush()
         logfile.close()
+        debugfile.close()
         print json.dumps(allfiles)
         with open((opt.key or opt.config)+".done",'w') as done:
             json.dump(allfiles,done)
