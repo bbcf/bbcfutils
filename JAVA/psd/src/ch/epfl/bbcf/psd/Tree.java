@@ -49,8 +49,7 @@ public class Tree {
 						" (start: " + start + ", end: " + stop + ", score: " + score + "). ");
 			}
 			for(int j=start;j<stop;j++){
-				this.imageNumber = getImageNumber(j);
-				leaf.fill(j, score, imageNumber);
+				leaf.fill(j, score);
 			}
 			hasScore = true;
 		}
@@ -84,11 +83,6 @@ public class Tree {
 		}
 	}
 
-
-	private static int getImageNumber(int position){
-		double nb = (double)position / TAB_WIDTH + 0.01;
-		return (int)Math.ceil(nb);
-	}
 
 
 	public void writeValues(Node node) throws SQLException {
