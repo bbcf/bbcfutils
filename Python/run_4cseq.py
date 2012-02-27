@@ -95,7 +95,7 @@ def main(argv = None):
         primers_file=os.path.join(working_dir,'primers.fa')
         primers_dict=c4seq.loadPrimers(primers_file)
 	logfile = open(hts_key+".log",'w')
-	debugfile = open(opt.key+".debug",'w')
+	debugfile = open(hts_key+".debug",'w')
 	debugfile.write(json.dumps(job.options)+"\n\n"+json.dumps(gl)+"\n");debugfile.flush()
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
 	    logfile.write("Enter execution, fetch bam and wig files.\n");logfile.flush()
