@@ -1,10 +1,8 @@
 #!/bin/env python
 import rpy2.robjects as robjects
-from bbcflib.track import Track
-import re
+from bbcflib.btrack import Track
+import re, os, sys
 from numpy import *
-import os
-import sys
 
 usage = """sql_prepare_deconv.py sql_fwd sql_rev input_bed output chrname chrlength cutoff read_len
 
