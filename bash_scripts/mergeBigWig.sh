@@ -46,7 +46,7 @@ then
 	echo "will convert bedGraph to bw (assembly="$assembly")"
 	`genrep4humans.py -l -a $assembly|cut -f2,3 > chromList.txt` 
 	`wigToBigWig $outputFile chromList.txt $tmpfile`
-	
+	mv $tmpfile $outputFile	
 fi
 
 rm $tmpfile
