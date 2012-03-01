@@ -104,10 +104,12 @@ def main(argv = None):
 	    c4seq_files = c4seq.workflow_groups( ex, job, primers_dict, assembly,
                                                  mapseq_files, mapseq_url,
                                                  gl['script_path'],logfile=logfile)
-	    job.options['gdv_key'] = False
+            if not('gdv_key' in job.options):
+                job.options['gdv_key'] = False
             if job.options.get('create_gdv_project'):
-		if gdv_project.get('project',{}).get('id',0)<1:
-#			gdv_project = gdv.checkKey(job.options.get('gdv_key'))
+		gdv_check=gdv.get_project(mail=gl['gdv']['email'], key=gl['gdv']['key'], project_key=job.options['gdv_key'])
+		debugfile.write(gdv_check);debugfile.flush()
+		if 'error' in gdv_check:
                     logfile.write("Creating GDV project.\n");logfile.flush()
                     gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
                                                    job.description, assembly.id, 
