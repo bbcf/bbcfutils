@@ -33,11 +33,12 @@ def guess_file_format(f, sep=None):
     return dialect, header
 
 def name_or_index(cols, dialect, header):
-    """Given an array *cols*, detect if elements are indices of *header* or elements of *header*."""
+    """Given an array *cols*, detect if elements are indices of *header* or elements of *header*.
+    Returns Python indices (0 to n-1) instead of the user-friendly (1 to n)."""
     if all([c in header.split(dialect.delimiter) for c in cols]):
-        cols = [header.split(dialect.delimiter).index(c)+1 for c in cols]
+        cols = [header.split(dialect.delimiter).index(c) for c in cols]
     else:
-        try: cols = [int(c) for c in cols]
+        try: cols = [int(c)-1 for c in cols]
         except ValueError:
             print "\nError: --cols must contain column names or indices (got %s)." % cols
             print "Detected header: %s" % header
@@ -109,11 +110,11 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
             # Read the file
             n=[]; m=[]; r=[]; p=[]
             for row in csvreader:
-                try: c1 = float(row[cols[0]-1]); c2 = float(row[cols[1]-1])
+                try: c1 = float(row[cols[0]]); c2 = float(row[cols[1]])
                 except ValueError: continue # Skip line if contains NA, nan, etc.
                 if (c1*c2 > lower):
-                    counts[row[labels[0]-1]] = (c1,c2)
-                    n.append(' | '.join([row[l-1] for l in labels]))
+                    counts[row[labels[0]]] = (c1,c2)
+                    n.append(' | '.join([row[l] for l in labels]))
                     m.append(numpy.log10(numpy.sqrt(c1*c2)))
                     r.append(numpy.log2(c1/c2))
                 p.append(None) # future p-values, not used yet
@@ -393,14 +394,14 @@ information about features into the json output.""",
 Must be a binary string of the same lenght as the number of datasets, \
 1 indicating to annotate the corresponding set, 0 not to annotate. \
 E.g. For a list of datasets d1,d2,d3, if you want to annotate only d3, \
-type --annotate 001.""",
+type --annotate 001. It is advised to annotate only very small secondary datasets.""",
 """Minimum x value to be displayed on the output graph.""",
 """Maximum x value to be displayed on the output graph.""",
 """Minimum y value to be displayed on the output graph.""",
 """Maximum y value to be displayed on the output graph.""",
 """Left bound to draw splines.""",
 """Right bound to draw splines.""",
-"""Title of the graph""",
+"""Adds a title to the figure""",
 """Create an output file containing features for which ratios were outside the specified
  percentile (two-sided). For the moment, must be 1 or 5. The file is named *extreme_ratios_xxxxx* ."""
 ])
@@ -461,5 +462,7 @@ def main():
 
 if __name__ == '__main__':
     sys.exit(main())
+
+
 
 
