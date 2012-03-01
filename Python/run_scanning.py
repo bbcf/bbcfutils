@@ -12,7 +12,7 @@ from bbcflib.genrep             import GenRep
 from bbcflib.gdv                import create_gdv_project, add_gdv_track, get_project_id
 from bbcflib.frontend           import parseConfig
 from bbcflib.common             import scp, normalize_url, unique_filename_in
-from bbcflib.track              import Track, new, load
+from bbcflib.btrack             import Track, new, load
 from os.path                    import basename, expanduser, normcase, isfile, exists
 from os                         import sep
 from os.path                    import basename, splitext

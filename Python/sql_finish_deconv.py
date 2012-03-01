@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import rpy2.robjects as robjects
-from bbcflib.track import Track
+from bbcflib.btrack import Track
 import os
 import sys
 
