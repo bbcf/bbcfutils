@@ -108,7 +108,7 @@ def main(argv = None):
                 job.options['gdv_key'] = False
             if job.options.get('create_gdv_project'):
 		gdv_project=gdv.get_project(mail=gl['gdv']['email'], key=gl['gdv']['key'], project_key=job.options['gdv_key'])
-		if 'error' in gdv_check:
+		if 'error' in gdv_project:
                     logfile.write("Creating GDV project.\n");logfile.flush()
                     gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
                                                    job.description, assembly.id, 
