@@ -90,6 +90,7 @@ def main(argv = None):
         elif isinstance(job.options['create_gdv_project'],str):
             job.options['create_gdv_project'] = job.options['create_gdv_project'].lower() in ['1','true','t']
         gdv_project = {'project':{'id': job.options.get('gdv_project_id',0)}}
+        if not('gdv_key' in job.options): job.options['gdv_key'] = ""
         g_rep = genrep.GenRep( gl.get("genrep_url"), gl.get("bwt_root") )
         assembly = genrep.Assembly( assembly=job.assembly_id, genrep=g_rep )
         primers_file=os.path.join(working_dir,'primers.fa')
@@ -104,8 +105,6 @@ def main(argv = None):
 	    c4seq_files = c4seq.workflow_groups( ex, job, primers_dict, assembly,
                                                  mapseq_files, mapseq_url,
                                                  gl['script_path'],logfile=logfile)
-            if not('gdv_key' in job.options):
-                job.options['gdv_key'] = False
             if job.options.get('create_gdv_project'):
 		gdv_project=gdv.get_project(mail=gl['gdv']['email'], key=gl['gdv']['key'], project_key=job.options['gdv_key'])
 		if 'error' in gdv_project:
