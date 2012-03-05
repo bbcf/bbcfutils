@@ -98,13 +98,13 @@ def main():
             options = ['-s','tab']
             if opt.design: options += ['-d',opt.design]
             if opt.contrast: options += ['-c', opt.contrast]
-            for res_file in result:
+            for type,res_file in result:
                 if res_file and rpath and os.path.exists(rpath):
                     try:
                         glmfile = run_glm(ex, rpath, res_file, options)
                         output_files = [f for f in os.listdir(ex.working_directory) if glmfile in f]
                         for o in output_files:
-                            desc = set_file_descr(o.split(glmfile)[1].strip('_')+"_differential.txt", step='stats', type='txt')
+                            desc = set_file_descr(type+"_differential"+o.split(glmfile)+".txt", step='stats', type='txt')
                             ex.add(o, description=desc)
                     except:
                         logfile.write("Skipped differential analysis");logfile.flush()
@@ -128,8 +128,8 @@ def main():
             urls  = [download_url+str(k) for k in allfiles['sql'].keys()]
             names = [re.sub('\.sql.*','',str(f)) for f in allfiles['sql'].values()]
             logfile.write("Uploading GDV tracks:\n"+" ".join(urls)+"\n"+" ".join(names)+"\n");logfile.flush()
-            tr = gdv.multiple_tracks(mail=gl['gdv']['email'], key=gl['gdv']['key'], serv_url=gl['gdv']['url'], 
-                                     project_id=gdv_project['project']['id'], 
+            tr = gdv.multiple_tracks(mail=gl['gdv']['email'], key=gl['gdv']['key'], serv_url=gl['gdv']['url'],
+                                     project_id=gdv_project['project']['id'],
                                      urls=urls, tracknames=names, force=True )
             debugfile.write("GDV Tracks Status\n"+"\n".join([str(v) for v in tr])+"\n");debugfile.flush()
         logfile.close()
