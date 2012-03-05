@@ -110,9 +110,6 @@ main <- function(data_file, sep="\t", output_file='', contrast_file='', design_f
         GLM(data, design, contrast, output_file)
     }else{
         print(" => Method: DESeq (either design/contrast files missing, or at least one group has no replicates.)")
-        print(data)
-        print(samples)
-        print(output_file)
         DES(data, samples, output_file)
     }
 }
@@ -126,24 +123,15 @@ read_contrast <- function(contrast_file, sep){
     contrast = as.matrix(read.table(contrast_file, header=T, row.names=1, sep=sep))
 }
 write_result <- function(output_file, res_list, sep='\t'){
-    print("a")
     if (length(output_file) == 0){
         print(res_list)
-        print("b")
     }else{
-        print("c")
         for (x in names(res_list)){
-            print(1)
             xs = unlist(strsplit(x,' '))
-            print(2)
             xs = paste(xs[1],xs[2],xs[3],sep='')
-            print(3)
             output_file = paste(output_file,xs,sep='_')
-            print(4)
-            res_list[[x]] = signif(res_list[[x]],4)
-            print("e")
+            #res_list[[x]] = signif(res_list[[x]],4)
             write(x,output_file)
-            print("d")
             write.table(res_list[[x]],output_file,quote=F,row.names=T,col.names=T,append=T,sep="\t")
         }
     }
@@ -151,20 +139,16 @@ write_result <- function(output_file, res_list, sep='\t'){
 
 
 DES <- function(data, samples, output_file=FALSE){  ## DESeq ##
-    print("Before import")
     library(DESeq)
-    print("Imported")
     conds = unlist(lapply(strsplit(samples,".",fixed=T), "[[", 2))
     groups = unique(conds)
 
     result = list()
-    print("DESeq wf")
     cds <- newCountDataSet(data, conds)
     cds <- estimateSizeFactors(cds)
     cds <- estimateVarianceFunctions(cds, method='blind')
     couples = combn(unique(groups),2)
     contrast.names = c()
-    print("aa")
     for (i in 1:dim(couples)[2]){
         res <- nbinomTest(cds, couples[1,i], couples[2,i])
         res = res[order(res[,8]),] # sort w.r.t. adjusted p-value
@@ -173,9 +157,7 @@ DES <- function(data, samples, output_file=FALSE){  ## DESeq ##
         result[[comp]] = res
     }
     ## Return ##
-    print("write result...")
     write_result(output_file, result)
-    print("written")
 }
 
 
@@ -269,10 +251,7 @@ GLM <- function(data, design, contrast, output_file=FALSE){
     write_result(output_file, bycomp)
 }
 
-print("Begin")
 main(data_file,sep=sep,output_file,design_file=design_file,contrast_file=contrast_file)
-q()
-print("End")
 
 
 #------------------------------------------------------#
