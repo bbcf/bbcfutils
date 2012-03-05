@@ -76,7 +76,7 @@ def main():
             job.options['create_gdv_project'] = job.options['create_gdv_project'].lower() in ['1','true','t']
         job.options['discard_pcr_duplicates'] = False
         logfile = open((opt.key or opt.config)+".log",'w')
-        debugfile = open(opt.key+".debug",'w')
+        debugfile = open((opt.key or opt.config)+".debug",'w')
         debugfile.write(json.dumps(job.options)+"\n\n"+json.dumps(gl)+"\n");debugfile.flush()
 
         # Retrieve mapseq output
@@ -86,7 +86,7 @@ def main():
         # Program body #
         with execution(M, description=description, remote_working_directory=opt.wdir ) as ex:
             debugfile.write("Enter execution. Current working directory: %s \n" % ex.working_directory);debugfile.flush()
-            logfile.write("Fetch bam and wig files");logfile.flush()
+            logfile.write("Fetch bam and wig files\n");logfile.flush()
             (bam_files, job) = mapseq.get_bam_wig_files(ex, job, minilims=opt.mapseq_minilims, hts_url=mapseq_url,
                                      script_path=gl.get('script_path',''), via=opt.via, fetch_unmapped=True)
             assert bam_files, "Bam files not found."
@@ -98,13 +98,13 @@ def main():
             options = ['-s','tab']
             if opt.design: options += ['-d',opt.design]
             if opt.contrast: options += ['-c', opt.contrast]
-            for type,res_file in result:
+            for type,res_file in result.iteritems():
                 if res_file and rpath and os.path.exists(rpath):
                     try:
                         glmfile = run_glm(ex, rpath, res_file, options)
                         output_files = [f for f in os.listdir(ex.working_directory) if glmfile in f]
                         for o in output_files:
-                            desc = set_file_descr(type+"_differential"+o.split(glmfile)+".txt", step='stats', type='txt')
+                            desc = set_file_descr(type+"_differential"+o.split(glmfile)[1]+".txt", step='stats', type='txt')
                             ex.add(o, description=desc)
                     except:
                         logfile.write("Skipped differential analysis");logfile.flush()
@@ -166,7 +166,4 @@ if __name__ == '__main__':
 # http://bbcf.epfl.ch/                                 #
 # webmaster.bbcf@epfl.ch                               #
 #------------------------------------------------------#
-
-
-
 
