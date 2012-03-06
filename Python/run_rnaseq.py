@@ -105,6 +105,7 @@ def main():
                         output_files = [f for f in os.listdir(ex.working_directory) if glmfile in f]
                         for o in output_files:
                             desc = set_file_descr(type+"_differential"+o.split(glmfile)[1]+".txt", step='stats', type='txt')
+                            o = rnaseq.clean_deseq_output(o)
                             ex.add(o, description=desc)
                     except:
                         logfile.write("Skipped differential analysis");logfile.flush()
@@ -166,4 +167,6 @@ if __name__ == '__main__':
 # http://bbcf.epfl.ch/                                 #
 # webmaster.bbcf@epfl.ch                               #
 #------------------------------------------------------#
+
+
 
