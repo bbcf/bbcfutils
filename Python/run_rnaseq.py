@@ -95,11 +95,11 @@ def main():
 
             # Differential analysis #
             rpath = gl.get('script_path')
-            options = ['-s','tab']
-            if opt.design: options += ['-d',opt.design]
-            if opt.contrast: options += ['-c', opt.contrast]
             for type,res_file in result.iteritems():
                 if res_file and rpath and os.path.exists(rpath):
+                    options = ['-s','tab']
+                    if opt.design: options += ['-d',opt.design]
+                    if opt.contrast: options += ['-c', opt.contrast]
                     try:
                         glmfile = run_glm(ex, rpath, res_file, options)
                         output_files = [f for f in os.listdir(ex.working_directory) if glmfile in f]

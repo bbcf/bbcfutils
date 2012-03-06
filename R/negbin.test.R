@@ -76,7 +76,6 @@ library(MASS)
 library(multcomp)
 
 args=commandArgs(trailingOnly = TRUE)
-#args
 
 data_file = args[1]
 sep = args[grep("-s",args)+1]
@@ -130,7 +129,6 @@ write_result <- function(output_file, res_list, sep='\t'){
             xs = unlist(strsplit(x,' '))
             xs = paste(xs[1],xs[2],xs[3],sep='')
             output_file = paste(output_file,xs,sep='_')
-            #res_list[[x]] = signif(res_list[[x]],4)
             write(x,output_file)
             write.table(res_list[[x]],output_file,quote=F,row.names=T,col.names=T,append=T,sep="\t")
         }
