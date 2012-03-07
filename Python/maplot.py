@@ -1,8 +1,5 @@
 #!/usr/bin/env python
 """
-MA-plot
-=======
-
 Creates an `MA-plot` to compare transcription levels of a set of genes
 (or other features) in two different conditions, from a CSV file.
 One can enter several datasets (CSV files) in the same format, each of which
@@ -33,7 +30,7 @@ def unique_filename(len=20, path=None):
     return filename
 
 def guess_file_format(f, sep=None):
-    """Guess format of a *sep*-delimited file object *f*. Returns a csv.Dialect object and the
+    """Guess format of a *sep*-delimited file object *f*. Returns a ``csv.Dialect`` object and the
     header of the file."""
     assert isinstance(f,file), "f must be a file object"
     header = 'None'
@@ -46,7 +43,7 @@ def guess_file_format(f, sep=None):
 
 def name_or_index(cols, dialect, header):
     """Given an array *cols*, detect if elements are indices of *header* or elements of *header*.
-    Returns Python indices (0 to n-1) instead of the user-friendly (1 to n)."""
+    Returns an array of Python indices (0 to n-1) - instead of the user-friendly (1 to n)."""
     if all([c in header.split(dialect.delimiter) for c in cols]):
         cols = [header.split(dialect.delimiter).index(c) for c in cols]
     else:
@@ -65,32 +62,30 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
     in two different conditions. It returns the name of the .png file produced,
     and the name of a json containing enough information to reconstruct the plot using Javascript.
 
-    :param dataset: (list or string) names of up to six CSV files with rows
-        of the form (feature_name, sample1, sample2, ...).
-    :param cols: (list) indices of the two columns with the numeric data to compare.
-    :param labels: (list) indices of the columns used as labels. The first column
-        specified must contain unique elements.
-    :param annotate: (list) in 'normal' mode, choose which for which datasets you want the
+    :param dataset: (list or string) names of up to six text files.
+    :param cols: (list) indices of the two columns containing the numeric data to compare.
+    :param labels: (list) indices of the columns used as labels.
+    :param annotate: (list) in ``normal`` mode, choose which for which datasets you want the
         points to be labeled. Enter 1 to annotate, 0 not to annotate, in the
         same order as datasets were entered. E.g. [0,0,1] to annotate only the third of 3
         datasets.
     :param mode: (str) display mode:
-        If `normal`, name of genes over 99%/under 1% quantile are displayed.
-        If `interactive`, click on a point to display its name.
-        If `json`, a .json file is produced that allows to reproduce the graph.
+        If ``normal``, name of genes over 99%/under 1% quantile are displayed.
+        If ``interactive``, click on a point to display its name.
+        If ``json``, a .json file is produced that allows to reproduce the graph.
         in a web interface using Javascript.
-    :param data_format: (str) `counts` or `rpkm`.
+    :param data_format: (str) ``counts`` or ``rpkm``.
     :param sep: (str) character delimiting the columns.
-    :param limits: (list[4]) bounds of the region displayed on the output graph: [min_x,max_x,min_y,max_y].
-    :param slimits: (list[2]) left and right bounds of the section of the splines to be displayed.
+    :param limits: (list) bounds of the region displayed on the output graph: ``[min_x, max_x, min_y, max_y]``.
+    :param slimits: (list) left and right bounds of the section of the splines to be displayed: ``[smin, smax]``
     :param deg: (int) the degree of the interpolating polynomial splines.
     :param bins: (int) the number of divisions of the x axis for quantiles estimation.
     :param assembly_id: (str or int) if an assembly ID is given,
-        the json output will provide links to information on genes.
+        the json output will provide links to information on genes, using GenRep.
     :param quantiles: (bool) if False, no quantile splines are drawn.
     :param title: (str) title to be written on top of the graph.
-    :param extremes: (int) create an output file containing features for which ratios were outside the specified
-        percentile (two-sided). For the moment, must be 1 or 5. The file is named *extreme_ratios_xxxxx* .
+    :param extremes: (int) create an output file containing features for which ratios are outside the specified
+        percentile (two-sided). The file is named *extreme_ratios_xxxxx* .
     """
     # Constants:
     if data_format == "counts":
@@ -325,7 +320,7 @@ class AnnoteFinder:
     self.links = []
 
   def distance(self, x1, x2, y1, y2):
-    """Distance between two points"""
+    """Distance between two points (x1,y1) and (x2,y2)"""
     return math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
 
   def __call__(self, event):
@@ -345,9 +340,7 @@ class AnnoteFinder:
             l.drawSpecificAnnote(annote)
 
   def drawAnnote(self, axis, x, y, annote):
-    """
-    Draw the annotation on the plot
-    """
+    """Draw on the plot the label of the point that was clicked"""
     if (x,y) in self.drawnAnnotations:
       markers = self.drawnAnnotations[(x,y)]
       for m in markers:
