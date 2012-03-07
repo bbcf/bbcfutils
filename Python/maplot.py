@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 """
+MA-plot
+=======
+
 Creates an `MA-plot` to compare transcription levels of a set of genes
 (or other features) in two different conditions, from a CSV file.
 One can enter several datasets (CSV files) in the same format, each of which
@@ -8,21 +11,30 @@ will be plotted in a different color, and be annotated if requested.
 The class AnnoteFinder is used to create interactive - clickable - plots.
 """
 
-import sys, os, json, urllib, math, csv, optparse
+import sys, os, json, urllib, math, csv, optparse, random, string
 import numpy
 from scipy import stats
 import matplotlib.pyplot as plt
+
 
 class Usage(Exception):
     def __init__(self,  msg):
         self.msg = msg
 
-def rstring(len=20):
-    import string, random
-    return "".join([random.choice(string.letters+string.digits) for x in range(len)])
+def unique_filename(len=20, path=None):
+    """Return a *len*-characters random filename, unique in the given *path*."""
+    if not path: path = os.getcwd()
+    def random_string():
+        return "".join([random.choice(string.letters + string.digits) for x in range(len)])
+    while True:
+        filename = random_string()
+        files = [f for f in os.listdir(path) if f.startswith(filename)]
+        if files == []: break
+    return filename
 
 def guess_file_format(f, sep=None):
-    """Guess format of file object *f*"""
+    """Guess format of a *sep*-delimited file object *f*. Returns a csv.Dialect object and the
+    header of the file."""
     assert isinstance(f,file), "f must be a file object"
     header = 'None'
     f.readline()
@@ -54,31 +66,31 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
     and the name of a json containing enough information to reconstruct the plot using Javascript.
 
     :param dataset: (list or string) names of up to six CSV files with rows
-    of the form (feature_name, sample1, sample2, ...).
+        of the form (feature_name, sample1, sample2, ...).
     :param cols: (list) indices of the two columns with the numeric data to compare.
     :param labels: (list) indices of the columns used as labels. The first column
-    specified must contain unique elements.
+        specified must contain unique elements.
     :param annotate: (list) in 'normal' mode, choose which for which datasets you want the
-    points to be labeled. Enter 1 to annotate, 0 not to annotate, in the
-    same order as datasets were entered. E.g. [0,0,1] to annotate only the third of 3
-    datasets.
+        points to be labeled. Enter 1 to annotate, 0 not to annotate, in the
+        same order as datasets were entered. E.g. [0,0,1] to annotate only the third of 3
+        datasets.
     :param mode: (str) display mode:
-    * If `normal`, name of genes over 99%/under 1% quantile are displayed.
-    * If `interactive`, click on a point to display its name.
-    * If `json`, a .json file is produced that allows to reproduce th graph.
-    in a web interface using Javascript.
+        If `normal`, name of genes over 99%/under 1% quantile are displayed.
+        If `interactive`, click on a point to display its name.
+        If `json`, a .json file is produced that allows to reproduce the graph.
+        in a web interface using Javascript.
     :param data_format: (str) `counts` or `rpkm`.
     :param sep: (str) character delimiting the columns.
-    :param limits: (list[4]) bounds of the region displayed on the output graph: [minx,maxx,miny,maxy].
+    :param limits: (list[4]) bounds of the region displayed on the output graph: [min_x,max_x,min_y,max_y].
     :param slimits: (list[2]) left and right bounds of the section of the splines to be displayed.
     :param deg: (int) the degree of the interpolating polynomial splines.
     :param bins: (int) the number of divisions of the x axis for quantiles estimation.
     :param assembly_id: (str or int) if an assembly ID is given,
-    the json output will provide links to information on genes.
+        the json output will provide links to information on genes.
     :param quantiles: (bool) if False, no quantile splines are drawn.
     :param title: (str) title to be written on top of the graph.
     :param extremes: (int) create an output file containing features for which ratios were outside the specified
-    percentile (two-sided). For the moment, must be 1 or 5. The file is named *extreme_ratios_xxxxx* .
+        percentile (two-sided). For the moment, must be 1 or 5. The file is named *extreme_ratios_xxxxx* .
     """
     # Constants:
     if data_format == "counts":
@@ -94,7 +106,7 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
         spline_xmax = None
         slimits[0] = slimits[0] or -1
     min_pts_per_bin = 20
-    output_filename = rstring()
+    output_filename = unique_filename()
 
     # Extract data from CSV
     if isinstance(dataset,str): dataset = [dataset]
@@ -391,10 +403,10 @@ to detect it automatically. Use 'C^V' or '\t' for a <tab> delimiter.""",
 information about features into the json output.""",
 """Don't draw quantile splines. This may improve speed and lisibility in some cases.""",
 """(In 'normal' mode) Indication of which datasets to annotate.
-Must be a binary string of the same lenght as the number of datasets, \
+Must be a string of binary values separated by commas, of the same lenght as the number of datasets, \
 1 indicating to annotate the corresponding set, 0 not to annotate. \
 E.g. For a list of datasets d1,d2,d3, if you want to annotate only d3, \
-type --annotate 001. It is advised to annotate only very small secondary datasets.""",
+type --annotate 0,0,1. It is advised to annotate only very small secondary datasets.""",
 """Minimum x value to be displayed on the output graph.""",
 """Maximum x value to be displayed on the output graph.""",
 """Minimum y value to be displayed on the output graph.""",
@@ -437,7 +449,7 @@ def main():
 
         annotate = None
         if opt.annotate:
-            annotate = [eval(a) for a in opt.annotate] # 0100101 -> [0,1,0,0,1,0,1]
+            annotate = [int(b) for b in opt.annotate.split(",")]
             assert len(args) == len(annotate), "There must be one digit per dataset in --annotate."
         limits = [None or opt.xmin, None or opt.xmax, None or opt.ymin, None or opt.ymax]
         slimits = [None or opt.smin, None or opt.smax]
