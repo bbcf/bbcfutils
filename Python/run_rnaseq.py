@@ -2,28 +2,19 @@
 """
 A High-throughput RNA-seq analysis workflow.
 
-python run_rnaseq.py -v lsf -c config_files/gapdh.txt -d rnaseq -p transcripts
+python run_rnaseq.py -v lsf -c config_files/gapkowt.txt -d rnaseq -p transcripts,genes
 python run_rnaseq.py -v lsf -c config_files/rnaseq.txt -d rnaseq -p genes -m /scratch/cluster/monthly/jdelafon/mapseq
 """
 import os, sys, json, re
 import optparse
 from bbcflib import rnaseq, frontend, common, mapseq, email, gdv
-from bbcflib.common import unique_filename_in, set_file_descr
 from bein.util import use_pickle, add_pickle
-from bein import execution, MiniLIMS, program
+from bein import execution, MiniLIMS
 
 
 class Usage(Exception):
     def __init__(self,  msg):
         self.msg = msg
-
-@program
-def run_glm(rpath, data_file, options=[]):
-    output_file = unique_filename_in()
-    options += ["-o",output_file]
-    script_path = os.path.join(rpath,'negbin.test.R')
-    return {'arguments': ["R","--slave","-f",script_path,"--args",data_file]+options,
-            'return_value': output_file}
 
 def main():
     opts = (("-v", "--via", "Run executions using method 'via' (can be 'local' or 'lsf')", {'default': "lsf"}),
@@ -94,31 +85,18 @@ def main():
             assert bam_files, "Bam files not found."
             logfile.write("Starting workflow.\n");logfile.flush()
             result = rnaseq.rnaseq_workflow(ex, job, bam_files, pileup_level=pileup_level, via=opt.via)
-
-            # Differential analysis #
-            rpath = gl.get('script_path')
             for type,res_file in result.iteritems():
-                if res_file and rpath and os.path.exists(rpath):
-                    options = ['-s','tab']
-                    if opt.design: options += ['-d',opt.design]
-                    if opt.contrast: options += ['-c', opt.contrast]
-                    try:
-                        glmfile = run_glm(ex, rpath, res_file, options)
-                        output_files = [f for f in os.listdir(ex.working_directory) if glmfile in f]
-                        for o in output_files:
-                            desc = set_file_descr(type+"_differential"+o.split(glmfile)[1]+".txt", step='stats', type='txt')
-                            o = rnaseq.clean_deseq_output(o)
-                            ex.add(o, description=desc)
-                    except:
-                        logfile.write("Skipped differential analysis");logfile.flush()
+                rnaseq.differential_analysis(ex, result, rpath=gl.get('script_path'),
+                                             design=opt.design, contrast=opt.contrast)
 
             # Create GDV project #
             if job.options['create_gdv_project']:
-                gdv_project = gdv.get_project(mail=gl['gdv']['email'], key=gl['gdv']['key'], project_key=job.options['gdv_key'])
+                gdv_project = gdv.get_project(mail=gl['gdv']['email'], key=gl['gdv']['key'],
+                                              project_key=job.options['gdv_key'])
                 if 'error' in gdv_project:
                     logfile.write("Creating GDV project.\n");logfile.flush()
                     gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
-                                                   job.description, assembly.id, gl['gdv']['url'] )
+                                                   job.description, job.assembly.id, gl['gdv']['url'] )
                 debugfile.write("GDV project: "+json.dumps(gdv_project)+"\n");debugfile.flush()
                 add_pickle(ex, gdv_project, description=common.set_file_descr("gdv_json",step='gdv',type='py',view='admin'))
 
@@ -136,6 +114,7 @@ def main():
                                      project_id=gdv_project['project']['id'],
                                      urls=urls, tracknames=names, force=True )
             debugfile.write("GDV Tracks Status\n"+"\n".join([str(v) for v in tr])+"\n");debugfile.flush()
+
         logfile.close()
         debugfile.close()
         print json.dumps(allfiles)
