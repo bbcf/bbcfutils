@@ -123,7 +123,7 @@ def main(argv = None):
 
         allfiles = common.get_files( ex.id, M )
         if gdv_project.get('project',{}).get('id',0)>0:
-            gdv_project_url = gl['gdv']['url']+"public/project?k="+str(gdv_project['project']['key'])+"&id="+str(gdv_project['project']['id'])
+            gdv_project_url = gl['gdv']['url']+"public/project?k="+str(gdv_project['project']['download_key'])+"&id="+str(gdv_project['project']['id'])
             allfiles['url'] = {gdv_project_url: 'GDV view'}
             download_url = gl['hts_4cseq']['download']
 	    urls=[]

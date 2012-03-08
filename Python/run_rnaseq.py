@@ -122,7 +122,7 @@ def main():
         # Upload tracks to GDV #
         allfiles = common.get_files(ex.id, M)
         if re.search(r'success',gdv_project.get('message','')) and 'sql' in allfiles:
-            gdv_project_url = gl['gdv']['url']+"public/project?k="+str(gdv_project['project']['key']) \
+            gdv_project_url = gl['gdv']['url']+"public/project?k="+str(gdv_project['project']['download_key']) \
                               +"&id="+str(gdv_project['project']['id'])
             allfiles['url'] = {gdv_project_url: 'GDV view'}
             download_url = gl['hts_rnaseq']['download']
