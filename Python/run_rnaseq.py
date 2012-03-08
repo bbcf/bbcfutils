@@ -74,6 +74,8 @@ def main():
         job.options['create_gdv_project'] = job.options.get('create_gdv_project',False)
         if isinstance(job.options['create_gdv_project'],str):
             job.options['create_gdv_project'] = job.options['create_gdv_project'].lower() in ['1','true','t']
+        gdv_project = {'project':{'id': job.options.get('gdv_project_id',0)}}
+        if not('gdv_key' in job.options): job.options['gdv_key'] = ""
         job.options['discard_pcr_duplicates'] = False
         logfile = open((opt.key or opt.config)+".log",'w')
         debugfile = open((opt.key or opt.config)+".debug",'w')
@@ -111,17 +113,18 @@ def main():
                         logfile.write("Skipped differential analysis");logfile.flush()
 
             # Create GDV project #
-            gdv_project = {}
-            if job.options.get('create_gdv_project'):
-                logfile.write("Creating GDV project.\n");logfile.flush()
-                gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
-                                               job.description, job.assembly_id, gl['gdv']['url'] )
+            if job.options['create_gdv_project']:
+                gdv_project = gdv.get_project(mail=gl['gdv']['email'], key=gl['gdv']['key'], project_key=job.options['gdv_key'])
+                if 'error' in gdv_project:
+                    logfile.write("Creating GDV project.\n");logfile.flush()
+                    gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
+                                                   job.description, assembly.id, gl['gdv']['url'] )
                 debugfile.write("GDV project: "+json.dumps(gdv_project)+"\n");debugfile.flush()
                 add_pickle(ex, gdv_project, description=common.set_file_descr("gdv_json",step='gdv',type='py',view='admin'))
 
         # Upload tracks to GDV #
         allfiles = common.get_files(ex.id, M)
-        if re.search(r'success',gdv_project.get('message','')) and 'sql' in allfiles:
+        if gdv_project.get('project',{}).get('id',0)>0:
             gdv_project_url = gl['gdv']['url']+"public/project?k="+str(gdv_project['project']['download_key']) \
                               +"&id="+str(gdv_project['project']['id'])
             allfiles['url'] = {gdv_project_url: 'GDV view'}
