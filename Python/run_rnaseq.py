@@ -85,8 +85,7 @@ def main():
             assert bam_files, "Bam files not found."
             logfile.write("Starting workflow.\n");logfile.flush()
             result = rnaseq.rnaseq_workflow(ex, job, bam_files, pileup_level=pileup_level, via=opt.via)
-            for type,res_file in result.iteritems():
-                rnaseq.differential_analysis(ex, result, rpath=gl.get('script_path'),
+            rnaseq.differential_analysis(ex, result, rpath=gl.get('script_path'),
                                              design=opt.design, contrast=opt.contrast)
 
             # Create GDV project #
