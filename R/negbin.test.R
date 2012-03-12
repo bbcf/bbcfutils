@@ -25,10 +25,10 @@
 #  Input:
 # --------
 # The script is made to take as input the data files returned by rnaseq.py, which format is the following:
-# - tab-delimited or CSV file containing (maybe normalized) read counts
+# - tab-delimited or CSV file containing raw read counts
 # - lines representing genomic features
-# - columns represent different samples
 # - the first column contains feature names
+# - other columns contain counts, one column per sample
 # - columns containing counts are labeled "counts.<groupName>.<sampleIndex>" (e.g. counts.G1.3).
 
 
@@ -45,6 +45,7 @@ if (sep=='tab') sep='\t'
 #contrast_file = args[grep("-c",args)+1]
 
 #options(error = quote({dump.frames(to.file=TRUE); q()})) # creates an error log file `last.dump.rda`
+
 
 main <- function(data_file, sep="\t", output_file=''){
     data = read.table(data_file, header=T, row.names=1, sep=sep)
