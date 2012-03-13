@@ -85,7 +85,7 @@ def main(argv = None):
                 for idRun,dictRun in dictRuns["runs"].iteritems():
                     pileupFilename=common.unique_filename_in()
                     #launch pileup
-                    snp.sam_pileup(ex,job,dictRun["url"],genomeRef,via=opt.via,stdout=pileupFilename)
+                    parameters=snp.sam_pileup(ex,job,dictRun["url"],genomeRef,via=opt.via,stdout=pileupFilename)
                     
                     sampleName=job.groups[idGroup]['name']
                     if(nbRuns>1):
@@ -104,11 +104,16 @@ def main(argv = None):
             for k in dictPileupFile.keys():
                 ex.add(k)
 
-            formatedPileupFilename=snp.parse_pileupFile(ex,job,dictPileupFile,posAllUniqSNPFile,via=opt.via)
+            formatedPileupFilename=snp.parse_pileupFile(ex,job,dictPileupFile,posAllUniqSNPFile,via=opt.via,parameters[0],parameters[1])
             description="SNP analysis for samples: "+", ".join(dictPileupFile.values())
             description=set_file_descr("allSNP.txt",step="SNPs",type="txt")
             ex.add(formatedPileupFilename,description=description)
-        
+
+            codon=snp.synonymous(ex,job,formatedPileupFilename)
+            description="detection of fonctionnal variants for samples: "+", ".join(dictPileupFile.values())
+            description=set_file_descr("fonctionnalVariants.txt",step="codon_modification",type="txt")
+            ex.add(codon,description=description)
+ 
         allfiles = common.get_files(ex.id, M)
         logfile.close()
         print json.dumps(allfiles)
