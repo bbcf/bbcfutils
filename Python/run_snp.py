@@ -71,6 +71,8 @@ def main(argv = None):
         with execution( M, description=hts_key, remote_working_directory=opt.wdir ) as ex:
             (bam_files, job) = mapseq.get_bam_wig_files(ex, job, minilims=opt.mapseq_limspath, hts_url=mapseq_url, \
                                                         script_path=gl.get('script_path') or '', via=opt.via)
+            import pdb
+            #pdb.set_trace()
             assert bam_files, "Bam files not found."
             print "cat genome fasta files"
             genomeRef=snp.untar_cat(ex,assembly.fasta_path())
@@ -104,7 +106,7 @@ def main(argv = None):
             for k in dictPileupFile.keys():
                 ex.add(k)
 
-            formatedPileupFilename=snp.parse_pileupFile(ex,job,dictPileupFile,posAllUniqSNPFile,via=opt.via,parameters[0],parameters[1])
+            formatedPileupFilename=snp.parse_pileupFile(ex,job,dictPileupFile,posAllUniqSNPFile,minCoverage=parameters[0],minSNP=parameters[1],via=opt.via)
             description="SNP analysis for samples: "+", ".join(dictPileupFile.values())
             description=set_file_descr("allSNP.txt",step="SNPs",type="txt")
             ex.add(formatedPileupFilename,description=description)
