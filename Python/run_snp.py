@@ -75,9 +75,9 @@ def main(argv = None):
             import pdb
             #pdb.set_trace()
             assert bam_files, "Bam files not found."
-            print "cat genome fasta files"
+            logfile.write("cat genome fasta files\n");logfile.flush()
             genomeRef=snp.untar_cat(ex,assembly.fasta_path())
-            print "done"
+            logfile.write("done\n");logfile.flush()
 
             # for each group
             dictPileupFile={}
@@ -99,7 +99,7 @@ def main(argv = None):
                 #formate pileup file
                 if(nbRuns>1):
                     # stat and correlation
-                    print "many runs, need statistics"
+                    debugfile.write("many runs, need statistics\n");debugfile.flush()
  
             posAllUniqSNPFile=snp.posAllUniqSNP(ex,job,dictPileupFile)
             ex.add(posAllUniqSNPFile)
