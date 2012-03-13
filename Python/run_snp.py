@@ -65,7 +65,8 @@ def main(argv = None):
         g_rep = genrep.GenRep( gl.get("genrep_url"), gl.get("bwt_root") )
         assembly = genrep.Assembly( assembly=job.assembly_id, genrep=g_rep )
         logfile = open(hts_key+".log",'w')
-        logfile.write(json.dumps(gl)); logfile.flush()
+        debugfile = open(hts_key+".debug",'w')
+        debugfile.write(json.dumps(job.options)+"\n\n"+json.dumps(gl)+"\n");debugfile.flush()
 
         # Program body
         with execution( M, description=hts_key, remote_working_directory=opt.wdir ) as ex:
@@ -118,7 +119,10 @@ def main(argv = None):
  
         allfiles = common.get_files(ex.id, M)
         logfile.close()
+        debugfile.close()
         print json.dumps(allfiles)
+        with open(hts_key+".done",'w') as done:
+            json.dump(allfiles,done)
 
         return 0
     except Usage, err:
