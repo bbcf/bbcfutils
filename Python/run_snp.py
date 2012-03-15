@@ -85,14 +85,14 @@ def main(argv = None):
                 nbRuns=len(dictRuns["runs"].keys())
                 # for each run
                 listFormatedFile=[]
-                for idRun,dictRun in dictRuns["runs"].iteritems():
+                for idRun,dictRun in bam_files[idGroup].iteritems():
                     pileupFilename=common.unique_filename_in()
                     #launch pileup
-                    parameters=snp.sam_pileup(ex,job,dictRun["url"],genomeRef,via=opt.via,stdout=pileupFilename)
+                    parameters=snp.sam_pileup(ex,job,dictRun["bam"],genomeRef,via=opt.via,stdout=pileupFilename)
                     
                     sampleName=job.groups[idGroup]['name']
                     if(nbRuns>1):
-                        sampleName+=group['run_names'].get(idRun,str(idRun))
+                        sampleName+=job.groups[idGroup]['run_names'].get(idRun,str(idRun))
                     
                     dictPileupFile[pileupFilename]=sampleName
 
