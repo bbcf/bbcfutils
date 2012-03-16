@@ -92,7 +92,7 @@ def main(argv = None):
                     
                     sampleName=job.groups[idGroup]['name']
                     if(nbRuns>1):
-                        sampleName+=job.groups[idGroup]['run_names'].get(idRun,str(idRun))
+                        sampleName += "_"+dictRun.get('libname',str(idRun))
                     
                     dictPileupFile[pileupFilename]=sampleName
 
@@ -102,10 +102,10 @@ def main(argv = None):
                     debugfile.write("many runs, need statistics\n");debugfile.flush()
  
             posAllUniqSNPFile=snp.posAllUniqSNP(ex,job,dictPileupFile)
-            ex.add(posAllUniqSNPFile)
+#            ex.add(posAllUniqSNPFile)
 
-            for k in dictPileupFile.keys():
-                ex.add(k)
+#            for k in dictPileupFile.keys():
+#                ex.add(k)
 
             formatedPileupFilename=snp.parse_pileupFile(ex,job,dictPileupFile,posAllUniqSNPFile,minCoverage=parameters[0],minSNP=parameters[1],via=opt.via)
             description="SNP analysis for samples: "+", ".join(dictPileupFile.values())
@@ -113,8 +113,8 @@ def main(argv = None):
             ex.add(formatedPileupFilename,description=description)
 
             codon=snp.synonymous(ex,job,formatedPileupFilename)
-            description="detection of fonctionnal variants for samples: "+", ".join(dictPileupFile.values())
-            description=set_file_descr("fonctionnalVariants.txt",step="codon_modification",type="txt")
+            description="detection of functionnal variants for samples: "+", ".join(dictPileupFile.values())
+            description=set_file_descr("functionnalVariants.txt",step="codon_modification",type="txt")
             ex.add(codon,description=description)
  
         allfiles = common.get_files(ex.id, M)
