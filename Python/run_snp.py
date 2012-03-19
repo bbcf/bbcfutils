@@ -72,11 +72,11 @@ def main(argv = None):
         with execution( M, description=hts_key, remote_working_directory=opt.wdir ) as ex:
             (bam_files, job) = mapseq.get_bam_wig_files(ex, job, minilims=opt.mapseq_limspath, hts_url=mapseq_url, \
                                                         script_path=gl.get('script_path') or '', via=opt.via)
-            import pdb
+            #import pdb
             #pdb.set_trace()
             assert bam_files, "Bam files not found."
             logfile.write("cat genome fasta files\n");logfile.flush()
-            genomeRef=snp.untar_cat(ex,assembly.fasta_path())
+            genomeRef=snp.untar_genome_fasta(assembly)
             logfile.write("done\n");logfile.flush()
 
             # for each group
