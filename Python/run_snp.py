@@ -79,42 +79,38 @@ def main(argv = None):
             genomeRef=snp.untar_genome_fasta(assembly)
             logfile.write("done\n");logfile.flush()
 
-            # for each group
-            dictPileupFile={}
+            dictPileupFile=dict((chrom,{}) for chrom in genomeRef.keys())
             for idGroup,dictRuns in job.groups.iteritems():
                 nbRuns=len(dictRuns["runs"].keys())
-                # for each run
                 listFormatedFile=[]
                 for idRun,dictRun in bam_files[idGroup].iteritems():
-                    pileupFilename=common.unique_filename_in()
-                    #launch pileup
-                    parameters=snp.sam_pileup(ex,job,dictRun["bam"],genomeRef,via=opt.via,stdout=pileupFilename)
-                    
                     sampleName=job.groups[idGroup]['name']
                     if(nbRuns>1):
                         sampleName += "_"+dictRun.get('libname',str(idRun))
-                    
-                    dictPileupFile[pileupFilename]=sampleName
+                        debugfile.write("many runs, need statistics\n");debugfile.flush() 
+                    for chrom,ref in genomeRef.iteritems():
+                        pileupFilename=common.unique_filename_in()
+                        future=snp.sam_pileup.nonblocking(ex,job,dictRun["bam"],ref,via=opt.via,stdout=pileupFilename)
+                        dictPileupFile[chrom][pileupFilename]=(sampleName,future)
 
-                #formate pileup file
-                if(nbRuns>1):
-                    # stat and correlation
-                    debugfile.write("many runs, need statistics\n");debugfile.flush()
- 
-            posAllUniqSNPFile=snp.posAllUniqSNP(ex,job,dictPileupFile)
+            formatedPileupFilename = []
+            for chrom, dictPileup in dictPileupFile.iteritems():
+                posAll,parameters = snp.posAllUniqSNP(ex,job,dictPileup)
 #            ex.add(posAllUniqSNPFile)
 
 #            for k in dictPileupFile.keys():
 #                ex.add(k)
 
-            formatedPileupFilename=snp.parse_pileupFile(ex,job,dictPileupFile,posAllUniqSNPFile,minCoverage=parameters[0],minSNP=parameters[1],via=opt.via)
+                formatedPileupFilename.append(snp.parse_pileupFile(ex,job,dictPileup,posAll,chrom,
+                                                                   minCoverage=parameters[0],minSNP=parameters[1]))
             description="SNP analysis for samples: "+", ".join(dictPileupFile.values())
             description=set_file_descr("allSNP.txt",step="SNPs",type="txt")
-            ex.add(formatedPileupFilename,description=description)
+            output = common.cat(formatedPileupFilename)
+            ex.add(output,description=description)
 
-            codon=snp.synonymous(ex,job,formatedPileupFilename)
-            description="detection of functionnal variants for samples: "+", ".join(dictPileupFile.values())
-            description=set_file_descr("functionnalVariants.txt",step="codon_modification",type="txt")
+            codon=snp.synonymous(ex,job,output)
+            description="detection of functional variants for samples: "+", ".join(dictPileupFile.values())
+            description=set_file_descr("functionalVariants.txt",step="codon_modification",type="txt")
             ex.add(codon,description=description)
  
         allfiles = common.get_files(ex.id, M)
