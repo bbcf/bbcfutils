@@ -107,7 +107,7 @@ def main(argv = None):
             description=set_file_descr("allSNP.txt",step="SNPs",type="txt")
             output = common.cat(formatedPileupFilename)
             ex.add(output,description=description)
-            pause()
+            #pause()
             codon=snp.synonymous(ex,job,output)
             description="detection of functional variants for samples: "+", ".join(dictPileupFile.values()[0].values())
             description=set_file_descr("functionalVariants.txt",step="codon_modification",type="txt")
