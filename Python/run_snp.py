@@ -105,7 +105,16 @@ def main(argv = None):
                                                                    minCoverage=parameters[0],minSNP=parameters[1]))
             description="SNP analysis for samples: "+", ".join(dictPileupFile.values()[0].values())
             description=set_file_descr("allSNP.txt",step="SNPs",type="txt")
-            output = common.cat(formatedPileupFilename)
+            headerFile=[common.unique_filename_in()]
+            
+            with open(headerFile[0],'w') as f2:
+                with open(formatedPileupFilename[0],'r') as f:
+                    header=f.readline()
+                    f2.write(header);f2.write(header);
+            
+            
+            output = common.cat(headerFile+formatedPileupFilename,skip=1)
+            
             ex.add(output,description=description)
             #pause()
             codon=snp.synonymous(ex,job,output)
