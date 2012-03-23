@@ -76,7 +76,7 @@ def main(argv = None):
             #pdb.set_trace()
             assert bam_files, "Bam files not found."
             logfile.write("cat genome fasta files\n");logfile.flush()
-            genomeRef=snp.untar_genome_fasta(assembly)
+            genomeRef=snp.untar_genome_fasta(assembly,convert=True)
             logfile.write("done\n");logfile.flush()
 
             dictPileupFile=dict((chrom,{}) for chrom in genomeRef.keys())
@@ -103,13 +103,22 @@ def main(argv = None):
 
                 formatedPileupFilename.append(snp.parse_pileupFile(ex,job,dictPileup,posAll,chrom,
                                                                    minCoverage=parameters[0],minSNP=parameters[1]))
-            description="SNP analysis for samples: "+", ".join(dictPileupFile.values())
+            description="SNP analysis for samples: "+", ".join(dictPileupFile.values()[0].values())
             description=set_file_descr("allSNP.txt",step="SNPs",type="txt")
-            output = common.cat(formatedPileupFilename)
+            headerFile=[common.unique_filename_in()]
+            
+            with open(headerFile[0],'w') as f2:
+                with open(formatedPileupFilename[0],'r') as f:
+                    header=f.readline()
+                    f2.write(header);f2.write(header);
+            
+            
+            output = common.cat(headerFile+formatedPileupFilename,skip=1)
+            
             ex.add(output,description=description)
-
+            #pause()
             codon=snp.synonymous(ex,job,output)
-            description="detection of functional variants for samples: "+", ".join(dictPileupFile.values())
+            description="detection of functional variants for samples: "+", ".join(dictPileupFile.values()[0].values())
             description=set_file_descr("functionalVariants.txt",step="codon_modification",type="txt")
             ex.add(codon,description=description)
  
