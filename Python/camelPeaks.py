@@ -17,16 +17,17 @@ opts = (("-p", "--peaks",
          "A bedgraph-like file with ChIP density on the forward strand",{}),
         ("-r", "--reverse",
          "A bedgraph-like file with ChIP density on the reverse strand",{}),
-        ("-o", "--output", "Output prefix",{'default':'deconv'}),
+        ("-o", "--output", "Output prefix (default 'camels')",{'default':'camels'}),
         ("-c", "--chromosome", "Chromosome name",{'default':None}),
         ("-l", "--length", "Chromosome length",{'default':sys.maxint,'type':"int"}),
         ("-s", "--sizecutoff",
-         "Maximum region size to consider",{'default': 3000,'type':"int"}),
+         "Maximum region size to consider (default 3000)",{'default': 3000,'type':"int"}),
         ("-e", "--extension",
-         "Read extension used for computing the density",{'default': 40,'type':"int"}),
-        ("-x", "--mu", "Mu parameter (fragment size)",{'default': 80,'type':"int"}),
-        ("-z", "--script", "R script path",{'default': './'}),
-        ("-g", "--genome", "Genome assembly code",{'default': None})
+         "Read extension used for computing the density (default 40)",{'default': 40,'type':"int"}),
+        ("-x", "--mu", "Fragment size (default 80)",{'default': 80,'type':"int"}),
+        ("-z", "--script", "R script path (default ./)",{'default': './'}),
+        ("-g", "--genome", "Genome assembly code",{'default': None}),
+        ("-k", "--kernel", "Deconvolution kernel ('gaussian' or 'geometric', default 'geometric')",{'default': "geometric"})
         )
 
 class Usage(Exception):
@@ -104,6 +105,7 @@ def main(argv = None):
             robjects.r('chr.name="%s"' %chrom)
             robjects.r('pdf.file="%s.pdf"' %opt.output)
             robjects.r('mu=%i' %opt.mu)
+            robjects.r('ktype="%s"' %opt.kernel)
             robjects.r('source("%s")' %os.path.join(opt.script,"deconv_fcts.R"))
             robjects.r("""
     counts = split(counts[,c("pos","plus","minus")],counts$name)
@@ -116,7 +118,7 @@ def main(argv = None):
     cut.ccf=ccf$acf
     cut.ccf[which(ccf$lag<mu)]=0
     lambda=ccf$lag[which.max(cut.ccf)]
-    sol = inverse.solve(counts,mu=mu,lambda=lambda,len=read.length,regul=1e-3,optimize=TRUE)
+    sol = inverse.solve(counts,mu=mu,lambda=lambda,len=read.length,regul=1e-3,optimize=TRUE,ktype=ktype)
     col='red'
     lab=paste('lambda=',sol$par$lambda,sep='')
     abline(v=sol$par$lambda,col=col)
