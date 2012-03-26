@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Built-in modules #
-import sys, optparse
+import optparse, json
 
 # Constants #
 doc_url = 'http://bbcf.epfl.ch/bbcflib'
@@ -17,6 +17,8 @@ parameters = {
                 ' Usage: %s.'%example,
 'option_list' : [optparse.make_option("-a", "--assembly",
                                       help = "The assembly can be any valid GenRep assembly name. For example 'sacCer2'.", default=None),
+                 optparse.make_option("-c", "--chrmeta",
+                                      help = "Json-formatted chrmeta dictionary.", default=None),
                  optparse.make_option("-1", "--format1",
                                       help = "Format of the first track."),
                  optparse.make_option("-2", "--format2",
@@ -29,4 +31,6 @@ if options.format1:
     args[0] = (args[0],options.format1)
 if options.format2:
     args[1] = (args[1],options.format2)
-track.convert(*args, assembly=options.assembly)
+if options.chrmeta:
+    chrmeta = json.loads(options.chrmeta)
+track.convert(*args, assembly=options.assembly,chrmeta=chrmeta)
