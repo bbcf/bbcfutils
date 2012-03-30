@@ -90,19 +90,17 @@ def main(argv = None):
                         debugfile.write("many runs, need statistics\n");debugfile.flush() 
                     for chrom,ref in genomeRef.iteritems():
                         pileupFilename=common.unique_filename_in()
-                        future=snp.sam_pileup.nonblocking(ex,job,dictRun["bam"],ref,via=opt.via,stdout=pileupFilename)
+                        future=snp.sam_pileup.nonblocking(ex,assembly,dictRun["bam"],ref,via=opt.via,stdout=pileupFilename)
                         dictPileupFile[chrom][pileupFilename]=(sampleName,future)
 
             formatedPileupFilename = []
             for chrom, dictPileup in dictPileupFile.iteritems():
-                posAll,parameters = snp.posAllUniqSNP(ex,job,dictPileup)
-#            ex.add(posAllUniqSNPFile)
-
-#            for k in dictPileupFile.keys():
-#                ex.add(k)
-
-                formatedPileupFilename.append(snp.parse_pileupFile(ex,job,dictPileup,posAll,chrom,
-                                                                   minCoverage=parameters[0],minSNP=parameters[1]))
+                posAll,parameters = snp.posAllUniqSNP(ex,dictPileup)
+                if len(posAll) == 0: continue
+                parsed = snp.parse_pileupFile(ex,dictPileup,posAll,chrom,
+                                              minCoverage=parameters[0],
+                                              minSNP=parameters[1])
+                formatedPileupFilename.append(parsed)
             description="SNP analysis for samples: "+", ".join(dictPileupFile.values()[0].values())
             description=set_file_descr("allSNP.txt",step="SNPs",type="txt")
             headerFile=[common.unique_filename_in()]
@@ -110,7 +108,8 @@ def main(argv = None):
             with open(headerFile[0],'w') as f2:
                 with open(formatedPileupFilename[0],'r') as f:
                     header=f.readline()
-                    f2.write(header);f2.write(header);
+                    f2.write("") #will be skipped in cat
+                    f2.write(header)
             
             
             output = common.cat(headerFile+formatedPileupFilename,skip=1)
