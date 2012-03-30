@@ -65,53 +65,68 @@ def main(argv = None):
         g_rep = genrep.GenRep( gl.get("genrep_url"), gl.get("bwt_root") )
         assembly = genrep.Assembly( assembly=job.assembly_id, genrep=g_rep )
         logfile = open(hts_key+".log",'w')
-        logfile.write(json.dumps(gl)); logfile.flush()
+        debugfile = open(hts_key+".debug",'w')
+        debugfile.write(json.dumps(job.options)+"\n\n"+json.dumps(gl)+"\n");debugfile.flush()
 
         # Program body
         with execution( M, description=hts_key, remote_working_directory=opt.wdir ) as ex:
             (bam_files, job) = mapseq.get_bam_wig_files(ex, job, minilims=opt.mapseq_limspath, hts_url=mapseq_url, \
                                                         script_path=gl.get('script_path') or '', via=opt.via)
+            #import pdb
+            #pdb.set_trace()
             assert bam_files, "Bam files not found."
-            print "cat genome fasta files"
-            genomeRef=snp.untar_cat(ex,assembly.fasta_path())
-            print "done"
+            logfile.write("cat genome fasta files\n");logfile.flush()
+            genomeRef=snp.untar_genome_fasta(assembly,convert=True)
+            logfile.write("done\n");logfile.flush()
 
-            # for each group
-            dictPileupFile={}
+            dictPileupFile=dict((chrom,{}) for chrom in genomeRef.keys())
             for idGroup,dictRuns in job.groups.iteritems():
                 nbRuns=len(dictRuns["runs"].keys())
-                # for each run
                 listFormatedFile=[]
-                for idRun,dictRun in dictRuns["runs"].iteritems():
-                    pileupFilename=common.unique_filename_in()
-                    #launch pileup
-                    snp.sam_pileup(ex,job,dictRun["url"],genomeRef,via=opt.via,stdout=pileupFilename)
-                    
+                for idRun,dictRun in bam_files[idGroup].iteritems():
                     sampleName=job.groups[idGroup]['name']
                     if(nbRuns>1):
-                        sampleName+=group['run_names'].get(idRun,str(idRun))
-                    
-                    dictPileupFile[pileupFilename]=sampleName
+                        sampleName += "_"+dictRun.get('libname',str(idRun))
+                        debugfile.write("many runs, need statistics\n");debugfile.flush() 
+                    for chrom,ref in genomeRef.iteritems():
+                        pileupFilename=common.unique_filename_in()
+                        future=snp.sam_pileup.nonblocking(ex,assembly,dictRun["bam"],ref,via=opt.via,stdout=pileupFilename)
+                        dictPileupFile[chrom][pileupFilename]=(sampleName,future)
 
-                #formate pileup file
-                if(nbRuns>1):
-                    # stat and correlation
-                    print "many runs, need statistics"
- 
-            posAllUniqSNPFile=snp.posAllUniqSNP(ex,job,dictPileupFile)
-            ex.add(posAllUniqSNPFile)
-
-            for k in dictPileupFile.keys():
-                ex.add(k)
-
-            formatedPileupFilename=snp.parse_pileupFile(ex,job,dictPileupFile,posAllUniqSNPFile,via=opt.via)
-            description="SNP analysis for samples: "+", ".join(dictPileupFile.values())
+            formatedPileupFilename = []
+            for chrom, dictPileup in dictPileupFile.iteritems():
+                posAll,parameters = snp.posAllUniqSNP(ex,dictPileup)
+                if len(posAll) == 0: continue
+                parsed = snp.parse_pileupFile(ex,dictPileup,posAll,chrom,
+                                              minCoverage=parameters[0],
+                                              minSNP=parameters[1])
+                formatedPileupFilename.append(parsed)
+            description="SNP analysis for samples: "+", ".join(dictPileupFile.values()[0].values())
             description=set_file_descr("allSNP.txt",step="SNPs",type="txt")
-            ex.add(formatedPileupFilename,description=description)
-        
+            headerFile=[common.unique_filename_in()]
+            
+            with open(headerFile[0],'w') as f2:
+                with open(formatedPileupFilename[0],'r') as f:
+                    header=f.readline()
+                    f2.write("") #will be skipped in cat
+                    f2.write(header)
+            
+            
+            output = common.cat(headerFile+formatedPileupFilename,skip=1)
+            
+            ex.add(output,description=description)
+            #pause()
+            codon=snp.synonymous(ex,job,output)
+            description="detection of functional variants for samples: "+", ".join(dictPileupFile.values()[0].values())
+            description=set_file_descr("functionalVariants.txt",step="codon_modification",type="txt")
+            ex.add(codon,description=description)
+ 
         allfiles = common.get_files(ex.id, M)
         logfile.close()
+        debugfile.close()
         print json.dumps(allfiles)
+        with open(hts_key+".done",'w') as done:
+            json.dump(allfiles,done)
 
         return 0
     except Usage, err:

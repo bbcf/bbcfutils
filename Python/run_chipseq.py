@@ -57,6 +57,8 @@ def main(argv = None):
         job.options['create_gdv_project'] = job.options.get('create_gdv_project',False)
         if isinstance(job.options['create_gdv_project'],basestring):
             job.options['create_gdv_project'] = job.options['create_gdv_project'].lower() in ['1','true','t']
+        gdv_project = {'project':{'id': job.options.get('gdv_project_id',0)}}
+        if not('gdv_key' in job.options): job.options['gdv_key'] = ""
 
         g_rep = genrep.GenRep( gl.get("genrep_url"), gl.get("bwt_root") )
         assembly = genrep.Assembly( assembly=job.assembly_id, genrep=g_rep )
@@ -70,17 +72,18 @@ def main(argv = None):
             logfile.write("Starting workflow.\n");logfile.flush()
             chipseq_files = workflow_groups( ex, job, mapped_files, assembly,
                                              gl.get('script_path',''), logfile=logfile, via=opt.via )
-            gdv_project = {}
             if job.options.get('create_gdv_project'):
-                logfile.write("Creating GDV project.\n");logfile.flush()
-                gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'], 
-                                               job.description, assembly.id,
-                                               gl['gdv']['url'] )
+                gdv_project = gdv.get_project(mail=gl['gdv']['email'], key=gl['gdv']['key'], project_key=job.options['gdv_key'])
+                if 'error' in gdv_project:
+                    logfile.write("Creating GDV project.\n");logfile.flush()
+                    gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'], 
+                                                   job.description, assembly.id,
+                                                   gl['gdv']['url'] )
                 debugfile.write("GDV project: "+str(gdv_project['project']['id'])+"\n");debugfile.flush()
                 add_pickle( ex, gdv_project, description=set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
         allfiles = get_files( ex.id, M )
         if gdv_project.get('project',{}).get('id',0)>0 and 'sql' in allfiles:
-            gdv_project_url = gl['gdv']['url']+"public/project?k="+str(gdv_project['project']['key'])+"&id="+str(gdv_project['project']['id'])
+            gdv_project_url = gl['gdv']['url']+"public/project?k="+str(gdv_project['project']['download_key'])+"&id="+str(gdv_project['project']['id'])
             allfiles['url'] = {gdv_project_url: 'GDV view'}
             download_url = gl['hts_chipseq']['download']
             urls  = [download_url+str(k) for k in allfiles['sql'].keys()]

@@ -8,51 +8,84 @@ will be plotted in a different color, and be annotated if requested.
 The class AnnoteFinder is used to create interactive - clickable - plots.
 """
 
-import sys, os, json, urllib, math, csv, optparse
+import sys, os, json, urllib, math, csv, optparse, random, string
 import numpy
 from scipy import stats
 import matplotlib.pyplot as plt
+
 
 class Usage(Exception):
     def __init__(self,  msg):
         self.msg = msg
 
-def rstring(len=20):
-    import string, random
-    return "".join([random.choice(string.letters+string.digits) for x in range(len)])
+def unique_filename(len=20, path=None):
+    """Return a *len*-characters random filename, unique in the given *path*."""
+    if not path: path = os.getcwd()
+    def random_string():
+        return "".join([random.choice(string.letters + string.digits) for x in range(len)])
+    while True:
+        filename = random_string()
+        files = [f for f in os.listdir(path) if f.startswith(filename)]
+        if files == []: break
+    return filename
 
-def MAplot(dataset, cols=[2,3], annotate=None, mode="normal", data_format="counts", sep=None,
-           limits=[None,None,None,None], slimits=[None,None], deg=3, bins=30, assembly_id=None,
-           quantiles=True, title="MA-plot", extremes=False):
+def guess_file_format(f, sep=None):
+    """Guess format of a *sep*-delimited file object *f*. Returns a ``csv.Dialect`` object and the
+    header of the file."""
+    assert isinstance(f,file), "f must be a file object"
+    header = 'None'
+    f.readline()
+    dialect = csv.Sniffer().sniff(f.readline()); f.seek(0)
+    if sep: dialect.delimiter = sep
+    if csv.Sniffer().has_header(f.readline()):
+        f.seek(0); header=f.readline()
+    return dialect, header
+
+def name_or_index(cols, dialect, header):
+    """Given an array *cols*, detect if elements are indices of *header* or elements of *header*.
+    Returns an array of Python indices (0 to n-1) - instead of the user-friendly (1 to n)."""
+    if all([c in header.split(dialect.delimiter) for c in cols]):
+        cols = [header.split(dialect.delimiter).index(c) for c in cols]
+    else:
+        try: cols = [int(c)-1 for c in cols]
+        except ValueError:
+            print "\nError: --cols must contain column names or indices (got %s)." % cols
+            print "Detected header: %s" % header
+    return cols
+
+
+def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_format="counts",
+           sep=None, limits=[None,None,None,None], slimits=[None,None], deg=3, bins=30,
+           assembly_id=None, quantiles=True, title="MA-plot", extremes=False):
     """
     Creates an "MA-plot" to compare transcription levels of a set of genes
     in two different conditions. It returns the name of the .png file produced,
     and the name of a json containing enough information to reconstruct the plot using Javascript.
 
-    :param dataset: list or string, containing names of up to six CSV files with rows
-    of the form (feature_name, sample1, sample2, ...).
-    :param cols: list containing the numbers of the two columns containing the numeric data to compare.
-    :param annotate: in 'normal' mode, choose which for which datasets you want the
-    points to be labeled. In a list, enter 1 to annotate, 0 not to annotate, in the
-    same order as datasets were entered. E.g. [0,0,1] to annotate only the third of 3
-    datasets.
+    :param dataset: (list or string) names of up to six text files.
+    :param cols: (list) indices of the two columns containing the numeric data to compare.
+    :param labels: (list) indices of the columns used as labels.
+    :param annotate: (list) in ``normal`` mode, choose which for which datasets you want the
+        points to be labeled. Enter 1 to annotate, 0 not to annotate, in the
+        same order as datasets were entered. E.g. [0,0,1] to annotate only the third of 3
+        datasets.
     :param mode: (str) display mode:
-    * If `normal`, name of genes over 99%/under 1% quantile are displayed.
-    * If `interactive`, click on a point to display its name.
-    * If `json`, a .json file is produced that allows to reproduce th graph.
-    in a web interface using Javascript.
-    :param data_format: `counts` or `rpkm`.
-    :param sep: character delimiting the columns.
-    :param limits: (list[4]) bounds of the region displayed on the output graph: [minx,maxx,miny,maxy].
-    :param slimits: (list[2]) left and right bounds of the section of the splines to be displayed.
+        If ``normal``, name of genes over 99%/under 1% quantile are displayed.
+        If ``interactive``, click on a point to display its name.
+        If ``json``, a .json file is produced that allows to reproduce the graph.
+        in a web interface using Javascript.
+    :param data_format: (str) ``counts`` or ``rpkm``.
+    :param sep: (str) character delimiting the columns.
+    :param limits: (list) bounds of the region displayed on the output graph: ``[min_x, max_x, min_y, max_y]``.
+    :param slimits: (list) left and right bounds of the section of the splines to be displayed: ``[smin, smax]``
     :param deg: (int) the degree of the interpolating polynomial splines.
     :param bins: (int) the number of divisions of the x axis for quantiles estimation.
     :param assembly_id: (str or int) if an assembly ID is given,
-    the json output will provide links to information on genes.
+        the json output will provide links to information on genes, using GenRep.
     :param quantiles: (bool) if False, no quantile splines are drawn.
     :param title: (str) title to be written on top of the graph.
-    :param extremes: (int) create an output file containing features for which ratios were outside the specified
-    percentile (two-sided). For the moment, must be 1 or 5. The file is named *extreme_ratios_xxxxx* .
+    :param extremes: (int) create an output file containing features for which ratios are outside the specified
+        percentile (two-sided). The file is named *extreme_ratios_xxxxx* .
     """
     # Constants:
     if data_format == "counts":
@@ -68,41 +101,30 @@ def MAplot(dataset, cols=[2,3], annotate=None, mode="normal", data_format="count
         spline_xmax = None
         slimits[0] = slimits[0] or -1
     min_pts_per_bin = 20
-    output_filename = rstring()
+    output_filename = unique_filename()
 
     # Extract data from CSV
     if isinstance(dataset,str): dataset = [dataset]
     names=[]; means=[]; ratios=[]; pvals=[]; points=[]; groups={}; counts={}
     for data in dataset:
         with open(data,'r') as f:
-            f.readline()
-            dialect = csv.Sniffer().sniff(f.readline()); f.seek(0)
-            if sep: dialect.delimiter = sep
-            header = 'None'
-            if csv.Sniffer().has_header(f.readline()):
-                f.seek(0); header=f.readline()
-            try:
-                csvreader = csv.reader(f, dialect=dialect, quoting=csv.QUOTE_NONE)
-            except TypeError:
-                csvreader = csv.reader(f, dialect='excel-tab', quoting=csv.QUOTE_NONE)
+            # Guess file format
+            dialect,header = guess_file_format(f,sep)
+            try: csvreader = csv.reader(f, dialect=dialect, quoting=csv.QUOTE_NONE)
+            except TypeError: csvreader = csv.reader(f, dialect='excel-tab', quoting=csv.QUOTE_NONE)
+            cols = name_or_index(cols, dialect, header)
+            labels = name_or_index(labels, dialect, header)
+            # Read the file
             n=[]; m=[]; r=[]; p=[]
-            if all([c in header.split(dialect.delimiter) for c in cols]):
-                cols = [header.split(dialect.delimiter).index(c)+1 for c in cols]
-            else:
-                try: cols = [int(c) for c in cols]
-                except ValueError:
-                    print "\nError: --cols must contain column names or indices (got %s)." % cols
-                    print "Detected header: %s" % header
             for row in csvreader:
-                #numpy.seterr(all='raise') # testing
-                try: c1 = float(row[cols[0]-1]); c2 = float(row[cols[1]-1])
-                except ValueError: continue # Skip NA, nan, etc.
+                try: c1 = float(row[cols[0]]); c2 = float(row[cols[1]])
+                except ValueError: continue # Skip line if contains NA, nan, etc.
                 if (c1*c2 > lower):
-                    counts[row[0]] = (c1,c2)
-                    n.append(row[0])
+                    counts[row[labels[0]]] = (c1,c2)
+                    n.append(' | '.join([row[l] for l in labels]))
                     m.append(numpy.log10(numpy.sqrt(c1*c2)))
                     r.append(numpy.log2(c1/c2))
-                p.append(None) # future p-values
+                p.append(None) # future p-values, not used yet
         groups[data] = zip(n, m, r, p)
         names.extend(n); means.extend(m); ratios.extend(r); pvals.extend(p)
     points = zip(names, means, ratios, pvals)
@@ -188,7 +210,7 @@ def MAplot(dataset, cols=[2,3], annotate=None, mode="normal", data_format="count
     plt.xlim([xmin-0.1*xlen,xmax+0.1*xlen])
     plt.ylim([ymin-0.1*ylen,ymax+0.1*ylen])
 
-    # Annotation of points
+    # Annotation of points, draw
     annotes={}
     if not annotate:
         if mode == "normal": annotate = [0 for data in dataset]
@@ -270,14 +292,14 @@ def MAplot(dataset, cols=[2,3], annotate=None, mode="normal", data_format="count
 
 class AnnoteFinder:
   """
-  callback for matplotlib to display an annotation when points are clicked on.  The
+  Callback for matplotlib to display an annotation when points are clicked on.  The
   point which is closest to the click and within xtol and ytol is identified.
 
-  Use this function like this:
+  Typical usage::
 
-  plot(xdata, ydata)
-  af = AnnoteFinder(xdata, ydata, annotes)
-  connect('button_press_event', af)
+      plot(xdata, ydata)
+      af = AnnoteFinder(xdata, ydata, annotes)
+      connect('button_press_event', af)
   """
 
   def __init__(self, xdata, ydata, annotes, axis=None, xtol=None, ytol=None):
@@ -298,7 +320,7 @@ class AnnoteFinder:
     self.links = []
 
   def distance(self, x1, x2, y1, y2):
-    """Distance between two points"""
+    """Distance between two points (x1,y1) and (x2,y2)"""
     return math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
 
   def __call__(self, event):
@@ -318,9 +340,7 @@ class AnnoteFinder:
             l.drawSpecificAnnote(annote)
 
   def drawAnnote(self, axis, x, y, annote):
-    """
-    Draw the annotation on the plot
-    """
+    """Draw on the plot the label of the point that was clicked"""
     if (x,y) in self.drawnAnnotations:
       markers = self.drawnAnnotations[(x,y)]
       for m in markers:
@@ -342,14 +362,16 @@ class AnnoteFinder:
 
 usage = """
 
-maplot.py [-h] [-c --cols] [-m --mode] [-f --format] [-s --sep] [-d --deg] [-b --bins] [-a --assembly]
-          [-q --noquantiles] [-n --annotate] [--xmin --xmax --ymin --ymax] [--smin --smax]
+maplot.py [-h] [-c --cols] [-l --labels] [-m --mode] [-f --format] [-s --sep]
+          [-d --deg] [-b --bins] [-a --assembly] [-q --noquantiles]
+          [--annotate] [--xmin --xmax --ymin --ymax] [--smin --smax]
           [-t --title] [-e --extremes]
           data_1 .. data_n
 
 **Input**: CSV files containing at least two numeric columns representing the two
-           samples to compare, all in the same format. By default they are columns 2 and 3,
-           whilst column 1 contains the names. Else, precise which columns to use with the
+           samples to compare, and one with labels for each pair of points. Files must all
+           be in the same format. By default numeric columns are 2 and 3,
+           whilst column 1 contains the labels. Else, precise which columns to use with the
            `--cols` argument.
 
 **Output**: depending on the chosen `--mode`, prints to stdout the name of the .png file produced,
@@ -359,29 +381,32 @@ maplot.py [-h] [-c --cols] [-m --mode] [-f --format] [-s --sep] [-d --deg] [-b -
 help = iter([
 """The numbers or names of the two columns containing the numeric data to compare, separated by
 commas. E.g. --cols 3,5.""",
+"""The numbers or names of the columns containing the labels of the points, separated by
+commas. The first element must contain unique labels; others will be concatenated.
+E.g. --labels 1,6,7 may produce `Id | name | desc` labels.""",
 """Display mode: 'normal' for static .pgn output,
 'interactive' - clic to display gene names, or
 'json' - json output to stdout for Javascript web interface.""",
 """Data type: 'counts' for raw count data (default), 'rpkm' for normalized data.""",
 """The character delimiting the columns of the file. If not specified, the program tries
-to detect it automatically. Use C^V or '\t' for a <tab> delimiter.""",
+to detect it automatically. Use 'C^V' or '\t' for a <tab> delimiter.""",
 """Degree of the interpolant percentile splines.""",
 """Number of divisions of the x axis to calculate percentiles.""",
 """Identifier for the Genrep assembly (e.g. 'hg19' or 7) used to add more
 information about features into the json output.""",
 """Don't draw quantile splines. This may improve speed and lisibility in some cases.""",
 """(In 'normal' mode) Indication of which datasets to annotate.
-Must be a binary string of the same lenght as the number of datasets, \
+Must be a string of binary values separated by commas, of the same lenght as the number of datasets, \
 1 indicating to annotate the corresponding set, 0 not to annotate. \
 E.g. For a list of datasets d1,d2,d3, if you want to annotate only d3, \
-type --annotate 001.""",
+type --annotate 0,0,1. It is advised to annotate only very small secondary datasets.""",
 """Minimum x value to be displayed on the output graph.""",
 """Maximum x value to be displayed on the output graph.""",
 """Minimum y value to be displayed on the output graph.""",
 """Maximum y value to be displayed on the output graph.""",
 """Left bound to draw splines.""",
 """Right bound to draw splines.""",
-"""Title of the graph""",
+"""Adds a title to the figure""",
 """Create an output file containing features for which ratios were outside the specified
  percentile (two-sided). For the moment, must be 1 or 5. The file is named *extreme_ratios_xxxxx* ."""
 ])
@@ -394,6 +419,7 @@ def main():
         parser = optparse.OptionParser(usage=usage, description=description)
 
         parser.add_option("-c", "--cols", default='2,3', help = help.next())
+        parser.add_option("-l", "--labels", default='1', help = help.next())
         parser.add_option("-m", "--mode", default='normal', help = help.next())
         parser.add_option("-f", "--format", default='counts', help = help.next())
         parser.add_option("-s", "--sep", default=None, help = help.next())
@@ -401,7 +427,7 @@ def main():
         parser.add_option("-b", "--bins", default=30, type="int", help = help.next())
         parser.add_option("-a", "--assembly", default=None, help = help.next())
         parser.add_option("-q", "--noquantiles", default=True, action="store_false", help = help.next())
-        parser.add_option("-n", "--annotate", default=None, help = help.next())
+        parser.add_option("--annotate", default=None, help = help.next())
         parser.add_option("--xmin", default=None, type="float", help = help.next())
         parser.add_option("--xmax", default=None, type="float", help = help.next())
         parser.add_option("--ymin", default=None, type="float", help = help.next())
@@ -415,20 +441,23 @@ def main():
         args = [os.path.abspath(a) for a in args]
 
         annotate = None
-        if opt.annotate: annotate = [eval(a) for a in opt.annotate] # 0100101 -> [0,1,0,0,1,0,1]
+        if opt.annotate:
+            annotate = [int(b) for b in opt.annotate.split(",")]
+            assert len(args) == len(annotate), "There must be one digit per dataset in --annotate."
         limits = [None or opt.xmin, None or opt.xmax, None or opt.ymin, None or opt.ymax]
         slimits = [None or opt.smin, None or opt.smax]
         cols = opt.cols.split(",")
+        labels = opt.labels.split(",")
         if len(cols) != 2:
-            parser.error("--cols must be two integers or strings separated by commas (got %s)." % opt.cols)
+            parser.error("--cols must be *two* integers or strings separated by commas (got %s)." % opt.cols)
         if opt.mode not in ["normal","interactive","json"]:
             parser.error("--mode must be one of 'normal','interactive', or 'json' (got %s)." % opt.mode)
         if opt.format not in ["counts","rpkm"]:
             parser.error("--format must be one of 'counts' or 'rpkm' (got %s)." % opt.format)
 
-        MAplot(args, cols=cols, mode=opt.mode, data_format=opt.format, sep=opt.sep, limits=limits, slimits=slimits,
-                         deg=opt.deg, bins=opt.bins, assembly_id=opt.assembly,
-                         annotate=annotate, quantiles=opt.noquantiles, title=opt.title, extremes=opt.extremes)
+        MAplot(args, cols=cols, labels=labels, mode=opt.mode, data_format=opt.format, sep=opt.sep,
+                limits=limits, slimits=slimits,deg=opt.deg, bins=opt.bins, assembly_id=opt.assembly,
+                annotate=annotate, quantiles=opt.noquantiles, title=opt.title, extremes=opt.extremes)
 
         sys.exit(0)
     except Usage, err:
@@ -438,4 +467,7 @@ def main():
 
 if __name__ == '__main__':
     sys.exit(main())
+
+
+
 

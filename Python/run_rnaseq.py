@@ -2,28 +2,19 @@
 """
 A High-throughput RNA-seq analysis workflow.
 
-python run_rnaseq.py -v lsf -c config_files/gapdh.txt -d rnaseq -p transcripts
+python run_rnaseq.py -v lsf -c config_files/gapkowt.txt -d rnaseq -p transcripts,genes
 python run_rnaseq.py -v lsf -c config_files/rnaseq.txt -d rnaseq -p genes -m /scratch/cluster/monthly/jdelafon/mapseq
 """
 import os, sys, json, re
 import optparse
 from bbcflib import rnaseq, frontend, common, mapseq, email, gdv
-from bbcflib.common import unique_filename_in, set_file_descr
 from bein.util import use_pickle, add_pickle
-from bein import execution, MiniLIMS, program
+from bein import execution, MiniLIMS
 
 
 class Usage(Exception):
     def __init__(self,  msg):
         self.msg = msg
-
-@program
-def run_glm(rpath, data_file, options=[]):
-    output_file = unique_filename_in()
-    options += ["-o",output_file]
-    script_path = os.path.join(rpath,'negbin.test.R')
-    return {'arguments': ["R","--slave","-f",script_path,"--args",data_file]+options,
-            'return_value': output_file}
 
 def main():
     opts = (("-v", "--via", "Run executions using method 'via' (can be 'local' or 'lsf')", {'default': "lsf"}),
@@ -74,9 +65,11 @@ def main():
         job.options['create_gdv_project'] = job.options.get('create_gdv_project',False)
         if isinstance(job.options['create_gdv_project'],str):
             job.options['create_gdv_project'] = job.options['create_gdv_project'].lower() in ['1','true','t']
+        gdv_project = {'project':{'id': job.options.get('gdv_project_id',0)}}
+        if not('gdv_key' in job.options): job.options['gdv_key'] = ""
         job.options['discard_pcr_duplicates'] = False
         logfile = open((opt.key or opt.config)+".log",'w')
-        debugfile = open(opt.key+".debug",'w')
+        debugfile = open((opt.key or opt.config)+".debug",'w')
         debugfile.write(json.dumps(job.options)+"\n\n"+json.dumps(gl)+"\n");debugfile.flush()
 
         # Retrieve mapseq output
@@ -86,52 +79,41 @@ def main():
         # Program body #
         with execution(M, description=description, remote_working_directory=opt.wdir ) as ex:
             debugfile.write("Enter execution. Current working directory: %s \n" % ex.working_directory);debugfile.flush()
-            logfile.write("Fetch bam and wig files");logfile.flush()
+            logfile.write("Fetch bam and wig files\n");logfile.flush()
             (bam_files, job) = mapseq.get_bam_wig_files(ex, job, minilims=opt.mapseq_minilims, hts_url=mapseq_url,
                                      script_path=gl.get('script_path',''), via=opt.via, fetch_unmapped=True)
             assert bam_files, "Bam files not found."
             logfile.write("Starting workflow.\n");logfile.flush()
             result = rnaseq.rnaseq_workflow(ex, job, bam_files, pileup_level=pileup_level, via=opt.via)
-
-            # Differential analysis #
-            rpath = gl.get('script_path')
-            options = ['-s','tab']
-            if opt.design: options += ['-d',opt.design]
-            if opt.contrast: options += ['-c', opt.contrast]
-            for res_file in result:
-                if res_file and rpath and os.path.exists(rpath):
-                    try:
-                        glmfile = run_glm(ex, rpath, res_file, options)
-                        output_files = [f for f in os.listdir(ex.working_directory) if glmfile in f]
-                        for o in output_files:
-                            desc = set_file_descr(o.split(glmfile)[1].strip('_')+"_differential.txt", step='stats', type='txt')
-                            ex.add(o, description=desc)
-                    except:
-                        logfile.write("Skipped differential analysis");logfile.flush()
+            rnaseq.differential_analysis(ex, result, rpath=gl.get('script_path'),
+                                             design=opt.design, contrast=opt.contrast)
 
             # Create GDV project #
-            gdv_project = {}
-            if job.options.get('create_gdv_project'):
-                logfile.write("Creating GDV project.\n");logfile.flush()
-                gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
-                                               job.description, job.assembly_id, gl['gdv']['url'] )
+            if job.options['create_gdv_project']:
+                gdv_project = gdv.get_project(mail=gl['gdv']['email'], key=gl['gdv']['key'],
+                                              project_key=job.options['gdv_key'])
+                if 'error' in gdv_project:
+                    logfile.write("Creating GDV project.\n");logfile.flush()
+                    gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
+                                                   job.description, job.assembly_id, gl['gdv']['url'] )
                 debugfile.write("GDV project: "+json.dumps(gdv_project)+"\n");debugfile.flush()
                 add_pickle(ex, gdv_project, description=common.set_file_descr("gdv_json",step='gdv',type='py',view='admin'))
 
         # Upload tracks to GDV #
         allfiles = common.get_files(ex.id, M)
-        if re.search(r'success',gdv_project.get('message','')) and 'sql' in allfiles:
-            gdv_project_url = gl['gdv']['url']+"public/project?k="+str(gdv_project['project']['key']) \
+        if gdv_project.get('project',{}).get('id',0)>0:
+            gdv_project_url = gl['gdv']['url']+"public/project?k="+str(gdv_project['project']['download_key']) \
                               +"&id="+str(gdv_project['project']['id'])
             allfiles['url'] = {gdv_project_url: 'GDV view'}
             download_url = gl['hts_rnaseq']['download']
             urls  = [download_url+str(k) for k in allfiles['sql'].keys()]
             names = [re.sub('\.sql.*','',str(f)) for f in allfiles['sql'].values()]
             logfile.write("Uploading GDV tracks:\n"+" ".join(urls)+"\n"+" ".join(names)+"\n");logfile.flush()
-            tr = gdv.multiple_tracks(mail=gl['gdv']['email'], key=gl['gdv']['key'], serv_url=gl['gdv']['url'], 
-                                     project_id=gdv_project['project']['id'], 
+            tr = gdv.multiple_tracks(mail=gl['gdv']['email'], key=gl['gdv']['key'], serv_url=gl['gdv']['url'],
+                                     project_id=gdv_project['project']['id'],
                                      urls=urls, tracknames=names, force=True )
             debugfile.write("GDV Tracks Status\n"+"\n".join([str(v) for v in tr])+"\n");debugfile.flush()
+
         logfile.close()
         debugfile.close()
         print json.dumps(allfiles)
@@ -166,7 +148,6 @@ if __name__ == '__main__':
 # http://bbcf.epfl.ch/                                 #
 # webmaster.bbcf@epfl.ch                               #
 #------------------------------------------------------#
-
 
 
 

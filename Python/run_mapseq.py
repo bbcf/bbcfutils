@@ -63,6 +63,8 @@ def main():
         job.options['create_gdv_project'] = job.options.get('create_gdv_project',False)
         if isinstance(job.options['create_gdv_project'],basestring):
             job.options['create_gdv_project'] = job.options['create_gdv_project'].lower() in ['1','true','t']
+        gdv_project = {'project':{'id': job.options.get('gdv_project_id',0)}}
+        if not('gdv_key' in job.options): job.options['gdv_key'] = ""
         job.options['create_gdv_project'] = job.options['create_gdv_project'] and job.options['compute_densities']
         map_args = job.options.get('map_args',{})
         map_args['via'] = opt.via
@@ -84,7 +86,6 @@ def main():
                                      {k:v['name']},
                                      gl.get('script_path',''),
                                      description=set_file_descr(v['name']+"_mapping_report.pdf",groupId=k,step='stats',type='pdf') )
-            gdv_project = {}
             if job.options['compute_densities']:
                 logfile.write("\ncomputing densities.\n");logfile.flush()
                 if int(job.options.get('read_extension',-1))<=0:
@@ -92,9 +93,11 @@ def main():
                 density_files = densities_groups( ex, job, mapped_files, assembly.chromosomes, via=opt.via )
                 logfile.write("Finished computing densities.\n");logfile.flush()
                 if job.options['create_gdv_project']:
-                    logfile.write("Creating GDV project.\n");logfile.flush()
-                    gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
-                                                   job.description, assembly.id, gl['gdv']['url'] )
+                    gdv_project = gdv.get_project(mail=gl['gdv']['email'], key=gl['gdv']['key'], project_key=job.options['gdv_key'])
+                    if 'error' in gdv_project:
+                        logfile.write("Creating GDV project.\n");logfile.flush()
+                        gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
+                                                       job.description, assembly.id, gl['gdv']['url'] )
                     debugfile.write("GDV project: "+json.dumps(gdv_project)+"\n");debugfile.flush()
                     add_pickle( ex, gdv_project, description=set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
         allfiles = get_files( ex.id, M )
@@ -107,7 +110,7 @@ def main():
                         if re.search(r' \(.*\)',descr): continue
                         ucscbed.write(track_header(descr,ftype,gl['hts_mapseq']['download'],ffile))
         if gdv_project.get('project',{}).get('id',0)>0:
-            gdv_project_url = gl['gdv']['url']+"public/project?k="+str(gdv_project['project']['key'])+"&id="+str(gdv_project['project']['id'])
+            gdv_project_url = gl['gdv']['url']+"public/project?k="+str(gdv_project['project']['download_key'])+"&id="+str(gdv_project['project']['id'])
             allfiles['url'] = {gdv_project_url: 'GDV view'}
             download_url = gl['hts_mapseq']['download']
             urls  = [download_url+str(k) for k in allfiles['sql'].keys()]
