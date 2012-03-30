@@ -96,6 +96,7 @@ def main(argv = None):
             formatedPileupFilename = []
             for chrom, dictPileup in dictPileupFile.iteritems():
                 posAll,parameters = snp.posAllUniqSNP(ex,dictPileup)
+                if len(posAll) == 0: continue
                 parsed = snp.parse_pileupFile(ex,dictPileup,posAll,chrom,
                                               minCoverage=parameters[0],
                                               minSNP=parameters[1])
