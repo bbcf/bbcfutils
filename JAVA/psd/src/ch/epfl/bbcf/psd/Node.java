@@ -61,7 +61,6 @@ public class Node {
 		
 		int currentImageNumber = getImageNumber(position);
 		int index = getTabIndex(position);
-
 		if(first){
 			this.imageNumber = currentImageNumber;
 			this.first = false;
@@ -93,10 +92,7 @@ public class Node {
 	}
 
 
-	private int getImageNumber(int position) {
-		double nb = (double)position / (TAB_WIDTH * zoom) + 0.01;
-		return (int)Math.ceil(nb);
-	}
+	
 
 	/**
 	 * Propagate score to the parents
@@ -191,6 +187,10 @@ public class Node {
 		return result;
 	}
 
+	private int getImageNumber(int position) {
+		double nb = (double)position / (TAB_WIDTH * zoom) + 0.01;
+		return (int)Math.ceil(nb);
+	}
 	protected int getTabIndex(int position) {
 		int ind = (int)Math.ceil((double)(position / zoom) % TAB_WIDTH);
 		return ind;
