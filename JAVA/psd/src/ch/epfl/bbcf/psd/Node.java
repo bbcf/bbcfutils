@@ -57,9 +57,10 @@ public class Node {
 	 * @param currentImageNumber
 	 * @throws SQLException 
 	 */
-	protected void fill(int position, float score,int currentImageNumber) throws SQLException{
-		currentImageNumber = getImageNumber(position);
+	protected void fill(int position, float score) throws SQLException{
 		
+		int currentImageNumber = getImageNumber(position);
+		int index = getTabIndex(position);
 		if(first){
 			this.imageNumber = currentImageNumber;
 			this.first = false;
@@ -68,7 +69,7 @@ public class Node {
 			this.prevScore = 0;
 		}
 
-		int index = getTabIndex(position);
+		
 		if(currentImageNumber == this.imageNumber){//fill the tab
 			for (int i=this.prevIndex + 1; i < index;i++){
 				tab[i] = this.prevScore;
@@ -91,10 +92,7 @@ public class Node {
 	}
 
 
-	private int getImageNumber(int position) {
-		double nb = (double)position / TAB_WIDTH / zoom + 0.01;
-		return (int)Math.ceil(nb);
-	}
+	
 
 	/**
 	 * Propagate score to the parents
@@ -112,7 +110,7 @@ public class Node {
 				startPosition += zoom;
 				max1 = Math.max(max1, tab[i]);
 				if(i%2==1){//update parent 1
-					one.fill(startPosition, max1, (int)Math.ceil((double)imageNumber / 2));
+					one.fill(startPosition, max1);
 					if(i<tab.length-1){
 						max1=tab[i+1];
 					}
@@ -130,7 +128,7 @@ public class Node {
 				max5 = Math.max(max5, tab[i]);
 
 				if(i%2==1){//update parent 2
-					two.fill(startPosition, max2, (int)Math.ceil((double)imageNumber / 2));
+					two.fill(startPosition, max2);
 					if(i<tab.length-1){
 						max2=tab[i+1];
 					}
@@ -138,7 +136,7 @@ public class Node {
 
 
 				if(i%5==4){//update parent 5
-					five.fill(startPosition, max5, (int)Math.ceil((double)imageNumber / 5));
+					five.fill(startPosition, max5);
 					if(i<tab.length-1){
 						max5=tab[i+1];
 					}
@@ -189,6 +187,10 @@ public class Node {
 		return result;
 	}
 
+	private int getImageNumber(int position) {
+		double nb = (double)position / (TAB_WIDTH * zoom) + 0.01;
+		return (int)Math.ceil(nb);
+	}
 	protected int getTabIndex(int position) {
 		int ind = (int)Math.ceil((double)(position / zoom) % TAB_WIDTH);
 		return ind;

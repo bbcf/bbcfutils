@@ -40,6 +40,7 @@ public class Tree {
 	public void process(ResultSet scores) throws SQLException, DataFormatException {
 		logger.trace("processing scores");
 		boolean hasScore = false;
+		int prevStop = 0;
 		while(scores.next()){
 			int start = scores.getInt(1);
 			int stop = scores.getInt(2);
@@ -48,10 +49,13 @@ public class Tree {
 				throw new DataFormatException("Features cannot end before they start :" +
 						" (start: " + start + ", end: " + stop + ", score: " + score + "). ");
 			}
-			for(int j=start;j<stop;j++){
-				this.imageNumber = getImageNumber(j);
-				leaf.fill(j, score, imageNumber);
+			if (hasScore && prevStop != start){
+				leaf.fill(prevStop, 0);
 			}
+			for(int j=start;j<stop;j++){
+				leaf.fill(j, score);
+			}			
+			prevStop = stop;
 			hasScore = true;
 		}
 
@@ -84,11 +88,6 @@ public class Tree {
 		}
 	}
 
-
-	private static int getImageNumber(int position){
-		double nb = (double)position / TAB_WIDTH + 0.01;
-		return (int)Math.ceil(nb);
-	}
 
 
 	public void writeValues(Node node) throws SQLException {
