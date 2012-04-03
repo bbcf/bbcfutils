@@ -33,7 +33,6 @@
 
 
 library(MASS)
-library(multcomp)
 
 args=commandArgs(trailingOnly = TRUE)
 
@@ -41,11 +40,8 @@ data_file = args[1]
 sep = args[grep("-s",args)+1]
 output_file = args[grep("-o",args)+1]
 if (sep=='tab') sep='\t'
-#design_file = args[grep("-d",args)+1]
-#contrast_file = args[grep("-c",args)+1]
 
 #options(error = quote({dump.frames(to.file=TRUE); q()})) # creates an error log file `last.dump.rda`
-
 
 main <- function(data_file, sep="\t", output_file=''){
     data = read.table(data_file, header=T, row.names=1, sep=sep)
@@ -55,24 +51,11 @@ main <- function(data_file, sep="\t", output_file=''){
     samples = header[counts]
     conds = unlist(lapply(strsplit(samples,".",fixed=T), "[[", 2))
 
-    #if (length(design_file) == 0) design_file = ''
-    #if (length(contrast_file) == 0) contrast_file = ''
-    #print(paste(" - All groups have several runs: ", all(table(conds)>1)))
-    #print(paste(" - Design file exists: ", file.exists(design_file)))
-    #print(paste(" - Contrast file exists: " , file.exists(contrast_file)))
-
     if (any(table(conds)>1)){ method = 'normal' # if replicates
     } else { method = 'blind' }
-    DES(data, conds, method, output_file)
-}
 
-
-read_design <- function(design_file, sep){
-    design = read.table(design_file, header=T, row.names=1,  sep=sep)
-    design = t(design)
-}
-read_contrast <- function(contrast_file, sep){
-    contrast = as.matrix(read.table(contrast_file, header=T, row.names=1, sep=sep))
+    if (nrow(data)>3){
+    DES(data, conds, method, output_file) }
 }
 
 write_result <- function(output_file, res_list, sep='\t'){
@@ -97,7 +80,7 @@ DES <- function(data, conds, method='normal', output_file=FALSE){  ## DESeq ##
     cds <- newCountDataSet(data, conds)
     cds <- estimateSizeFactors(cds)
     cds <- estimateVarianceFunctions(cds, method=method)
-    couples = combn(unique(groups),2)
+    couples = combn(groups,2)
     contrast.names = c()
     for (i in 1:dim(couples)[2]){
         res <- nbinomTest(cds, couples[1,i], couples[2,i])
