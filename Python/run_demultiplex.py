@@ -29,7 +29,7 @@ class Usage(Exception):
 def main(argv = None):
     via = "lsf"
     limspath = None
-    ms_limspath = "/data/htsstation/demultiplex/demultiplex_minilims"
+    ms_limspath = "/srv/demultiplex/public/data/demultiplex_minilims"
     hts_key = None
     working_dir = None
     config = None

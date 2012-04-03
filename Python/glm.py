@@ -25,7 +25,7 @@ def main():
     opts = (("-v", "--via", "Run executions using method 'via' (can be 'local' or 'lsf')", {'default': "lsf"}),
             ("-k", "--key", "Alphanumeric key of the new RNA-seq job", {'default': None}),
             ("-d", "--rnaseq_minilims", "MiniLIMS where RNAseq executions and files will be stored.",
-                                     {'default': "/data/htsstation/rnaseq/rnaseq_minilims"}),
+                                     {'default': "/srv/rnaseq/public/data/rnaseq_minilims"}),
             ("-w", "--wdir", "Create execution working directories in wdir", {'default': os.getcwd()}),
             ("-c", "--config", "Config file", {'default': None}),
             ("-s", "--sep", "Character separating fields in the input files. Use 'tab' for tab delimiter (not '\t').",

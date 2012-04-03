@@ -29,7 +29,7 @@ class Usage(Exception):
 def main(argv = None):
     via = "lsf"
     limspath = None
-    ms_limspath = "/data/htsstation/mapseq/mapseq_minilims"
+    ms_limspath = "/srv/mapseq/public/data/mapseq_minilims"
     hts_key = None
     working_dir = None
     config = None

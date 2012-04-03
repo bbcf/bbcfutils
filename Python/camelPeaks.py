@@ -36,17 +36,20 @@ class Usage(Exception):
 
 def main(argv = None):
     try:
-        usage = "run_deconv.py [OPTIONS]"
+        usage = "camelPeaks.py [OPTIONS]"
         desc = """A ChIP-seq peak deconvolution algorithm."""
         parser = optparse.OptionParser(usage=usage, description=desc)
         for opt in opts:
             parser.add_option(opt[0],opt[1],help=opt[2],**opt[3])
         (opt, args) = parser.parse_args()
         if not(opt.peaks and os.path.exists(opt.peaks)):
+            parser.print_help()
             raise ValueError("Specify a valid peaks file with -p.")
         if not(opt.forward and os.path.exists(opt.forward)):
+            parser.print_help()
             raise ValueError("Specify a valid forward strand density file with -f.")
         if not(opt.reverse and os.path.exists(opt.reverse)):
+            parser.print_help()
             raise ValueError("Specify a valid reverse strand density file with -r.")
 ####        
         peak_track = track.track(opt.peaks)

@@ -22,12 +22,12 @@ def main(argv = None):
             ("-k", "--key", "Alphanumeric key of the new RNA-seq job", {'default': None}),
             ("-m", "--mapseq_limspath", "MiniLIMS where a previous Mapseq execution and files has been stored. \
                                      Set it to None to align de novo from read files.",
-                                     {'default': "/data/htsstation/mapseq/mapseq_minilims"}),
+                                     {'default': "/srv/mapseq/public/data/mapseq_minilims"}),
             ("-w", "--working-directory", "Create execution working directories in wdir",
                                      {'default': os.getcwd(), 'dest':"wdir"}),
             ("-c", "--config", "Config file", {'default': None}),
             ("-d", "--snp_limspath", "MiniLIMS where snp executions and files will be stored.", \
-                                     {'default': "/home/scarat/repos/data/snp_minilims"}))
+                                     {'default': "/srv/snp/public/data/snp_minilims"}))
     try:
         usage = "run_snp.py [OPTIONS]"
         desc = """........."""

@@ -20,7 +20,7 @@ def main(argv = None):
             ("-k", "--key", "Alphanumeric key specifying the job", {'default': None}),
             ("-d", "--minilims", "MiniLIMS where chipseq executions and files will be stored.", {'default': None}),
             ("-m", "--mapseq_minilims", "MiniLIMS where a previous Mapseq execution and files has been stored.",
-             {'default': "/data/htsstation/mapseq/mapseq_minilims"}),
+             {'default': "/srv/mapseq/public/data/mapseq_minilims"}),
             ("-w", "--working-directory", "Create execution working directories in wdir", {'default': os.getcwd(), 'dest':"wdir"}),
             ("-c", "--config", "Config file", {'default': None}))
     try:
