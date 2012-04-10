@@ -120,7 +120,7 @@ void createsql( posh &counts, const double cntw=1.0 ) {
     }
     sqlite3_stmt *stmt;
     const char *_dummy;
-    sql_exec = std::string("insert  into '")+opts.chrn
+    sql_exec = std::string("insert into '")+opts.chrn
 	+std::string("' (start, end, score) values (?,?,?)");
     if (opts.merge < 0) {
 	mydb = db_rev;
@@ -439,6 +439,8 @@ int main( int argc, char **argv )
 	
 	double weight = weight_per_tag( s_data.ntags );
 	if ( opts.cfile.size() ) {
+	    samtools::bam_index_destroy( _in );
+	    samtools::samclose( _fs );
 	    _fs = samtools::samopen( opts.cfile.c_str(), "rb", 0 );
 	    if ( !_fs ) {
 		std::cerr << "Could not open " << opts.cfile << "\n";
@@ -453,8 +455,6 @@ int main( int argc, char **argv )
 	    opts.cut = opts.cut_ct;
 	    samtools::bam_fetch( _fs->x.bam, _in, opts.chid, opts.start, opts.end,
 				 &c_data, accumulate );
-	    samtools::bam_index_destroy( _in );
-	    samtools::samclose( _fs );
 	    weight = weight_per_tag( s_data.ntags, c_data.scounts, &c_data.counts );
 	    if (!opts.noratio) {
 		double cntw = weight_per_tag(c_data.ntags)/weight;
