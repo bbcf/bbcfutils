@@ -303,15 +303,15 @@ inline static int accumulate( const samtools::bam1_t *b, void *d ) {
 	    if (start<1) start=1;
 	}
 	for ( int i = start; i <= stop; i++ ) {
-	    if (!data->scounts || data->scounts->count(i)) {
-		if (bam1_strand(b)) { // reverse strand
-		    if (opts.merge > -1) data->counts[i-opts.merge]+=weight;
-		    else                 data->counts[-i]+=weight;
-		} else {              // forward strand
-		    if (opts.merge > -1) data->counts[i+opts.merge]+=weight;
-		    else                 data->counts[i]+=weight;
-		}
-	    }
+            int i2;
+            if (bam1_strand(b)) { // reverse strand
+                if (opts.merge > -1) i2=i-opts.merge
+                else                 i2=-i
+            } else {              // forward strand
+                if (opts.merge > -1) i2=i+opts.merge
+                else                 i2=i
+            }
+	    if (!data->scounts || data->scounts->count(i2)) data->counts[i2]+=weight;
 	}
     }
     return 1;
@@ -431,8 +431,10 @@ int main( int argc, char **argv )
 	opts.end = I->second.end;
 	samdata s_data;
 	s_data.scounts = 0; // just making sure...
+        s_data.ntags = 0;
 	samdata c_data;
 	c_data.scounts = &s_data.counts;
+        c_data.ntags = 0;
 
 	samtools::bam_fetch( _fs->x.bam, _in, opts.chid, opts.start, opts.end, 
 			     &s_data, accumulate );
