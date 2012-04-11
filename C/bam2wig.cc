@@ -305,11 +305,11 @@ inline static int accumulate( const samtools::bam1_t *b, void *d ) {
 	for ( int i = start; i <= stop; i++ ) {
             int i2;
             if (bam1_strand(b)) { // reverse strand
-                if (opts.merge > -1) i2=i-opts.merge
-                else                 i2=-i
+                if (opts.merge > -1) i2=i-opts.merge;
+                else                 i2=-i;
             } else {              // forward strand
-                if (opts.merge > -1) i2=i+opts.merge
-                else                 i2=i
+                if (opts.merge > -1) i2=i+opts.merge;
+                else                 i2=i;
             }
 	    if (!data->scounts || data->scounts->count(i2)) data->counts[i2]+=weight;
 	}
