@@ -10,8 +10,10 @@ options, args = parser.parse_args()
 
 kwargs = options.__dict__
 if options.args:
-    jsonargs = kwargs.pop('args')
-    kwargs.update(dict((str(k),v) for k,v in json.loads(jsonargs).iteritems()))
+    jsonargs = json.loads(kwargs.pop('args'))
+    for k,v in jsonargs.iteritems():
+        if isinstance(v,basestring): jsonargs[k] = str(v)
+    kwargs.update(dict((str(k),v) for k,v in jsonargs.iteritems()))
 
 output = gMiner.run(*args,**kwargs)
 if isinstance(output,(list,tuple)):
