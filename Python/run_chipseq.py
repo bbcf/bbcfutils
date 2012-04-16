@@ -42,7 +42,7 @@ def main(argv = None):
             htss = frontend.Frontend( url=gl['hts_chipseq']['url'] )
             job = htss.job( opt.key )
             [M.delete_execution(x) for x in M.search_executions(with_description=opt.key,fails=True)]
-            if os.path.exists(opt.config):
+            if opt.config and os.path.exists(opt.config):
                 (job,gl) = frontend.parseConfig( opt.config, job, gl )
         elif os.path.exists(opt.config):
             (job,gl) = frontend.parseConfig( opt.config )
