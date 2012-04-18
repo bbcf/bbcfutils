@@ -112,12 +112,12 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
             dialect,header = guess_file_format(f,sep)
             try: csvreader = csv.reader(f, dialect=dialect, quoting=csv.QUOTE_NONE)
             except TypeError: csvreader = csv.reader(f, dialect='excel-tab', quoting=csv.QUOTE_NONE)
-            cols = name_or_index(cols, dialect, header)
+            pycols = name_or_index(cols, dialect, header)
             labels = name_or_index(labels, dialect, header)
             # Read the file
             n=[]; m=[]; r=[]; p=[]
             for row in csvreader:
-                try: c1 = float(row[cols[0]]); c2 = float(row[cols[1]])
+                try: c1 = float(row[pycols[0]]); c2 = float(row[pycols[1]])
                 except ValueError: continue # Skip line if contains NA, nan, etc.
                 if (c1*c2 > lower):
                     counts[row[labels[0]]] = (c1,c2)
@@ -467,6 +467,7 @@ def main():
 
 if __name__ == '__main__':
     sys.exit(main())
+
 
 
 
