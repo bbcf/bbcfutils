@@ -20,9 +20,8 @@ class Usage(Exception):
 def main(argv = None):
     opts = (("-v", "--via", "Run executions using method 'via' (can be 'local' or 'lsf')", {'default': "lsf"}),
             ("-k", "--key", "Alphanumeric key of the new RNA-seq job", {'default': None}),
-            ("-m", "--mapseq_limspath", "MiniLIMS where a previous Mapseq execution and files has been stored. \
-                                     Set it to None to align de novo from read files.",
-                                     {'default': "/srv/mapseq/public/data/mapseq_minilims"}),
+            ("-m", "--mapseq_limspath", "MiniLIMS where a previous Mapseq execution and files has been stored.", 
+                                     {'default': "/data/htsstation/mapseq/mapseq_minilims"}),
             ("-w", "--working-directory", "Create execution working directories in wdir",
                                      {'default': os.getcwd(), 'dest':"wdir"}),
             ("-c", "--config", "Config file", {'default': None}),
@@ -72,8 +71,6 @@ def main(argv = None):
         with execution( M, description=hts_key, remote_working_directory=opt.wdir ) as ex:
             (bam_files, job) = mapseq.get_bam_wig_files(ex, job, minilims=opt.mapseq_limspath, hts_url=mapseq_url, \
                                                         script_path=gl.get('script_path') or '', via=opt.via)
-            #import pdb
-            #pdb.set_trace()
             assert bam_files, "Bam files not found."
             logfile.write("cat genome fasta files\n");logfile.flush()
             genomeRef=snp.untar_genome_fasta(assembly,convert=True)
@@ -95,9 +92,9 @@ def main(argv = None):
 
             formatedPileupFilename = []
             for chrom, dictPileup in dictPileupFile.iteritems():
-                posAll,parameters = snp.posAllUniqSNP(ex,dictPileup)
+                posAll,parameters = snp.posAllUniqSNP(dictPileup)
                 if len(posAll) == 0: continue
-                parsed = snp.parse_pileupFile(ex,dictPileup,posAll,chrom,
+                parsed = snp.parse_pileupFile(dictPileup,posAll,chrom,
                                               minCoverage=parameters[0],
                                               minSNP=parameters[1])
                 formatedPileupFilename.append(parsed)
@@ -115,8 +112,7 @@ def main(argv = None):
             output = common.cat(headerFile+formatedPileupFilename,skip=1)
             
             ex.add(output,description=description)
-            #pause()
-            codon=snp.synonymous(ex,job,output)
+            codon=snp.synonymous(job,output)
             description="detection of functional variants for samples: "+", ".join(dictPileupFile.values()[0].values())
             description=set_file_descr("functionalVariants.txt",step="codon_modification",type="txt")
             ex.add(codon,description=description)

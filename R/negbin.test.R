@@ -49,6 +49,7 @@ main <- function(data_file, sep="\t", output_file=''){
     samples = header[counts]
     conds = unlist(lapply(strsplit(samples,".",fixed=T), "[[", 2))
 
+    # Still need to check that replicates are not identical - lfproc would fail
     if (any(table(conds)>1)){ method = 'normal' # if replicates
     } else { method = 'blind' }
 
