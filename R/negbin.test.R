@@ -1,5 +1,3 @@
-#!usr/bin/env
-
 # This script uses DESeq to look for differential expression in RNA-seq data
 # of genomic features in different conditions.
 
