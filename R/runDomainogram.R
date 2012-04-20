@@ -5,9 +5,13 @@ prefName <- Args[3]
 regCoord <- Args[4]
 wmaxDomainograms <- as.numeric(Args[5])
 wmax_BRICKS <- as.numeric(Args[6])
+script.path = ""
+if (length(Arg)>6) {script.path=Args[7]}
 
-source("/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_SAM/downstreamAnalysis_Rfunctions.txt") #for getRegions()
-source("/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_SAM/domainogram_functions.txt")
+source(paste(script.path,"/downstreamAnalysis_Rfunctions.R",sep=''))
+source(paste(script.path,"/domainogram_functions.R",sep=''))
+#source("/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_SAM/.txt") #for getRegions()
+#source("/archive/epfl/bbcf/mleleu/pipeline_vMarion/pipeline_3Cseq/vWebServer_SAM/domainogram_functions.txt")
 
 print(paste("length(Args)=",length(Args)))
 print(Args)
