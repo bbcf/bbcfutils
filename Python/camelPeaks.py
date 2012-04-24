@@ -9,7 +9,7 @@ Need a list of peaks and a density file in input.
 import bbcflib.btrack as track
 from bbcflib import genrep
 import rpy2.robjects as robjects
-import sys, optparse, os, json, re
+import sys, optparse, os
 
 opts = (("-p", "--peaks",
          "A bed-like file with selected enriched regions where deconvolution will be performed",{}),

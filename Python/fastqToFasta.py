@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from bbcflib.common import unique_filename_in
-import sys, getopt, os
+import sys, getopt, os, re
 
 
 def getReadLength(fqFile):

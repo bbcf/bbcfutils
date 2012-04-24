@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
 """
-    demultiplexing
+Demultiplexing
+
 """
 from bein import execution, MiniLIMS
 from bein.util import use_pickle
@@ -31,7 +32,7 @@ def main(argv = None):
     limspath = None
     ms_limspath = "/srv/demultiplex/public/data/demultiplex_minilims"
     hts_key = None
-    working_dir = None
+    working_dir = os.getcwd()
     config = None
     if argv is None:
         argv = sys.argv
