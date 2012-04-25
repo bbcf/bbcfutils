@@ -5,8 +5,8 @@ prefName <- Args[3]
 regCoord <- Args[4]
 wmaxDomainograms <- as.numeric(Args[5])
 wmax_BRICKS <- as.numeric(Args[6])
-script.path = ""
-if (length(Arg)>6) {script.path=Args[7]}
+script.path = "/mnt/common/epfl/share"
+if (length(Args)>6) {script.path=Args[7]}
 
 source(paste(script.path,"/downstreamAnalysis_Rfunctions.R",sep=''))
 source(paste(script.path,"/domainogram_functions.R",sep=''))
