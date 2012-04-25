@@ -80,7 +80,7 @@ def main(argv = None):
         elif os.path.exists(config_file):
             (job,gl) = frontend.parseConfig( config_file )
         else:
-            raise ValueError("Need either a job key (-k) or a configuration file (-c).")
+            raise Usage("Need either a job key (-k) or a configuration file (-c).")
         mapseq_url = None
         if 'hts_mapseq' in gl:
                 mapseq_url = gl['hts_mapseq']['url']

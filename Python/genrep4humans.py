@@ -34,7 +34,7 @@ def _compact_key(key):
     elif isinstance(key,tuple) and len(key)>2:
         return str(key[0])+"_"+str(key[1])+"."+str(key[2])
     else:
-        raise ValueError("Can't handle this chromosomes key ",key)
+        raise Usage("Can't handle this chromosome key ",key)
 
 def main():
     try:
@@ -90,9 +90,9 @@ def main():
         fout.close()
         if opt.convert:
             if not(os.path.exists(opt.convert)):
-                raise ValueError("No such file: %s."%opt.convert)
+                raise Usage("No such file: %s."%opt.convert)
             if not(opt.output):
-                raise ValueError("Need an output file name.")
+                raise Usage("Need an output file name.")
             import pysam
             infile = pysam.Samfile( opt.convert, 'rb' )
             header = infile.header

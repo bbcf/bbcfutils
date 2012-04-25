@@ -44,13 +44,13 @@ def main(argv = None):
         (opt, args) = parser.parse_args()
         if not(opt.peaks and os.path.exists(opt.peaks)):
             parser.print_help()
-            raise ValueError("Specify a valid peaks file with -p.")
+            raise Usage("Specify a valid peaks file with -p.")
         if not(opt.forward and os.path.exists(opt.forward)):
             parser.print_help()
-            raise ValueError("Specify a valid forward strand density file with -f.")
+            raise Usage("Specify a valid forward strand density file with -f.")
         if not(opt.reverse and os.path.exists(opt.reverse)):
             parser.print_help()
-            raise ValueError("Specify a valid reverse strand density file with -r.")
+            raise Usage("Specify a valid reverse strand density file with -r.")
 ####        
         peak_track = track.track(opt.peaks)
         if peak_track.chrmeta:
@@ -58,7 +58,7 @@ def main(argv = None):
         else: 
             if opt.genome: chrmeta = genrep.Assembly(opt.genome).chrmeta
             elif opt.chromosome: chrmeta = {opt.chromosome: {'length': opt.length}}
-            else: raise ValueError("Need either a genome or a chromosome specification.")
+            else: raise Usage("Need either a genome or a chromosome specification.")
         if opt.chromosome: chrmeta = {opt.chromosome: chrmeta[opt.chromosome]}
         track_info = {'datatype': peak_track.info.get('datatype','qualitative')}
         outbed = track.track(opt.output+"_peaks.bed", chrmeta=chrmeta,

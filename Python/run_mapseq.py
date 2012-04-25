@@ -46,7 +46,7 @@ def main():
             (job,gl) = frontend.parseConfig( opt.config )
             opt.key = job.description
         else:
-            raise ValueError("Need either a job key (-k) or a configuration file (-c).")
+            raise Usage("Need either a job key (-k) or a configuration file (-c).")
         g_rep = genrep.GenRep( url=gl.get("genrep_url"), root=gl.get("bwt_root") )
         assembly = genrep.Assembly( assembly=job.assembly_id, genrep=g_rep,
                                     intype=job.options.get('input_type_id',0) )
