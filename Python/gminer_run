@@ -4,7 +4,7 @@ import optparse, json
 import bbcflib.bFlatMajor as gMiner
 
 parser = optparse.OptionParser()
-for k in ['operation','output','assembly','args']:
+for k in ['operation','output','assembly','datatype','args']:
     parser.add_option("--"+k)
 options, args = parser.parse_args()
 
