@@ -120,6 +120,7 @@ def main():
             logfile.write("Uploading GDV tracks:\n"+" ".join(urls)+"\n"+" ".join(names)+"\n");logfile.flush()
             tr = gdv.multiple_tracks(mail=gl['gdv']['email'], key=gl['gdv']['key'], serv_url=gl['gdv']['url'], 
                                      project_id=gdv_project['project']['id'], 
+                                     extensions=['sql']*len(urls),
                                      urls=urls, tracknames=names, force=True )
             debugfile.write("GDV Tracks Status\n"+"\n".join([str(v) for v in tr])+"\n");debugfile.flush()
         logfile.close()

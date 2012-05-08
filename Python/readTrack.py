@@ -46,7 +46,7 @@ def main(argv = None):
         for infile in args:
             intrack = track.track(infile,format=opt.format,assembly=opt.assembly)
             if opt.description:
-                fileinfo = ",".join(["%s:%s" %(k,v) for k,v in intrack.info.iteritems()])
+                fileinfo = ",".join(["%s=%s" %(k,v) for k,v in intrack.info.iteritems()])
                 chromlist = ",".join(sorted(intrack.chrmeta.keys()))
                 fields = ",".join(intrack.fields)
                 output.write(\
