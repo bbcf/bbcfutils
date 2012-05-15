@@ -83,7 +83,7 @@ def main(argv = None):
             raise Usage("Need either a job key (-k) or a configuration file (-c).")
         mapseq_url = None
         if 'hts_mapseq' in gl:
-                mapseq_url = gl['hts_mapseq']['url']
+            mapseq_url = gl['hts_mapseq']['url']
         job.options['ucsc_bigwig'] = True
         if not('create_gdv_project' in job.options):
             job.options['create_gdv_project'] = False
@@ -103,7 +103,8 @@ def main(argv = None):
             (mapseq_files, job) = mapseq.get_bam_wig_files( ex, job, ms_limspath, mapseq_url, suffix=['merged'],script_path=gl['script_path'], via=via )
             logfile.write("Starting workflow.\n");logfile.flush()
 	    c4seq_files = c4seq.workflow_groups( ex, job, primers_dict, assembly,
-                                                 mapseq_files, mapseq_url,
+                                                 mapseq_files, mapseq_url, 
+                                                 gl.get('hts_4cseq',{}).get('url'),
                                                  gl['script_path'],logfile=logfile)
             if job.options.get('create_gdv_project'):
 		gdv_project=gdv.get_project(mail=gl['gdv']['email'], key=gl['gdv']['key'], project_key=job.options['gdv_key'])

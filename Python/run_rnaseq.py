@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+
 """
 A High-throughput RNA-seq analysis workflow.
 
@@ -20,9 +21,9 @@ def main():
     opts = (("-v", "--via", "Run executions using method 'via' (can be 'local' or 'lsf')", {'default': "lsf"}),
             ("-k", "--key", "Alphanumeric key of the new RNA-seq job", {'default': None}),
             ("-d", "--rnaseq_minilims", "MiniLIMS where RNAseq executions and files will be stored.",
-                                     {'default': "/srv/rnaseq/public/data/rnaseq_minilims"}),
+                                     {'default': "/data/htsstation/rnaseq/rnaseq_minilims"}),
             ("-m", "--mapseq_minilims", "MiniLIMS where a previous Mapseq execution and files has been stored.",
-                                     {'default': "/srv/mapseq/public/data/mapseq_minilims"}),
+                                     {'default': "/data/htsstation/mapseq/mapseq_minilims"}),
             ("-w", "--working-directory", "Create execution working directories in wdir",
                                      {'default': os.getcwd(), 'dest':"wdir"}),
             ("-c", "--config", "Config file", {'default': None}),
@@ -32,7 +33,7 @@ def main():
             ("--contrast", "name of the file containing the contrast matrix.", {'default': None}),
            )
     try:
-        usage = "run_rnaseq.py [OPTIONS]"
+        usage = "run_rnaseq.py [-h -v via -k key -c config_file -w working_directory -d minilims -m mapseq_minilims]"
         desc = """A High-throughput RNA-seq analysis workflow. It returns a file containing
                   a column of transcript counts for each given BAM file, normalized using DESeq's
                   size factors. """
@@ -46,7 +47,9 @@ def main():
 
         if os.path.exists(opt.wdir): os.chdir(opt.wdir)
         else: parser.error("Working directory '%s' does not exist." % opt.wdir)
-        if not opt.rnaseq_minilims: parser.error("Must specify a MiniLIMS to attach to")
+        if not(opt.rnaseq_minilims and os.path.exists(opt.rnaseq_minilims)
+                and (opt.key != None or (opt.config and os.path.exists(opt.config)))):
+            parser.error("Need a minilims and either a job key (-k) or a configuration file (-c).\n")
 
         # RNA-seq job configuration #
         M = MiniLIMS(opt.rnaseq_minilims)
@@ -57,7 +60,7 @@ def main():
             [M.delete_execution(x) for x in M.search_executions(with_description=opt.key,fails=True)]
         elif opt.config and os.path.exists(opt.config):
             (job,gl) = frontend.parseConfig(opt.config)
-        else: raise ValueError("Need either a job key (-k) or a configuration file (-c).")
+        else: raise Usage("Need either a job key (-k) or a configuration file (-c).")
         description = opt.key or opt.config
         pileup_level = opt.pileup_level.split(',')
 
@@ -148,6 +151,3 @@ if __name__ == '__main__':
 # http://bbcf.epfl.ch/                                 #
 # webmaster.bbcf@epfl.ch                               #
 #------------------------------------------------------#
-
-
-
