@@ -18,8 +18,10 @@ for (sample in sort(names(stats.by.sample))) {
     text(x=p,y=5,lab=df$reads,srt=90,adj=c(0,0.5),cex=1.1)
     abline(h=stats$total)
     text(nrow(df)/3,stats$total,paste("reads mapped:",stats$total),pos=3)
-    abline(h=read.total,lty=2)
-    text(2*nrow(df)/3,read.total,paste("reads total:",read.total),pos=3)
+    if (read.total>stats$total) {
+        abline(h=read.total,lty=2)
+        text(2*nrow(df)/3,read.total,paste("reads total:",read.total),pos=3)
+    }
     df=data.frame(mismatches=names(stats$mismatches),
       reads=as.numeric(stats$mismatches))
     df=df[order(as.numeric(df$mismatches),decreasing=T),]

@@ -9,7 +9,6 @@ from bein import execution, MiniLIMS
 from bein.util import use_pickle, add_pickle, pause
 from bbcflib import daflims, genrep, frontend, gdv, mapseq, common, snp
 from bbcflib import email
-from bbcflib.common import set_file_descr
 import sys, os, json, optparse
 
 
@@ -52,10 +51,7 @@ def main(argv = None):
             hts_key = job.description
         else:
             raise ValueError("Need either a job key (-k) or a configuration file (-c).")
-        mapseq_url = None
-
-        if 'hts_mapseq' in gl:
-            mapseq_url = gl['hts_mapseq']['url']
+        mapseq_url = gl.get('hts_mapseq',{}).get('url')
         job.options['ucsc_bigwig'] = True
         if not('create_gdv_project' in job.options):
             job.options['create_gdv_project'] = False
@@ -69,13 +65,14 @@ def main(argv = None):
 
         # Program body
         with execution( M, description=hts_key, remote_working_directory=opt.wdir ) as ex:
-            (bam_files, job) = mapseq.get_bam_wig_files(ex, job, minilims=opt.mapseq_limspath, hts_url=mapseq_url, \
-                                                        script_path=gl.get('script_path') or '', via=opt.via)
+            (bam_files, job) = mapseq.get_bam_wig_files(ex, job, minilims=opt.mapseq_limspath, 
+                                                        hts_url=mapseq_url,
+                                                        script_path=gl.get('script_path',''), 
+                                                        via=opt.via)
             assert bam_files, "Bam files not found."
             logfile.write("cat genome fasta files\n");logfile.flush()
-            genomeRef=snp.untar_genome_fasta(assembly,convert=True)
+            genomeRef = snp.untar_genome_fasta(assembly,convert=True)
             logfile.write("done\n");logfile.flush()
-
             dictPileupFile=dict((chrom,{}) for chrom in genomeRef.keys())
             for idGroup,dictRuns in job.groups.iteritems():
                 nbRuns=len(dictRuns["runs"].keys())
@@ -87,36 +84,29 @@ def main(argv = None):
                         debugfile.write("many runs, need statistics\n");debugfile.flush() 
                     for chrom,ref in genomeRef.iteritems():
                         pileupFilename=common.unique_filename_in()
-                        future=snp.sam_pileup.nonblocking(ex,assembly,dictRun["bam"],ref,via=opt.via,stdout=pileupFilename)
-                        dictPileupFile[chrom][pileupFilename]=(sampleName,future)
-
-            formatedPileupFilename = []
+                        future = snp.sam_pileup.nonblocking( ex, assembly, dictRun["bam"], ref,
+                                                             via=opt.via, stdout=pileupFilename )
+                        dictPileupFile[chrom][pileupFilename] = (sampleName,future)
+            formatedPileupFilename = {}
             for chrom, dictPileup in dictPileupFile.iteritems():
                 posAll,parameters = snp.posAllUniqSNP(dictPileup)
                 if len(posAll) == 0: continue
-                parsed = snp.parse_pileupFile(dictPileup,posAll,chrom,
-                                              minCoverage=parameters[0],
-                                              minSNP=parameters[1])
-                formatedPileupFilename.append(parsed)
-            description="SNP analysis for samples: "+", ".join(dictPileupFile.values()[0].values())
-            description=set_file_descr("allSNP.txt",step="SNPs",type="txt")
-            headerFile=[common.unique_filename_in()]
-            
-            with open(headerFile[0],'w') as f2:
-                with open(formatedPileupFilename[0],'r') as f:
-                    header=f.readline()
-                    f2.write("") #will be skipped in cat
-                    f2.write(header)
-            
-            
-            output = common.cat(headerFile+formatedPileupFilename,skip=1)
-            
-            ex.add(output,description=description)
-            codon=snp.synonymous(job,output)
-            description="detection of functional variants for samples: "+", ".join(dictPileupFile.values()[0].values())
-            description=set_file_descr("functionalVariants.txt",step="codon_modification",type="txt")
-            ex.add(codon,description=description)
- 
+                formatedPileupFilename[chrom] = snp.parse_pileupFile(
+                    dictPileup, posAll, chrom,
+                    minCoverage=parameters[0],
+                    minSNP=parameters[1])
+            sample_names = dictPileupFile.values()[0].values()
+#            output = common.cat(formatedPileupFilename[0],
+#                                formatedPileupFilename[1:],skip=1)
+            output = annotate_snps(formatedPileupFilename,sample_names,assembly)
+            description = common.set_file_descr("allSNP.txt",step="SNPs",type="txt")
+            ex.add(output[0],description=description)
+            description = common.set_file_descr("exonsSNP.txt",step="SNPs",type="txt")
+            ex.add(output[1],description=description)
+#            codon = snp.synonymous(job,output)
+#            ex.add(codon,description=set_file_descr("functionalVariants.txt",
+#                                                    step="codon_modification",
+#                                                    type="txt"))
         allfiles = common.get_files(ex.id, M)
         logfile.close()
         debugfile.close()
