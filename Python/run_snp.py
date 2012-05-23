@@ -96,8 +96,7 @@ def main(argv = None):
                     minCoverage=parameters[0],
                     minSNP=parameters[1])
             sample_names = dictPileupFile.values()[0].values()
-#            output = common.cat(formatedPileupFilename[0],
-#                                formatedPileupFilename[1:],skip=1)
+#            output = common.cat(formatedPileupFilename[0],formatedPileupFilename[1:],skip=1)
             output = snp.annotate_snps(formatedPileupFilename,sample_names,assembly)
             description = common.set_file_descr("allSNP.txt",step="SNPs",type="txt")
             ex.add(output[0],description=description)

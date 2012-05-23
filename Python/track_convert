@@ -33,4 +33,6 @@ if options.format2:
     args[1] = (args[1],options.format2)
 if options.chrmeta:
     chrmeta = json.loads(options.chrmeta)
+else:
+    chrmeta = None
 track.convert(*args, assembly=options.assembly,chrmeta=chrmeta)
