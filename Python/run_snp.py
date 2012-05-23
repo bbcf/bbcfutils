@@ -98,7 +98,7 @@ def main(argv = None):
             sample_names = dictPileupFile.values()[0].values()
 #            output = common.cat(formatedPileupFilename[0],
 #                                formatedPileupFilename[1:],skip=1)
-            output = annotate_snps(formatedPileupFilename,sample_names,assembly)
+            output = snp.annotate_snps(formatedPileupFilename,sample_names,assembly)
             description = common.set_file_descr("allSNP.txt",step="SNPs",type="txt")
             ex.add(output[0],description=description)
             description = common.set_file_descr("exonsSNP.txt",step="SNPs",type="txt")
