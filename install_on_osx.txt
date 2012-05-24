@@ -1,0 +1,76 @@
+
+
+Installing Samtools on OSX
+--------------------------
+
+http://code.google.com/p/biotoolbox/wiki/SetupForMacOSX#Installing_Bam_file_support
+
+The Samtools program is available as a precompiled binary for OS X, but we need the headers and library when installing the perl modules for working with sam files. Additionally, we want to build it as a 64-bit executable. Unfortunately, the make file is not very complete, so I've ended up manually copying much of the files into appropriate directories.
+
+Download the source code tarball from `http://sourceforge.net/projects/samtools/files/` . Unpack into a working directory.
+
+If you'll be working with 64-bit executables (likely), edit the `Makefile` to un-comment out the `-m64` on the line containing `CLFAGS`. This ensures the program will compile as a 64-bit executable.
+
+Compile by running `make`. Also compile razip by executing `make razip`.
+
+To make samtools generally accessible to all the users on the machine, move the samtools folder to `/usr/local/`. Since samtools is under continuous development, I'll append the version number to the folder name. Then, to make navigation easier, I'll create a symbolic link to the latest version directory to a general name. For example,
+
+     sudo cp ./samtools /usr/local/samtools-v0.1.18
+     cd /usr/local/
+     sudo ln -s samtools-v0.1.18 samtools
+
+Now I can always reference `/usr/local/samtools/` and it will point to the latest version directory. When a new version comes out, I install it side by side in `/usr/local/`, and then simply update the /usr/local/samtools symlink.
+
+To install the Bio-Samtools module (see below), you'll need to put the libraries in an accessible location. Rather than copying the appropriate files, and then doing it again and again with each new version, we can simplify using symlinks.
+
+     sudo ln -s /usr/local/samtools/*.h /usr/local/include/samtools/
+     sudo ln -s /usr/local/samtools/libbam.a /usr/local/lib/samtools/
+     sudo ln -s /usr/local/samtools/samtools.1 /usr/local/share/man/man1/
+     sudo ln -s /usr/local/samtools/samtools /usr/local/bin/
+     sudo ln -s /usr/local/samtools/razip /usr/local/bin/
+
+This also copies the executables into the `/usr/local/bin/` directory for easy access through the path.
+
+
+Download tclap
+--------------
+
+Download the source code tarball from `http://sourceforge.net/projects/tclap/files/` . Unpack into `bbcfutils/C/` .
+
+
+Build bamstat.cc and bam2wig.cc
+-------------------------------
+
+go to `bbcfutils/C/` and build the .cc :
+
+    make SQLITEINCLUDE=/opt/local/include SQLITELIBDIR=/opt/local/lib TCLAPINCLUDE=./tclap-1.2.1/include/ SAMINCLUDE=/usr/local/include SAMLIBDIR=/usr/local/lib/
+
+move the newly created apps `bam2wig` and `bamstat` to `/usr/local/bin`
+
+
+R scripts path
+--------------
+
+Change `script_path` in config file for the path to the bbcfutils repository: `[...]/bbcfutils/R`.
+
+
+R packages
+----------
+
+Install the `rjson` library from any R interface.
+
+
+Fortran compiler for Scipy
+--------------------------
+
+Scipy needs a fortran compiler to be built.
+
+http://www.scipy.org/Installing_SciPy/Mac_OS_X
+
+    export CC=clang
+    export CXX=clang
+    export FFLAGS=-ff2c
+
+Then install gfortran, for example with `brew install gfortran`
+
+Finally, build scipy with `sudo easy_install scipy`
