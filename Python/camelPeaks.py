@@ -63,7 +63,7 @@ def main(argv = None):
         track_info = {'datatype': peak_track.info.get('datatype','qualitative')}
         outbed = track.track(opt.output+"_peaks.bed", chrmeta=chrmeta,
                              fields=["chr","start","end","name","score"])
-        outwig = track.track(opt.output+"_deconv.sql",
+        outwig = track.track(opt.output+"_deconv.bedgraph",
                              chrmeta=chrmeta,
                              fields=["start","end","score"],
                              info={'datatype': 'quantitative'})
@@ -177,7 +177,7 @@ def main(argv = None):
         print "************OUTPUT FILES**********"
         print "\n".join([opt.output+".pdf",
                          opt.output+"_peaks.bed",
-                         opt.output+"_deconv.sql"])
+                         opt.output+"_deconv.bedgraph"])
         sys.exit(0)
     except Usage, err:
         print >>sys.stderr, err.msg
