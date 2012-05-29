@@ -143,9 +143,13 @@ def main(argv = None):
 	
 	    logfile.write("Uploading GDV tracks:\n");logfile.flush()
 	    debugfile.write("Uploading GDV tracks:\n"+" ".join(urls)+"\n"+" ".join(names)+"\n");debugfile.flush()
-            gdv.multiple_tracks(mail=gl['gdv']['email'], key=gl['gdv']['key'], serv_url=gl['gdv']['url'], 
-                                project_id=gdv_project['project']['id'], 
-                                urls=urls, tracknames=names, extensions=exts, force=True )
+            try:
+                gdv.multiple_tracks(mail=gl['gdv']['email'], key=gl['gdv']['key'], serv_url=gl['gdv']['url'], 
+                                    project_id=gdv_project['project']['id'], 
+                                    urls=urls, tracknames=names, extensions=exts, force=True )
+            except Exception, err:
+                debugfile.write("GDV Tracks Failed: %s\n" %err);debugfile.flush()
+                pass
 	logfile.close()
 	debugfile.close()
         print json.dumps(allfiles)

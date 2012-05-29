@@ -112,11 +112,14 @@ def main():
             urls  = [download_url+str(k) for k in allfiles['sql'].keys()]
             names = [re.sub('\.sql.*','',str(f)) for f in allfiles['sql'].values()]
             logfile.write("Uploading GDV tracks:\n"+" ".join(urls)+"\n"+" ".join(names)+"\n");logfile.flush()
-            tr = gdv.multiple_tracks(mail=gl['gdv']['email'], key=gl['gdv']['key'], serv_url=gl['gdv']['url'],
-                                     project_id=gdv_project['project']['id'],
-                                     urls=urls, tracknames=names, force=True )
-            debugfile.write("GDV Tracks Status\n"+"\n".join([str(v) for v in tr])+"\n");debugfile.flush()
-
+            try:
+                tr = gdv.multiple_tracks(mail=gl['gdv']['email'], key=gl['gdv']['key'], serv_url=gl['gdv']['url'],
+                                         project_id=gdv_project['project']['id'],
+                                         urls=urls, tracknames=names, force=True )
+                debugfile.write("GDV Tracks Status\n"+"\n".join([str(v) for v in tr])+"\n");debugfile.flush()
+            except Exception, err:
+                debugfile.write("GDV Tracks Failed: %s\n" %err);debugfile.flush()
+                pass
         logfile.close()
         debugfile.close()
         print json.dumps(allfiles)
