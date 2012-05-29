@@ -100,7 +100,7 @@ def main():
                         logfile.write("Creating GDV project.\n");logfile.flush()
                         gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
                                                        job.description, assembly.id, gl['gdv']['url'] )
-                    debugfile.write("GDV project: "+json.dumps(gdv_project)+"\n");debugfile.flush()
+                    debugfile.write("\nGDV project: "+json.dumps(gdv_project)+"\n");debugfile.flush()
                     add_pickle( ex, gdv_project, description=set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
         allfiles = get_files( ex.id, M )
         if job.options['ucsc_bigwig']:
