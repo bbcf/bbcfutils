@@ -63,11 +63,8 @@ def main(argv = None):
         track_info = {'datatype': peak_track.info.get('datatype','qualitative')}
         outbed = track.track(opt.output+"_peaks.bed", chrmeta=chrmeta,
                              fields=["chr","start","end","name","score"])
-        outwig = track.track(opt.output+"_deconv.bedgraph",
-                             chrmeta=chrmeta,
-                             fields=["start","end","score"],
-                             info={'datatype': 'quantitative'})
-        outwig.open()
+        outwig = track.track(opt.output+"_deconv.bedgraph", chrmeta=chrmeta)
+        outwig.open(mode='overwrite')
         for chrom,cv in chrmeta.iteritems():
             peak_stream = peak_track.read(selection=chrom)
             strands = {track.track(opt.forward): 'plus',
@@ -85,24 +82,23 @@ def main(argv = None):
                 if 'name' in peak_stream.fields:
                     reg_name = peak[peak_stream.fields.index('name')]
                 else:
-                    reg_name = row_count+1
+                    reg_name = str(row_count+1)
                 allpos = range(start+1,end+1)
-                data_block = {'pos': robjects.IntVector(allpos),
-                              'plus': robjects.FloatVector([0 for i in allpos]),
-                              'minus': robjects.FloatVector([0 for i in allpos]),
-                              'name': robjects.StrVector([reg_name for i in allpos])}
-                for stream,name in strands.iteritems():
-                    region = stream.read(selection=selection,
-                                         fields=['start','end','score'])
+                data_block = robjects.DataFrame({'pos':   robjects.IntVector(allpos),
+                                                 'plus':  robjects.FloatVector([0]*len(allpos)),
+                                                 'minus': robjects.FloatVector([0]*len(allpos)),
+                                                 'name':  robjects.StrVector([reg_name]*len(allpos))})
+                for stream,strnd in strands.iteritems():
+                    region = stream.read(selection=selection,fields=['start','end','score'])
                     n = 0
                     for row in region:
-                        while data_block['pos'][n] <= row[0]:
+                        while data_block.rx2('pos')[n] <= row[0] and n<len(allpos):
                             n+=1
+                        if n == len(allpos): break
                         for p in range(row[0],row[1]):
-                            data_block[name][n] = row[2]
+                            data_block.rx2(strnd)[n] = row[2]
                             n+=1
-                r_block = robjects.DataFrame(data_block)
-                robjects.r.assign('newblock',r_block)
+                robjects.r.assign('newblock',data_block)
                 robjects.r('counts=rbind(counts,newblock)')
             robjects.r('read.length=%i' %opt.extension)
             robjects.r('chr.name="%s"' %chrom)
