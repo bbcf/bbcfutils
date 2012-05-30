@@ -8,6 +8,7 @@ Need a list of peaks and a density file in input.
 
 import bbcflib.btrack as track
 from bbcflib import genrep
+from bbcflib.bFlatMajor.common import sorted_stream
 import rpy2.robjects as robjects
 import sys, optparse, os
 
@@ -66,19 +67,17 @@ def main(argv = None):
         outwig = track.track(opt.output+"_deconv.bedgraph", chrmeta=chrmeta)
         outwig.open(mode='overwrite')
         for chrom,cv in chrmeta.iteritems():
-            peak_stream = peak_track.read(selection=chrom)
-            strands = {track.track(opt.forward): 'plus',
-                       track.track(opt.reverse): 'minus'}
+            peak_stream = sorted_stream(peak_track.read(selection=chrom),[chrom])
+            strands = {track.track(opt.forward).read(chrom,fields=['start','end','score']): 'plus',
+                       track.track(opt.reverse).read(chrom,fields=['start','end','score']): 'minus'}
             robjects.r('options(stringsAsFactors=F)')
             robjects.r('counts=data.frame()')
             for row_count,peak in enumerate(peak_stream):
-                chr = peak[peak_stream.fields.index('chr')]
                 start = int(peak[peak_stream.fields.index('start')])
                 end = int(peak[peak_stream.fields.index('end')])
                 if end-start > opt.sizecutoff: continue
                 if start < 0: start = 0
                 if not(end <= cv['length']): end = cv['length']
-                selection = {'chr':chr, 'start':(start,end), 'end':(start,end)}
                 if 'name' in peak_stream.fields:
                     reg_name = peak[peak_stream.fields.index('name')]
                 else:
@@ -88,7 +87,9 @@ def main(argv = None):
                                                  'minus': robjects.FloatVector([0]*(end-start)),
                                                  'name':  robjects.StrVector([reg_name]*(end-start))})
                 for stream,strnd in strands.iteritems():
-                    for row in stream.read(selection=selection,fields=['start','end','score']):
+                    for row in stream: #.read(selection=selection,fields=['start','end','score']):
+                        if row[0]<start: continue
+                        if row[1]>end: break
                         data_block.rx2(strnd)[(row[0]-start):(row[1]-start)] = \
                             robjects.FloatVector([row[2]]*(row[1]-row[0]))
                 robjects.r.assign('newblock',data_block)
