@@ -83,21 +83,14 @@ def main(argv = None):
                     reg_name = peak[peak_stream.fields.index('name')]
                 else:
                     reg_name = str(row_count+1)
-                allpos = range(start+1,end+1)
-                data_block = robjects.DataFrame({'pos':   robjects.IntVector(allpos),
-                                                 'plus':  robjects.FloatVector([0]*len(allpos)),
-                                                 'minus': robjects.FloatVector([0]*len(allpos)),
-                                                 'name':  robjects.StrVector([reg_name]*len(allpos))})
+                data_block = robjects.DataFrame({'pos':   robjects.IntVector(range(start+1,end+1)),
+                                                 'plus':  robjects.FloatVector([0]*(end-start)),
+                                                 'minus': robjects.FloatVector([0]*(end-start)),
+                                                 'name':  robjects.StrVector([reg_name]*(end-start))})
                 for stream,strnd in strands.iteritems():
-                    region = stream.read(selection=selection,fields=['start','end','score'])
-                    n = 0
-                    for row in region:
-                        while data_block.rx2('pos')[n] <= row[0] and n<len(allpos):
-                            n+=1
-                        if n == len(allpos): break
-                        for p in range(row[0],row[1]):
-                            data_block.rx2(strnd)[n] = row[2]
-                            n+=1
+                    for row in stream.read(selection=selection,fields=['start','end','score']):
+                        data_block.rx2(strnd)[(row[0]-start):(row[1]-start)] = \
+                            robjects.FloatVector([row[2]]*(row[1]-row[0]))
                 robjects.r.assign('newblock',data_block)
                 robjects.r('counts=rbind(counts,newblock)')
             robjects.r('read.length=%i' %opt.extension)
@@ -168,7 +161,7 @@ def main(argv = None):
             outwig.write(((robjects.r("wig").rx2('pos')[ri]-1,
                            robjects.r("wig").rx2('pos')[ri],
                            robjects.r("wig").rx2('score')[ri]) for ri in xrange(nrow)),
-                         fields=["start","end","score"], chrom=chrom)
+                         fields=["start","end","score"], chrom=chrom, mode='append')
         outwig.close()
         print "************OUTPUT FILES**********"
         print "\n".join([opt.output+".pdf",
