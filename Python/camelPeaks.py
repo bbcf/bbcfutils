@@ -87,7 +87,7 @@ def main(argv = None):
                                                  'minus': robjects.FloatVector([0]*(end-start)),
                                                  'name':  robjects.StrVector([reg_name]*(end-start))})
                 for stream,strnd in strands.iteritems():
-                    for row in stream: #.read(selection=selection,fields=['start','end','score']):
+                    for row in stream:
                         if row[0]<start: continue
                         if row[1]>end: break
                         data_block.rx2(strnd)[(row[0]-start):(row[1]-start)] = \

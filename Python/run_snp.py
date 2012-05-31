@@ -20,7 +20,7 @@ def main(argv = None):
     opts = (("-v", "--via", "Run executions using method 'via' (can be 'local' or 'lsf')", {'default': "lsf"}),
             ("-k", "--key", "Alphanumeric key of the new RNA-seq job", {'default': None}),
             ("-m", "--mapseq_limspath", "MiniLIMS where a previous Mapseq execution and files has been stored.", 
-                                     {'default': "/data/htsstation/mapseq/mapseq_minilims"}),
+                                     {'default': "/srv/mapseq/public/data/mapseq_minilims"}),
             ("-w", "--working-directory", "Create execution working directories in wdir",
                                      {'default': os.getcwd(), 'dest':"wdir"}),
             ("-c", "--config", "Config file", {'default': None}),
