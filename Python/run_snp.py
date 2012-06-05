@@ -4,6 +4,8 @@
 
 SNP detection workflow.
 
+run_snp.py -v local -f /Users/julien/Workspace/genomes/sacCer2.tar.gz -c config/snp.config -d snp_minilims
+
 """
 from bein import execution, MiniLIMS
 from bein.util import use_pickle, add_pickle, pause
@@ -17,18 +19,20 @@ class Usage(Exception):
         self.msg = msg
 
 def main(argv = None):
-    opts = (("-v", "--via", "Run executions using method 'via' (can be 'local' or 'lsf')", {'default': "lsf"}),
-            ("-k", "--key", "Alphanumeric key of the new RNA-seq job", {'default': None}),
-            ("-m", "--mapseq_limspath", "MiniLIMS where a previous Mapseq execution and files has been stored.", 
+    opts = (("-v", "--via", "Run executions locally or using bsub (can be either 'local' or 'lsf')", {'default': "lsf"}),
+            ("-k", "--key", "Alphanumeric key of the new SNP job", {'default': None}),
+            ("-m", "--mapseq_limspath", "MiniLIMS where a previous Mapseq execution and files has been stored.",
                                      {'default': "/srv/mapseq/public/data/mapseq_minilims"}),
             ("-w", "--working-directory", "Create execution working directories in wdir",
                                      {'default': os.getcwd(), 'dest':"wdir"}),
             ("-c", "--config", "Config file", {'default': None}),
-            ("-d", "--snp_limspath", "MiniLIMS where snp executions and files will be stored.", \
-                                     {'default': "/srv/snp/public/data/snp_minilims"}))
+            ("-d", "--snp_limspath", "MiniLIMS where SNP executions and files will be stored.", \
+                                     {'default': "/srv/snp/public/data/snp_minilims"}),
+            ("-f", "--fasta_path", "Path to a directory containing a fasta file for each chromosome",
+                                     {'default':"/db/genrep/nr_assemblies/fasta/"}),)
     try:
         usage = "run_snp.py [OPTIONS]"
-        desc = """........."""
+        desc = """Compares sequencing data to a reference assembly to detect SNP."""
         parser = optparse.OptionParser(usage=usage, description=desc)
         for opt in opts:
             parser.add_option(opt[0],opt[1],help=opt[2],**opt[3])
@@ -59,42 +63,52 @@ def main(argv = None):
             job.options['create_gdv_project'] = job.options['create_gdv_project'].lower() in ['1','true','t']
         g_rep = genrep.GenRep( gl.get("genrep_url"), gl.get("bwt_root") )
         assembly = genrep.Assembly( assembly=job.assembly_id, genrep=g_rep )
+
+        if os.path.exists(opt.fasta_path):
+            path_to_ref = opt.fasta_path
+        elif os.path.exists(assembly.fasta_path):
+            path_to_ref = assembly.fasta_path()
+
         logfile = open(hts_key+".log",'w')
         debugfile = open(hts_key+".debug",'w')
         debugfile.write(json.dumps(job.options)+"\n\n"+json.dumps(gl)+"\n");debugfile.flush()
 
         # Program body
         with execution( M, description=hts_key, remote_working_directory=opt.wdir ) as ex:
-            (bam_files, job) = mapseq.get_bam_wig_files(ex, job, minilims=opt.mapseq_limspath, 
+            (bam_files, job) = mapseq.get_bam_wig_files(ex, job, minilims=opt.mapseq_limspath,
                                                         hts_url=mapseq_url,
-                                                        script_path=gl.get('script_path',''), 
+                                                        script_path=gl.get('script_path',''),
                                                         via=opt.via)
             assert bam_files, "Bam files not found."
             logfile.write("cat genome fasta files\n");logfile.flush()
-            genomeRef = snp.untar_genome_fasta(assembly,convert=True)
+            genomeRef = snp.untar_genome_fasta(assembly, path_to_ref, convert=True)
             logfile.write("done\n");logfile.flush()
-            dictPileupFile=dict((chrom,{}) for chrom in genomeRef.keys())
+
+            # Samtools pileup
+            dictPileupFile = dict((chrom,{}) for chrom in genomeRef.keys())
             for idGroup,dictRuns in job.groups.iteritems():
-                nbRuns=len(dictRuns["runs"].keys())
-                listFormatedFile=[]
+                nbRuns = len(dictRuns["runs"].keys())
+                listFormattedFile=[]
                 for idRun,dictRun in bam_files[idGroup].iteritems():
-                    sampleName=job.groups[idGroup]['name']
+                    sampleName = job.groups[idGroup]['name']
                     if(nbRuns>1):
                         sampleName += "_"+dictRun.get('libname',str(idRun))
-                        debugfile.write("many runs, need statistics\n");debugfile.flush() 
+                        debugfile.write("many runs, need statistics\n");debugfile.flush()
                     for chrom,ref in genomeRef.iteritems():
-                        pileupFilename=common.unique_filename_in()
+                        pileupFilename = common.unique_filename_in()
                         future = snp.sam_pileup.nonblocking( ex, assembly, dictRun["bam"], ref,
                                                              via=opt.via, stdout=pileupFilename )
                         dictPileupFile[chrom][pileupFilename] = (sampleName,future)
+
+            # Write results
             formatedPileupFilename = {}
             for chrom, dictPileup in dictPileupFile.iteritems():
                 posAll,parameters = snp.posAllUniqSNP(dictPileup)
                 if len(posAll) == 0: continue
                 formatedPileupFilename[chrom] = snp.parse_pileupFile(
                     dictPileup, posAll, chrom,
-                    minCoverage=parameters[0],
-                    minSNP=parameters[1])
+                    minCoverage = parameters[0],
+                    minSNP = parameters[1])
             sample_names = dictPileupFile.values()[0].values()
 #            output = common.cat(formatedPileupFilename[0],formatedPileupFilename[1:],skip=1)
             output = snp.annotate_snps(formatedPileupFilename,sample_names,assembly)
@@ -102,6 +116,8 @@ def main(argv = None):
             ex.add(output[0],description=description)
             description = common.set_file_descr("exonsSNP.txt",step="SNPs",type="txt")
             ex.add(output[1],description=description)
+
+            # Codon analysis
 #            codon = snp.synonymous(job,output)
 #            ex.add(codon,description=set_file_descr("functionalVariants.txt",
 #                                                    step="codon_modification",
