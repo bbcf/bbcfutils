@@ -87,7 +87,7 @@ def main(argv = None):
         job.options['ucsc_bigwig'] = True
         if not('create_gdv_project' in job.options):
             job.options['create_gdv_project'] = False
-        elif isinstance(job.options['create_gdv_project'],str):
+        elif isinstance(job.options['create_gdv_project'],basestring):
             job.options['create_gdv_project'] = job.options['create_gdv_project'].lower() in ['1','true','t']
         gdv_project = {'project':{'id': job.options.get('gdv_project_id',0)}}
         if not('gdv_key' in job.options): job.options['gdv_key'] = ""
@@ -155,7 +155,6 @@ def main(argv = None):
         print json.dumps(allfiles)
         with open(hts_key+".done",'w') as done:
             json.dump(allfiles,done)
-
 
         if 'email' in gl:
             r = email.EmailReport( sender=gl['email']['sender'],
