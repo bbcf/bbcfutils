@@ -29,7 +29,7 @@ def main(argv = None):
             ("-d", "--snp_limspath", "MiniLIMS where SNP executions and files will be stored.", \
                                      {'default': "/srv/snp/public/data/snp_minilims"}),
             ("-f", "--fasta_path", "Path to a directory containing a fasta file for each chromosome",
-                                     {'default':None}),)
+                                     {'default':''}),)
     try:
         usage = "run_snp.py [OPTIONS]"
         desc = """Compares sequencing data to a reference assembly to detect SNP."""
@@ -66,7 +66,7 @@ def main(argv = None):
 
         if os.path.exists(opt.fasta_path):
             path_to_ref = opt.fasta_path
-        elif os.path.exists(assembly.fasta_path):
+        elif os.path.exists(assembly.fasta_path()):
             path_to_ref = assembly.fasta_path()
 
         logfile = open(hts_key+".log",'w')
