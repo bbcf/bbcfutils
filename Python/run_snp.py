@@ -29,7 +29,7 @@ def main(argv = None):
             ("-d", "--snp_limspath", "MiniLIMS where SNP executions and files will be stored.", \
                                      {'default': "/srv/snp/public/data/snp_minilims"}),
             ("-f", "--fasta_path", "Path to a directory containing a fasta file for each chromosome",
-                                     {'default':"/db/genrep/nr_assemblies/fasta/"}),)
+                                     {'default':None}),)
     try:
         usage = "run_snp.py [OPTIONS]"
         desc = """Compares sequencing data to a reference assembly to detect SNP."""
@@ -75,6 +75,7 @@ def main(argv = None):
 
         # Program body
         with execution( M, description=hts_key, remote_working_directory=opt.wdir ) as ex:
+            print "Current working directory:", opt.wdir
             (bam_files, job) = mapseq.get_bam_wig_files(ex, job, minilims=opt.mapseq_limspath,
                                                         hts_url=mapseq_url,
                                                         script_path=gl.get('script_path',''),
@@ -85,7 +86,7 @@ def main(argv = None):
             logfile.write("done\n");logfile.flush()
 
             # Samtools pileup
-            dictPileupFile = dict((chrom,{}) for chrom in genomeRef.keys())
+            pileup_dict = dict((chrom,{}) for chrom in genomeRef.keys()) # {'chr.': {}}
             for idGroup,dictRuns in job.groups.iteritems():
                 nbRuns = len(dictRuns["runs"].keys())
                 listFormattedFile=[]
@@ -98,30 +99,33 @@ def main(argv = None):
                         pileupFilename = common.unique_filename_in()
                         future = snp.sam_pileup.nonblocking( ex, assembly, dictRun["bam"], ref,
                                                              via=opt.via, stdout=pileupFilename )
-                        dictPileupFile[chrom][pileupFilename] = (sampleName,future)
+                        pileup_dict[chrom][pileupFilename] = (sampleName,future)
 
-            # Write results
-            formatedPileupFilename = {}
-            for chrom, dictPileup in dictPileupFile.iteritems():
-                posAll,parameters = snp.posAllUniqSNP(dictPileup)
-                if len(posAll) == 0: continue
-                formatedPileupFilename[chrom] = snp.parse_pileupFile(
-                    dictPileup, posAll, chrom,
+            # Get & write results
+            formattedPileupFilename = {}
+            for chrom, dictPileup in pileup_dict.iteritems():
+                allSNPpos,parameters = snp.allSNPposUniqSNP(dictPileup) # {pos: snp}, (minCoverage, minSNP)
+                if len(allSNPpos) == 0: continue
+                formattedPileupFilename[chrom] = snp.parse_pileupFile(
+                    dictPileup, allSNPpos, chrom,
                     minCoverage = parameters[0],
                     minSNP = parameters[1])
-            sample_names = dictPileupFile.values()[0].values()
-#            output = common.cat(formatedPileupFilename[0],formatedPileupFilename[1:],skip=1)
-            output = snp.annotate_snps(formatedPileupFilename,sample_names,assembly)
+            sample_names = pileup_dict.itervalues().next().values()
+
+            # Add exon & codon information
+#            output = common.cat(formattedPileupFilename[0],formattedPileupFilename[1:],skip=1)
+            outall,outexons = snp.annotate_snps(formattedPileupFilename,sample_names,assembly)
             description = common.set_file_descr("allSNP.txt",step="SNPs",type="txt")
-            ex.add(output[0],description=description)
+            ex.add(outall,description=description)
             description = common.set_file_descr("exonsSNP.txt",step="SNPs",type="txt")
-            ex.add(output[1],description=description)
+            ex.add(outexons,description=description)
 
             # Codon analysis
 #            codon = snp.synonymous(job,output)
 #            ex.add(codon,description=set_file_descr("functionalVariants.txt",
 #                                                    step="codon_modification",
 #                                                    type="txt"))
+
         allfiles = common.get_files(ex.id, M)
         logfile.close()
         debugfile.close()
