@@ -104,7 +104,7 @@ def main(argv = None):
             # Get & write results
             formattedPileupFilename = {}
             for chrom, dictPileup in pileup_dict.iteritems():
-                allSNPpos,parameters = snp.allSNPposUniqSNP(dictPileup) # {pos: snp}, (minCoverage, minSNP)
+                allSNPpos,parameters = snp.allSNPposUniq(dictPileup) # {pos: snp}, (minCoverage, minSNP)
                 if len(allSNPpos) == 0: continue
                 formattedPileupFilename[chrom] = snp.parse_pileupFile(
                     dictPileup, allSNPpos, chrom,
