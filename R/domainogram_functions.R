@@ -330,10 +330,10 @@ plotSelectedBRICKS <- function(coordBRICKS,data,myLim=0,myTitle="",imgFile="")
 
 	par(mfrow=c(3,1))
 	if(myLim==0){
-		plot(data[,c(2,4)],xlim=c(min(data[,2]),max(data[,2])),ylim=c(1.2*min(data[,4]),1.2*max(data[,4])),type="h",col="grey")
+		plot(data[,c(2,4)],xlim=c(min(data[,2]),max(data[,2])),ylim=c(1.2*min(data[,4]),1.2*max(data[,4])),type="h",col="grey",xlab="",ylab="Score")
 	}
 	else{
-		plot(data[,c(2,4)],xlim=c(min(data[,2]),min(data[,2])+myLim),ylim=c(1.2*min(data[,4]),1.2*max(data[,4])),type="h",col="grey")
+		plot(data[,c(2,4)],xlim=c(min(data[,2]),min(data[,2])+myLim),ylim=c(1.2*min(data[,4]),1.2*max(data[,4])),type="h",col="grey",xlab="",ylab="Score")
 	}
 	rect(coordBRICKS[k,1],max(data[,4]),coordBRICKS[k,2],1.2*max(data[,4])+coordBRICKS[k,3],col=colToUse,border=colToUse)
 	abline(h=0)
