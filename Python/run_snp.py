@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 
 """
-
 SNP detection workflow.
 
 run_snp.py -v local -f /Users/julien/Workspace/genomes/sacCer2.tar.gz -c config/snp.config -d snp_minilims
-
+run_snp.py -v local -c /scratch/cluster/monthly/jdelafon/snp/config/snp.config -d /scratch/cluster/monthly/jdelafon/snp/snp_minilims -w wdir
 """
 from bein import execution, MiniLIMS
 from bein.util import use_pickle, add_pickle, pause
@@ -106,20 +105,18 @@ def main(argv = None):
                             for p in pileup_dict.itervalues().next().iterkeys()]
 
             # Get & write results
-            formattedPileupFilename = {}
+            filedict = {}
             for chrom, dictPileup in pileup_dict.iteritems():
                 allSNPpos,parameters = snp.posAllUniqSNP(dictPileup) # {3021:'A'}, (minCoverage, minSNP)
                 if len(allSNPpos) == 0: continue
-                formattedPileupFilename[chrom] = snp.parse_pileupFile(
+                filedict[chrom] = snp.parse_pileupFile(
                     samples[chrom], allSNPpos, chrom,
                     minCoverage = parameters[0],
                     minSNP = parameters[1])
-                #with open(formattedPileupFilename[chrom]) as f:
-                #    print f.read()
 
             # Add exon & codon information
-#            output = common.cat(formattedPileupFilename[0],formattedPileupFilename[1:],skip=1)
-            outall,outexons = snp.annotate_snps(formattedPileupFilename,sample_names,assembly)
+#            output = common.cat(filedict[0],filedict[1:],skip=1)
+            outall,outexons = snp.annotate_snps(filedict,sample_names,assembly)
             description = common.set_file_descr("allSNP.txt",step="SNPs",type="txt")
             ex.add(outall,description=description)
             description = common.set_file_descr("exonsSNP.txt",step="SNPs",type="txt")
