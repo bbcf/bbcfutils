@@ -40,5 +40,5 @@ else:
 if options.datatype:
     info = {'datatype': str(options.datatype)}
 else:
-    info = {}
+    info = None
 track.convert(*args, assembly=options.assembly, chrmeta=chrmeta, info=info)
