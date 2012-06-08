@@ -2,7 +2,7 @@
 
 import optparse, os
 from bbcflib import btrack as track
-from bbcflib.bFlatMajor.stream import merge_score
+from bbcflib.bFlatMajor.stream import merge_scores
 from bbcflib.bFlatMajor.numeric import correlation
 
 parameters = {
