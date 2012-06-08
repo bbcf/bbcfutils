@@ -22,7 +22,9 @@ parameters = {
                  optparse.make_option("-1", "--format1",
                                       help = "Format of the first track."),
                  optparse.make_option("-2", "--format2",
-                                      help = "Format of the second track.")]}
+                                      help = "Format of the second track."),
+                 optparse.make_option("-d", "--datatype",
+                                      help = "Datatype info in output track.")]}
 
 parser = optparse.OptionParser(**parameters)
 options, args = parser.parse_args()
@@ -35,4 +37,8 @@ if options.chrmeta:
     chrmeta = json.loads(options.chrmeta)
 else:
     chrmeta = None
-track.convert(*args, assembly=options.assembly,chrmeta=chrmeta)
+if options.datatype:
+    info = {'datatype': str(options.datatype)}
+else:
+    info = {}
+track.convert(*args, assembly=options.assembly, chrmeta=chrmeta, info=info)
