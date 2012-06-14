@@ -12,13 +12,13 @@ parameters = {
                                       help="A bedgraph-like file with ChIP density on the forward strand"),
                  optparse.make_option("-r", "--reverse",
                                       help="A bedgraph-like file with ChIP density on the reverse strand"),
-                 optparse.make_option("-1", "--formatf",
+                 optparse.make_option("--formatf",
                                       help="Format of the forward track."),
-                 optparse.make_option("-2", "--formatr",
+                 optparse.make_option("--formatr",
                                       help="Format of the reverse track."),
-                 optparse.make_option("-p", "--shift", 
-                                      help="Shift positions downstream. If <0 will compute an optimal shift using autocorrelation.", default=0),
-                 optparse.make_option("-o", "--output", 
+                 optparse.make_option("-p", "--shift",
+                                      help="Shift positions downstream. If <0 will compute an optimal shift using autocorrelation.", default=0, action="store", type=int),
+                 optparse.make_option("-o", "--output",
                                       help="Output file", default='merged.sql'),
                  optparse.make_option("-a", "--assembly",
                                       help = "The assembly (GenRep assembly name such as 'sacCer2').")]}
@@ -43,16 +43,12 @@ def _shift(stream,shift):
     return track.FeatureStream((_apply_shift(x) for x in stream),
                                fields=stream.fields)
 fields = ['chr','start','end','score']
-tfwd = track.track(options.forward,format=options.formatf)
-trev = track.track(options.reverse,format=options.formatr)
-chrmeta = None
+tfwd = track.track(options.forward,format=options.formatf,chrmeta=options.assembly)
+trev = track.track(options.reverse,format=options.formatr,chrmeta=options.assembly)
 if tfwd.chrmeta:
     chrmeta = tfwd.chrmeta
 elif trev.chrmeta:
     chrmeta = trev.chrmeta
-elif options.assembly:
-    from bbcflib import genrep
-    chrmeta = genrep.Assembly(options.assembly).chrmeta
 else:
     parser.print_help()
     raise ValueError("Specify an assembly with -a.")

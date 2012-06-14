@@ -53,23 +53,21 @@ def main(argv = None):
             parser.print_help()
             raise Usage("Specify a valid reverse strand density file with -r.")
 ####        
-        peak_track = track.track(opt.peaks)
-        if peak_track.chrmeta:
-            chrmeta = peak_track.chrmeta
-        else: 
-            if opt.genome: chrmeta = genrep.Assembly(opt.genome).chrmeta
-            elif opt.chromosome: chrmeta = {opt.chromosome: {'length': opt.length}}
-            else: raise Usage("Need either a genome or a chromosome specification.")
+        if opt.chromosome and opt.length: chrmeta = {opt.chromosome: {'length': opt.length}}
+        else: chrmeta = opt.genome
+        peak_track = track.track(opt.peaks,chrmeta=chrmeta)
+        chrmeta = peak_track.chrmeta
         if opt.chromosome: chrmeta = {opt.chromosome: chrmeta[opt.chromosome]}
         track_info = {'datatype': peak_track.info.get('datatype','qualitative')}
         outbed = track.track(opt.output+"_peaks.bed", chrmeta=chrmeta,
                              fields=["chr","start","end","name","score"])
         outwig = track.track(opt.output+"_deconv.bedgraph", chrmeta=chrmeta)
         outwig.open(mode='overwrite')
+        topts = {'chrmeta': chrmeta, 'readonly': True}
         for chrom,cv in chrmeta.iteritems():
             peak_stream = sorted_stream(peak_track.read(selection=chrom),[chrom])
-            strands = {track.track(opt.forward).read(chrom,fields=['start','end','score']): 'plus',
-                       track.track(opt.reverse).read(chrom,fields=['start','end','score']): 'minus'}
+            strands = {track.track(opt.forward,**topts).read(chrom,fields=['start','end','score']): 'plus',
+                       track.track(opt.reverse,**topts).read(chrom,fields=['start','end','score']): 'minus'}
             robjects.r('options(stringsAsFactors=F)')
             robjects.r('counts=data.frame()')
             for row_count,peak in enumerate(peak_stream):
