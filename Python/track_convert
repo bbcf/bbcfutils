@@ -36,9 +36,9 @@ if options.format2:
 if options.chrmeta:
     chrmeta = json.loads(options.chrmeta)
 else:
-    chrmeta = None
+    chrmeta = options.assembly
 if options.datatype:
     info = {'datatype': str(options.datatype)}
 else:
     info = None
-track.convert(*args, assembly=options.assembly, chrmeta=chrmeta, info=info)
+track.convert(*args, chrmeta=chrmeta, info=info)
