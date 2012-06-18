@@ -46,6 +46,7 @@ def name_or_index(cols, dialect, header):
     Returns an array of Python indices (0 to n-1) - instead of the user-friendly (1 to n)."""
     cols = eval(str(cols))
     if isinstance(cols, dict):
+        for k,v in cols.iteritems(): cols[k] = [x-1 for x in v]
         return cols
     elif all([c in header.split(dialect.delimiter) for c in cols]):
         cols = [[header.split(dialect.delimiter).index(c)] for c in cols]
@@ -54,7 +55,7 @@ def name_or_index(cols, dialect, header):
         except ValueError:
             print "\nError: --cols must contain column names or indices (got %s)." % cols
             print "Detected header: %s" % header
-    cols = dict(zip(range(len(cols)),cols))
+    cols = dict(zip(range(1,len(cols)+1),cols))
     return cols
 
 
@@ -122,11 +123,11 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
             n=[]; m=[]; r=[]; p=[]
             for row in csvreader:
                 try:
-                    c1 = numpy.mean([float(row[x]) for x in pycols[0]])
-                    c2 = numpy.mean([float(row[x]) for x in pycols[1]])
+                    c1 = numpy.mean([float(row[x]) for x in pycols[1]])
+                    c2 = numpy.mean([float(row[x]) for x in pycols[2]])
                 except ValueError: continue # Skip line if contains NA, nan, etc.
                 if (c1*c2 > lower):
-                    label = '|'.join([row[x] for x in pylabels[0]])
+                    label = '|'.join([row[x] for x in pylabels[1]])
                     counts[label] = (c1,c2)
                     n.append(label)
                     m.append(numpy.log10(numpy.sqrt(c1*c2)))
@@ -453,10 +454,12 @@ def main():
             assert len(args) == len(annotate), "There must be one digit per dataset in --annotate."
         limits = [None or opt.xmin, None or opt.xmax, None or opt.ymin, None or opt.ymax]
         slimits = [None or opt.smin, None or opt.smax]
-        cols = opt.cols.split(",")
+        cols = opt.cols
+        if not cols.startswith("{"):
+            cols = cols.split(",")
+            if len(cols) != 2:
+                parser.error("--cols must be *two* integers or strings separated by commas (got %s)." % opt.cols)
         labels = opt.labels.split(",")
-        if len(cols) != 2:
-            parser.error("--cols must be *two* integers or strings separated by commas (got %s)." % opt.cols)
         if opt.mode not in ["normal","interactive","json"]:
             parser.error("--mode must be one of 'normal','interactive', or 'json' (got %s)." % opt.mode)
         if opt.format not in ["counts","rpkm"]:
