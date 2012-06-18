@@ -14,10 +14,6 @@ from scipy import stats
 import matplotlib.pyplot as plt
 
 
-class Usage(Exception):
-    def __init__(self,  msg):
-        self.msg = msg
-
 def unique_filename(len=20, path=None):
     """Return a *len*-characters random filename, unique in the given *path*."""
     if not path: path = os.getcwd()
@@ -41,9 +37,10 @@ def guess_file_format(f, sep=None):
         f.seek(0); header=f.readline()
     return dialect, header
 
-def name_or_index(cols, dialect, header):
+def _name_or_index(cols, dialect, header):
     """Given an array *cols*, detect if elements are indices of *header* or elements of *header*.
-    Returns an array of Python indices (0 to n-1) - instead of the user-friendly (1 to n)."""
+    Returns a dictionary of Python indices of the form {1:[2,3],2:[4,5]} if group 1 is made of
+    runs (columns) 2 and 3, and group 2 of runs 4 and 5."""
     cols = eval(str(cols))
     if isinstance(cols, dict):
         for k,v in cols.iteritems(): cols[k] = [x-1 for x in v]
@@ -117,8 +114,8 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
             dialect,header = guess_file_format(f,sep)
             try: csvreader = csv.reader(f, dialect=dialect, quoting=csv.QUOTE_NONE)
             except TypeError: csvreader = csv.reader(f, dialect='excel-tab', quoting=csv.QUOTE_NONE)
-            pycols = name_or_index(cols, dialect, header)
-            pylabels = name_or_index(labels, dialect, header)
+            pycols = _name_or_index(cols, dialect, header)
+            pylabels = _name_or_index(labels, dialect, header)
             # Read the file
             n=[]; m=[]; r=[]; p=[]
             for row in csvreader:
@@ -367,6 +364,10 @@ class AnnoteFinder:
 
 
 #---------------------------- MAIN ------------------------------#
+
+class Usage(Exception):
+    def __init__(self,  msg):
+        self.msg = msg
 
 usage = """
 
