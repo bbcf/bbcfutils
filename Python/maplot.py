@@ -44,13 +44,17 @@ def guess_file_format(f, sep=None):
 def name_or_index(cols, dialect, header):
     """Given an array *cols*, detect if elements are indices of *header* or elements of *header*.
     Returns an array of Python indices (0 to n-1) - instead of the user-friendly (1 to n)."""
-    if all([c in header.split(dialect.delimiter) for c in cols]):
-        cols = [header.split(dialect.delimiter).index(c) for c in cols]
+    cols = eval(str(cols))
+    if isinstance(cols, dict):
+        return cols
+    elif all([c in header.split(dialect.delimiter) for c in cols]):
+        cols = [[header.split(dialect.delimiter).index(c)] for c in cols]
     else:
-        try: cols = [int(c)-1 for c in cols]
+        try: cols = [[int(c)-1] for c in cols]
         except ValueError:
             print "\nError: --cols must contain column names or indices (got %s)." % cols
             print "Detected header: %s" % header
+    cols = dict(zip(range(len(cols)),cols))
     return cols
 
 
@@ -117,11 +121,14 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
             # Read the file
             n=[]; m=[]; r=[]; p=[]
             for row in csvreader:
-                try: c1 = float(row[pycols[0]]); c2 = float(row[pycols[1]])
+                try:
+                    c1 = numpy.mean([float(row[x]) for x in pycols[0]])
+                    c2 = numpy.mean([float(row[x]) for x in pycols[1]])
                 except ValueError: continue # Skip line if contains NA, nan, etc.
                 if (c1*c2 > lower):
-                    counts[row[pylabels[0]]] = (c1,c2)
-                    n.append(' | '.join([row[l] for l in pylabels]))
+                    label = '|'.join([row[x] for x in pylabels[0]])
+                    counts[label] = (c1,c2)
+                    n.append(label)
                     m.append(numpy.log10(numpy.sqrt(c1*c2)))
                     r.append(numpy.log2(c1/c2))
                 p.append(None) # future p-values, not used yet
@@ -467,4 +474,5 @@ def main():
 
 if __name__ == '__main__':
     sys.exit(main())
+
 
