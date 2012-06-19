@@ -21,7 +21,7 @@ def main():
     opts = (("-v", "--via", "Run executions using method 'via' (can be 'local' or 'lsf')", {'default': "lsf"}),
             ("-k", "--key", "Alphanumeric key of the new RNA-seq job", {'default': None}),
             ("-d", "--rnaseq_minilims", "MiniLIMS where RNAseq executions and files will be stored.",
-                                     {'default': "/srv/mapseq/public/data/rnaseq_minilims"}),
+                                     {'default': "/srv/rnaseq/public/data/rnaseq_minilims"}),
             ("-m", "--mapseq_minilims", "MiniLIMS where a previous Mapseq execution and files has been stored.",
                                      {'default': "/srv/mapseq/public/data/mapseq_minilims"}),
             ("-w", "--working-directory", "Create execution working directories in wdir",
