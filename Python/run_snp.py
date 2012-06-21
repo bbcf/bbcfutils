@@ -3,14 +3,13 @@
 """
 SNP detection workflow.
 
-run_snp.py -v local -f /Users/julien/Workspace/genomes/sacCer2.tar.gz -c config/snp.config -d snp_minilims
-run_snp.py -v local -c /scratch/cluster/monthly/jdelafon/snp/config/snp.config -d /scratch/cluster/monthly/jdelafon/snp/snp_minilims -w wdir
+run_snp.py -v local -c /scratch/cluster/monthly/jdelafon/snp/config/keane.config -d /scratch/cluster/monthly/jdelafon/snp/snp_minilims -w wdir -f /scratch/cluster/monthly/jdelafon/snp/reference/chr5.tar.gz
 """
 from bein import execution, MiniLIMS
 from bein.util import use_pickle, add_pickle, pause
 from bbcflib import daflims, genrep, frontend, gdv, mapseq, common, snp
 from bbcflib import email
-import sys, os, json, optparse
+import sys, os, json, optparse, shutil
 
 
 class Usage(Exception):
@@ -62,6 +61,7 @@ def main(argv = None):
             job.options['create_gdv_project'] = job.options['create_gdv_project'].lower() in ['1','true','t']
         g_rep = genrep.GenRep( gl.get("genrep_url"), gl.get("bwt_root") )
         assembly = genrep.Assembly( assembly=job.assembly_id, genrep=g_rep )
+        groups = job.groups
 
         if os.path.exists(opt.fasta_path):
             path_to_ref = opt.fasta_path
@@ -84,49 +84,43 @@ def main(argv = None):
             genomeRef = snp.untar_genome_fasta(assembly, path_to_ref, convert=True)
             logfile.write("done\n");logfile.flush()
 
-            # Samtools pileup
-            samples = dict((chrom,{}) for chrom in genomeRef.keys()) 
-            pileup_dict = dict((chrom,{}) for chrom in genomeRef.keys()) # {'chr.': {}}
-            for idGroup,dictRuns in job.groups.iteritems():
-                nbRuns = len(dictRuns["runs"].keys())
-                listFormattedFile=[]
-                for idRun,dictRun in bam_files[idGroup].iteritems():
-                    sampleName = job.groups[idGroup]['name']
-                    if(nbRuns>1):
-                        sampleName += "_"+dictRun.get('libname',str(idRun))
-                        debugfile.write("(many runs, need statistics)\n");debugfile.flush()
-                    for chrom,ref in genomeRef.iteritems():
-                        pileupFilename = common.unique_filename_in()
-                        future = snp.sam_pileup.nonblocking( ex, assembly, dictRun["bam"], ref,
-                                                             via=opt.via, stdout=pileupFilename )
-                        pileup_dict[chrom][pileupFilename] = future # {chr: {filename: future}}
-                        samples[chrom][pileupFilename] = sampleName
+            pileup_dict = dict((chrom,{}) for chrom in genomeRef.keys()) # {chr: {}}
+            samples = dict((chrom,{}) for chrom in genomeRef.keys()) # {chr: {}}
+            for gid, files in bam_files.iteritems():
+                sample_name = groups[gid]['name']
+                runs = [r['bam'] for r in files.itervalues()]
+                bam = mapseq.merge_bam(ex,runs)
+                pileupFilename = common.unique_filename_in()
+                # Samtools pileup
+                for chrom,ref in genomeRef.iteritems():
+                    future = snp.sam_pileup.nonblocking( ex, assembly, bam, ref,
+                                                         via=opt.via, stdout=pileupFilename )
+                    pileup_dict[chrom][pileupFilename] = future # {chr: {filename: future}}
+                    samples[chrom][pileupFilename] = sample_name
             sample_names = [samples[pileup_dict.iterkeys().next()][p] \
-                            for p in pileup_dict.itervalues().next().iterkeys()]
+                            for p in pileup_dict.itervalues().next().iterkeys()] # keep the same order
 
-            # Get & write results
-            filedict = {}
+            chr_filename = {}
             for chrom, dictPileup in pileup_dict.iteritems():
+                # Get the results from sam_pileup
+                # Write the list of all snps of THIS chromosome, from ALL samples
                 allSNPpos,parameters = snp.posAllUniqSNP(dictPileup) # {3021:'A'}, (minCoverage, minSNP)
                 if len(allSNPpos) == 0: continue
-                filedict[chrom] = snp.parse_pileupFile(
+                # Write results in a temporary file, for this chromosome
+                chr_filename[chrom] = snp.write_pileupFile(
                     samples[chrom], allSNPpos, chrom,
                     minCoverage = parameters[0],
                     minSNP = parameters[1])
 
-            # Add exon & codon information
-#            output = common.cat(filedict[0],filedict[1:],skip=1)
-            outall,outexons = snp.annotate_snps(filedict,sample_names,assembly)
-            description = common.set_file_descr("allSNP.txt",step="SNPs",type="txt")
-            ex.add(outall,description=description)
-            description = common.set_file_descr("exonsSNP.txt",step="SNPs",type="txt")
-            ex.add(outexons,description=description)
+            #shutil.copy(chr_filename['chr5'], '../../'+'chr5')
+            #shutil.copy(chr_filename['chrV'], '../../'+'yeast_chrV')
 
-            # Codon analysis
-#            codon = snp.synonymous(job,output)
-#            ex.add(codon,description=set_file_descr("functionalVariants.txt",
-#                                                    step="codon_modification",
-#                                                    type="txt"))
+            # Add exon & codon information & write the real file
+            outall,outexons = snp.annotate_snps(chr_filename,sample_names,assembly)
+            description = common.set_file_descr("allSNP.txt",groupId=gid,step="SNPs",type="txt")
+            ex.add(outall,description=description)
+            description = common.set_file_descr("exonsSNP.txt",groupId=gid,step="SNPs",type="txt")
+            ex.add(outexons,description=description)
 
         allfiles = common.get_files(ex.id, M)
         logfile.close()
