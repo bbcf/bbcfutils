@@ -447,24 +447,29 @@ def main():
         parser.add_option("-e","--extremes", default=False, type="int", help=help.next())
 
         (opt, args) = parser.parse_args()
+
         args = [os.path.abspath(a) for a in args]
+        if len(args) < 1:
+            parser.error("At least one data file must be specified.\n")
+        for a in args:
+            assert os.path.exists(a), "File not found: %s\n" % a
 
         annotate = None
         if opt.annotate:
             annotate = [int(b) for b in opt.annotate.split(",")]
-            assert len(args) == len(annotate), "There must be one digit per dataset in --annotate."
+            assert len(args) == len(annotate), "There must be one digit per dataset in --annotate.\n"
         limits = [None or opt.xmin, None or opt.xmax, None or opt.ymin, None or opt.ymax]
         slimits = [None or opt.smin, None or opt.smax]
         cols = opt.cols
         if not cols.startswith("{"):
             cols = cols.split(",")
             if len(cols) != 2:
-                parser.error("--cols must be *two* integers or strings separated by commas (got %s)." % opt.cols)
+                parser.error("--cols must be *two* integers or strings separated by commas (got %s).\n" % opt.cols)
         labels = opt.labels.split(",")
         if opt.mode not in ["normal","interactive","json"]:
-            parser.error("--mode must be one of 'normal','interactive', or 'json' (got %s)." % opt.mode)
+            parser.error("--mode must be one of 'normal','interactive', or 'json' (got %s).\n" % opt.mode)
         if opt.format not in ["counts","rpkm"]:
-            parser.error("--format must be one of 'counts' or 'rpkm' (got %s)." % opt.format)
+            parser.error("--format must be one of 'counts' or 'rpkm' (got %s).\n" % opt.format)
 
         MAplot(args, cols=cols, labels=labels, mode=opt.mode, data_format=opt.format, sep=opt.sep,
                 limits=limits, slimits=slimits,deg=opt.deg, bins=opt.bins, assembly_id=opt.assembly,
