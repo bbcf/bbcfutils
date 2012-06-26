@@ -90,7 +90,7 @@ def main(argv = None):
             json.dump(allfiles,done)
         if 'email' in gl:
             r = email.EmailReport( sender=gl['email']['sender'],
-                                   to=str(job.email),
+                                   to=str(job.email).split(','),
                                    subject="Demultiplexing job "+str(job.description),
                                    smtp_server=gl['email']['smtp'] )
             r.appendBody('''

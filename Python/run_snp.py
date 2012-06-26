@@ -28,7 +28,7 @@ def main(argv = None):
             ("-d", "--snp_limspath", "MiniLIMS where SNP executions and files will be stored.", \
                                      {'default': "/srv/snp/public/data/snp_minilims"}),
             ("-f", "--fasta_path", "Path to a directory containing a fasta file for each chromosome",
-                                     {'default':''}),)
+                                     {'default':None}),)
     try:
         usage = "run_snp.py [OPTIONS]"
         desc = """Compares sequencing data to a reference assembly to detect SNP."""
@@ -63,7 +63,7 @@ def main(argv = None):
         g_rep = genrep.GenRep( gl.get("genrep_url"), gl.get("bwt_root") )
         assembly = genrep.Assembly( assembly=job.assembly_id, genrep=g_rep )
 
-        if os.path.exists(opt.fasta_path):
+        if opt.fasta_path and os.path.exists(opt.fasta_path):
             path_to_ref = opt.fasta_path
         elif os.path.exists(assembly.fasta_path()):
             path_to_ref = assembly.fasta_path()
@@ -135,6 +135,21 @@ def main(argv = None):
         with open(hts_key+".done",'w') as done:
             json.dump(allfiles,done)
 
+        if 'email' in gl:
+            r = email.EmailReport( sender=gl['email']['sender'],
+                                   to=str(job.email).split(','),
+                                   subject="snp job "+str(job.description),
+                                   smtp_server=gl['email']['smtp'] )
+            r.appendBody('''
+Your SNP job is finished.
+
+The description was:
+'''+str(job.description)+'''
+and its unique key is '''+hts_key+'''.
+
+You can retrieve the results at this url:
+'''+gl['hts_snp']['url']+"jobs/"+hts_key+"/get_results")
+            r.send()
         return 0
     except Usage, err:
         print >>sys.stderr, err.msg

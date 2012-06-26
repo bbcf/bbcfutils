@@ -129,7 +129,7 @@ def main():
         # E-mail #
         if 'email' in gl:
             r = email.EmailReport( sender=gl['email']['sender'],
-                                   to=str(job.email),
+                                   to=str(job.email).split(','),
                                    subject="RNA-seq job "+str(job.description),
                                    smtp_server=gl['email']['smtp'] )
             r.appendBody('''Your RNA-seq job is finished.
