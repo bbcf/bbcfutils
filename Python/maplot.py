@@ -14,10 +14,6 @@ from scipy import stats
 import matplotlib.pyplot as plt
 
 
-class Usage(Exception):
-    def __init__(self,  msg):
-        self.msg = msg
-
 def unique_filename(len=20, path=None):
     """Return a *len*-characters random filename, unique in the given *path*."""
     if not path: path = os.getcwd()
@@ -41,16 +37,22 @@ def guess_file_format(f, sep=None):
         f.seek(0); header=f.readline()
     return dialect, header
 
-def name_or_index(cols, dialect, header):
+def _name_or_index(cols, dialect, header):
     """Given an array *cols*, detect if elements are indices of *header* or elements of *header*.
-    Returns an array of Python indices (0 to n-1) - instead of the user-friendly (1 to n)."""
-    if all([c in header.split(dialect.delimiter) for c in cols]):
-        cols = [header.split(dialect.delimiter).index(c) for c in cols]
+    Returns a dictionary of Python indices of the form {1:[2,3],2:[4,5]} if group 1 is made of
+    runs (columns) 2 and 3, and group 2 of runs 4 and 5."""
+    cols = eval(str(cols))
+    if isinstance(cols, dict):
+        for k,v in cols.iteritems(): cols[k] = [x-1 for x in v]
+        return cols
+    elif all([c in header.split(dialect.delimiter) for c in cols]):
+        cols = [[header.split(dialect.delimiter).index(c)] for c in cols]
     else:
-        try: cols = [int(c)-1 for c in cols]
+        try: cols = [[int(c)-1] for c in cols]
         except ValueError:
             print "\nError: --cols must contain column names or indices (got %s)." % cols
             print "Detected header: %s" % header
+    cols = dict(zip(range(1,len(cols)+1),cols))
     return cols
 
 
@@ -112,16 +114,19 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
             dialect,header = guess_file_format(f,sep)
             try: csvreader = csv.reader(f, dialect=dialect, quoting=csv.QUOTE_NONE)
             except TypeError: csvreader = csv.reader(f, dialect='excel-tab', quoting=csv.QUOTE_NONE)
-            pycols = name_or_index(cols, dialect, header)
-            pylabels = name_or_index(labels, dialect, header)
+            pycols = _name_or_index(cols, dialect, header)
+            pylabels = _name_or_index(labels, dialect, header)
             # Read the file
             n=[]; m=[]; r=[]; p=[]
             for row in csvreader:
-                try: c1 = float(row[pycols[0]]); c2 = float(row[pycols[1]])
+                try:
+                    c1 = numpy.mean([float(row[x]) for x in pycols[1]])
+                    c2 = numpy.mean([float(row[x]) for x in pycols[2]])
                 except ValueError: continue # Skip line if contains NA, nan, etc.
                 if (c1*c2 > lower):
-                    counts[row[pylabels[0]]] = (c1,c2)
-                    n.append(' | '.join([row[l] for l in pylabels]))
+                    label = '|'.join([row[x] for x in pylabels[1]])
+                    counts[label] = (c1,c2)
+                    n.append(label)
                     m.append(numpy.log10(numpy.sqrt(c1*c2)))
                     r.append(numpy.log2(c1/c2))
                 p.append(None) # future p-values, not used yet
@@ -360,6 +365,10 @@ class AnnoteFinder:
 
 #---------------------------- MAIN ------------------------------#
 
+class Usage(Exception):
+    def __init__(self,  msg):
+        self.msg = msg
+
 usage = """
 
 maplot.py [-h] [-c --cols] [-l --labels] [-m --mode] [-f --format] [-s --sep]
@@ -438,22 +447,29 @@ def main():
         parser.add_option("-e","--extremes", default=False, type="int", help=help.next())
 
         (opt, args) = parser.parse_args()
+
         args = [os.path.abspath(a) for a in args]
+        if len(args) < 1:
+            parser.error("At least one data file must be specified.\n")
+        for a in args:
+            assert os.path.exists(a), "File not found: %s\n" % a
 
         annotate = None
         if opt.annotate:
             annotate = [int(b) for b in opt.annotate.split(",")]
-            assert len(args) == len(annotate), "There must be one digit per dataset in --annotate."
+            assert len(args) == len(annotate), "There must be one digit per dataset in --annotate.\n"
         limits = [None or opt.xmin, None or opt.xmax, None or opt.ymin, None or opt.ymax]
         slimits = [None or opt.smin, None or opt.smax]
-        cols = opt.cols.split(",")
+        cols = opt.cols
+        if not cols.startswith("{"):
+            cols = cols.split(",")
+            if len(cols) != 2:
+                parser.error("--cols must be *two* integers or strings separated by commas (got %s).\n" % opt.cols)
         labels = opt.labels.split(",")
-        if len(cols) != 2:
-            parser.error("--cols must be *two* integers or strings separated by commas (got %s)." % opt.cols)
         if opt.mode not in ["normal","interactive","json"]:
-            parser.error("--mode must be one of 'normal','interactive', or 'json' (got %s)." % opt.mode)
+            parser.error("--mode must be one of 'normal','interactive', or 'json' (got %s).\n" % opt.mode)
         if opt.format not in ["counts","rpkm"]:
-            parser.error("--format must be one of 'counts' or 'rpkm' (got %s)." % opt.format)
+            parser.error("--format must be one of 'counts' or 'rpkm' (got %s).\n" % opt.format)
 
         MAplot(args, cols=cols, labels=labels, mode=opt.mode, data_format=opt.format, sep=opt.sep,
                 limits=limits, slimits=slimits,deg=opt.deg, bins=opt.bins, assembly_id=opt.assembly,
@@ -467,4 +483,5 @@ def main():
 
 if __name__ == '__main__':
     sys.exit(main())
+
 
