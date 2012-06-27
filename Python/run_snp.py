@@ -117,9 +117,9 @@ def main(argv = None):
 
             # Add exon & codon information & write the real file
             outall,outexons = snp.annotate_snps(chr_filename,sample_names,assembly)
-            description = common.set_file_descr("allSNP.txt",groupId=gid,step="SNPs",type="txt")
+            description = common.set_file_descr("allSNP.txt",step="SNPs",type="txt")
             ex.add(outall,description=description)
-            description = common.set_file_descr("exonsSNP.txt",groupId=gid,step="SNPs",type="txt")
+            description = common.set_file_descr("exonsSNP.txt",step="SNPs",type="txt")
             ex.add(outexons,description=description)
 
         allfiles = common.get_files(ex.id, M)
