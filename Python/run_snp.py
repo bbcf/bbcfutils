@@ -105,7 +105,7 @@ def main(argv = None):
                 if len(allSNPpos) == 0: continue
                 # Write results in a temporary file, for this chromosome
                 chr_filename[chrom] = snp.write_pileupFile(
-                    dictPileup, samples_names, allSNPpos, chrom,
+                    dictPileup, sample_names, allSNPpos, chrom,
                     minCoverage = parameters[0],
                     minSNP = parameters[1])
             # keep the same order
