@@ -96,7 +96,7 @@ def main(argv = None):
                 for chrom,ref in genomeRef.iteritems():
                     future = snp.sam_pileup.nonblocking( ex, assembly, bam, ref,
                                                          via=opt.via, stdout=pileupFilename )
-                    pileup_dict[chrom][pileupFilename] = (future,sample_name) # {chr: {filename: future}}
+                    pileup_dict[chrom][pileupFilename] = (future,sample_name) # {chr: {filename: (future,name)}}
             chr_filename = {}
             for chrom, dictPileup in pileup_dict.iteritems():
                 # Get the results from sam_pileup
@@ -105,7 +105,7 @@ def main(argv = None):
                 if len(allSNPpos) == 0: continue
                 # Write results in a temporary file, for this chromosome
                 chr_filename[chrom] = snp.write_pileupFile(
-                    dictPileup, samples_names, allSNPpos, chrom,
+                    dictPileup, sample_names, allSNPpos, chrom,
                     minCoverage = parameters[0],
                     minSNP = parameters[1])
             # keep the same order

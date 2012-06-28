@@ -89,7 +89,7 @@ def main():
             logfile.write("Starting workflow.\n");logfile.flush()
             result = rnaseq.rnaseq_workflow(ex, job, bam_files, pileup_level=pileup_level, via=opt.via)
             rnaseq.differential_analysis(ex, result, rpath=gl.get('script_path'),
-                                             design=opt.design, contrast=opt.contrast)
+                                         design=opt.design, contrast=opt.contrast)
 
             # Create GDV project #
             if job.options['create_gdv_project']:
