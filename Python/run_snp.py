@@ -85,9 +85,10 @@ def main(argv = None):
             logfile.write("done\n");logfile.flush()
 
             pileup_dict = dict((chrom,{}) for chrom in genomeRef.keys()) # {chr: {}}
-            samples = dict((chrom,{}) for chrom in genomeRef.keys()) # {chr: {}}
+            sample_names = []
             for gid, files in bam_files.iteritems():
                 sample_name = groups[gid]['name']
+                sample_names.append(sample_name)
                 runs = [r['bam'] for r in files.itervalues()]
                 bam = mapseq.merge_bam(ex,runs)
                 pileupFilename = common.unique_filename_in()
@@ -95,11 +96,7 @@ def main(argv = None):
                 for chrom,ref in genomeRef.iteritems():
                     future = snp.sam_pileup.nonblocking( ex, assembly, bam, ref,
                                                          via=opt.via, stdout=pileupFilename )
-                    pileup_dict[chrom][pileupFilename] = future # {chr: {filename: future}}
-                    samples[chrom][pileupFilename] = sample_name
-            sample_names = [samples[pileup_dict.iterkeys().next()][p] \
-                            for p in pileup_dict.itervalues().next().iterkeys()] # keep the same order
-
+                    pileup_dict[chrom][pileupFilename] = (future,sample_name) # {chr: {filename: future}}
             chr_filename = {}
             for chrom, dictPileup in pileup_dict.iteritems():
                 # Get the results from sam_pileup
@@ -108,9 +105,11 @@ def main(argv = None):
                 if len(allSNPpos) == 0: continue
                 # Write results in a temporary file, for this chromosome
                 chr_filename[chrom] = snp.write_pileupFile(
-                    samples[chrom], allSNPpos, chrom,
+                    dictPileup, samples_names, allSNPpos, chrom,
                     minCoverage = parameters[0],
                     minSNP = parameters[1])
+            # keep the same order
+            # sample_names = [samples[pileup_dict.keys()[0]][p] for p in pileup_dict.values()[0].keys()] 
 
             #shutil.copy(chr_filename['chr5'], '../../'+'chr5')
             #shutil.copy(chr_filename['chrV'], '../../'+'yeast_chrV')
