@@ -94,7 +94,7 @@ def main(argv = None):
                                    subject="Demultiplexing job "+str(job.description),
                                    smtp_server=gl['email']['smtp'] )
             r.appendBody('''
-Your chip-seq job is finished.
+Your demultiplexing job is finished.
 
 The description was:
 '''+str(job.description)+'''
