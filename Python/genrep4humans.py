@@ -21,7 +21,7 @@ opts = (("-l", "--list", "list available assemblies, or a chromosome table if an
         ("-t", "--regions", "extract regions to fasta (ex: 'chr2:2-1356,chr1:10-45')", {'default': None}),
         ("-o", "--output", "output file (default standard output)", {'default': None}),
         ("-r", "--root", "genrep root directory (default: '/db/genrep/')", {'default': '/db/genrep/'}),
-        ("-u", "--url", "url to genrep (default: 'http://bbcftools.vital-it.ch/genrep/')",{'default': 'http://bbcftools.vital-it.ch/genrep/'}),
+        ("-u", "--url", "url to genrep (default: 'http://bbcf-serv01.epfl.ch/genrep/')",{'default': 'http://bbcf-serv01.epfl.ch/genrep/'}),
         ("-c", "--convert", "convert bam headers to natural chromosome names",{}))
 
 class Usage(Exception):

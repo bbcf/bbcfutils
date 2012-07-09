@@ -81,9 +81,9 @@ def main():
             logfile.write("Map reads.\n");logfile.flush()
             mapped_files = map_groups( ex, job, assembly, map_args )
             logfile.write("Make stats:\n");logfile.flush()
-            debugfile.write("GroupId_GroupName:\t")
+            logfile.write("GroupId_GroupName:\t")
             for k,v in job.groups.iteritems():
-                debugfile.write(str(k)+"_"+str(v['name'])+"\t");debugfile.flush()
+                logfile.write(str(k)+"_"+str(v['name'])+"\t");debugfile.flush()
                 pdf = add_pdf_stats( ex, mapped_files,
                                      {k:v['name']},
                                      gl.get('script_path',''),
