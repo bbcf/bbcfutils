@@ -2,8 +2,6 @@
 
 """
 SNP detection workflow.
-
-run_snp.py -v local -c /scratch/cluster/monthly/jdelafon/snp/config/keane.config -d /scratch/cluster/monthly/jdelafon/snp/snp_minilims -w wdir -f /scratch/cluster/monthly/jdelafon/snp/reference/chr5.tar.gz
 """
 from bein import execution, MiniLIMS
 from bein.util import use_pickle, add_pickle, pause
@@ -108,14 +106,12 @@ def main(argv = None):
                     dictPileup, sample_names, allSNPpos, chrom,
                     minCoverage = parameters[0],
                     minSNP = parameters[1])
-            # keep the same order
-            # sample_names = [samples[pileup_dict.keys()[0]][p] for p in pileup_dict.values()[0].keys()] 
 
             #shutil.copy(chr_filename['chr5'], '../../'+'chr5')
             #shutil.copy(chr_filename['chrV'], '../../'+'yeast_chrV')
 
             # Add exon & codon information & write the real file
-            outall,outexons = snp.annotate_snps(chr_filename,sample_names,assembly)
+            outall,outexons = snp.annotate_snps(chr_filename,sample_names,assembly,genomeRef)
             description = common.set_file_descr("allSNP.txt",step="SNPs",type="txt")
             ex.add(outall,description=description)
             description = common.set_file_descr("exonsSNP.txt",step="SNPs",type="txt")
