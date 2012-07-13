@@ -91,18 +91,19 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
     """
     # Constants:
     if data_format == "counts":
+        #lower bound on scores
         lower = 1
         #bounds of what is taken into account for the computation of the splines
         spline_xmin = math.log10(math.sqrt(10)) #counts of 2,3 -> log(sqrt(2*3))
         spline_xmax = None
         #bounds of the section of the splines that is displayed
-        slimits[0] = slimits[0] or 1
+        slimits[0] = slimits[0] or 0.8
     elif data_format == "rpkm":
         lower = 0
         spline_xmin = math.log10(0.1)
         spline_xmax = None
         slimits[0] = slimits[0] or -1
-    min_pts_per_bin = 20
+    min_pts_per_bin = 12
     output_filename = unique_filename()
 
     # Extract data from CSV
@@ -181,7 +182,7 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
 
             coeffs = numpy.polyfit(x, h, deg)
             smin = slimits[0] or x[0]
-            smax =  slimits[1] or 0.85*x[-1]
+            smax =  slimits[1] or 1.*x[-2]
             x_spline = numpy.array(numpy.linspace(smin, smax, 10*bins))
             y_spline = numpy.polyval(coeffs, x_spline)
 
