@@ -116,6 +116,7 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
             except TypeError: csvreader = csv.reader(f, dialect='excel-tab', quoting=csv.QUOTE_NONE)
             pycols = _name_or_index(cols, dialect, header)
             pylabels = _name_or_index(labels, dialect, header)
+            pylabels = [x[0] for x in pylabels.values()]
             # Read the file
             n=[]; m=[]; r=[]; p=[]
             for row in csvreader:
@@ -124,7 +125,7 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
                     c2 = numpy.mean([float(row[x]) for x in pycols[2]])
                 except ValueError: continue # Skip line if contains NA, nan, etc.
                 if (c1*c2 > lower):
-                    label = '|'.join([row[x] for x in pylabels[1]])
+                    label = '|'.join([row[x] for x in pylabels])
                     counts[label] = (c1,c2)
                     n.append(label)
                     m.append(numpy.log10(numpy.sqrt(c1*c2)))
