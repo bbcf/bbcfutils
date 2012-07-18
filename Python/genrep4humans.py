@@ -78,7 +78,7 @@ def main():
             seq = assembly.fasta_from_regions(regions=regions, out={})[0]
             for reg in regions:
                 fout.write(">"+assembly.name+"|"+reg[0]+":"+str(reg[1])+"-"+str(reg[2])+"\n")
-                fout.write(seq[reg[0]].pop(0)+"\n")
+                if seq[reg[0]]: fout.write(seq[reg[0]].pop(0)+"\n")
         if opt.bowtie:
             fout.write(">"+str(assembly.id)+":"+assembly.name+" bowtie index prefix\n")
             fout.write(assembly.index_path+"\n")
