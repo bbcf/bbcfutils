@@ -72,6 +72,7 @@ def main():
                 fout.write("\n".join(g_rep.assemblies_available())+"\n")
             return 0
         if not(opt.assembly):
+            parser.print_help()
             return 0
         if opt.regions:
             seq = assembly.fasta_from_regions(regions=regions, out={})[0]
