@@ -47,4 +47,4 @@ for a in genrep.GenRep().assemblies_available():
     if os.path.exists(outname): os.unlink(outname)
     outf = track(outname,fields=sql_fields+new_fields,
                  chrmeta=assembly.chrmeta,**params)
-    outf.write(map_chromosomes(xsplit,assembly))
+    outf.write(map_chromosomes(xsplit,assembly.chromosomes))
