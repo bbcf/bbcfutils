@@ -117,6 +117,9 @@ def main(argv = None):
             description = common.set_file_descr("exonsSNP.txt",step="SNPs",type="txt")
             ex.add(outexons,description=description)
 
+            # Create tracks for UCSC and GDV:
+            snp.create_tracks(ex,outall,sample_names,assembly)
+
         allfiles = common.get_files(ex.id, M)
         logfile.close()
         debugfile.close()
