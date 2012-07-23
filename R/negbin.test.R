@@ -42,7 +42,7 @@ if (sep=='tab') sep='\t'
 #options(error = quote({dump.frames(to.file=TRUE); q()})) # creates an error log file `last.dump.rda`
 
 main <- function(data_file, sep="\t", output_file=''){
-    data = read.table(data_file, header=T, row.names=1, sep=sep)
+    data = read.table(data_file, header=T, row.names=1, sep=sep, quote="")
     header = colnames(data)
     counts = grep("counts",header,fixed=T)
     data = round(data[,counts])
