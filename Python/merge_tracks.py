@@ -57,7 +57,7 @@ shiftval = int(options.shift)
 if shiftval < 0:
     slim = 300
     chrsize,chrom = sorted([(v['length'],k) for k,v in chrmeta.iteritems()],reverse=True)[0]
-    xcor = correlation([tfwd.read(chrom),trev.read(chrom)],1,chrsize,limits=(-slim,slim))
+    xcor = correlation([tfwd.read(chrom),trev.read(chrom)],(1,chrsize),limits=(-slim,slim))
     shiftval = (xcor.argmax()-slim-1)/2
     print "Autocorrelation shift=%i, correlation is %f." %(shiftval,xcor.max())
 
