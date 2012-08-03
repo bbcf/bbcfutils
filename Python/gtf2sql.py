@@ -1,5 +1,5 @@
 from bbcflib.btrack import track, ensembl_to_ucsc
-from bbcflib.bFlatMajor import split_field, map_chromosomes
+from bbcflib.bFlatMajor.common import split_field, map_chromosomes
 from bbcflib import genrep
 import os, re
 

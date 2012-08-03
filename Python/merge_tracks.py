@@ -64,8 +64,8 @@ if shiftval < 0:
 tout = track.track(options.output,fields=fields,chrmeta=chrmeta,info={'datatype': 'quantitative'})
 mode = 'write'
 for chrom in chrmeta.keys():
-    tout.write(merge_scores([_shift(tfwd.read(selection=chrom), shiftval),
-                             _shift(trev.read(selection=chrom),-shiftval)]),
+    tout.write(merge_scores([_shift(tfwd.read(chrom), shiftval),
+                             _shift(trev.read(chrom),-shiftval)]),
                chrom=chrom,mode=mode,clip=True)
     mode = 'append'
 tout.close()
