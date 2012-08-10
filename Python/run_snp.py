@@ -7,7 +7,7 @@ from bein import execution, MiniLIMS
 from bein.util import use_pickle, add_pickle, pause
 from bbcflib import daflims, genrep, frontend, gdv, mapseq, common, snp
 from bbcflib import email
-import sys, os, json, optparse, shutil
+import sys, os, json, optparse, shutil, warnings
 
 
 class Usage(Exception):
@@ -84,8 +84,13 @@ def main(argv = None):
 
             pileup_dict = dict((chrom,{}) for chrom in genomeRef.keys()) # {chr: {}}
             sample_names = []
+            bam = {}
             for gid, files in bam_files.iteritems():
                 sample_name = groups[gid]['name']
+                coverage = files[gid]['stats']['actual_coverage']
+                if coverage < 5:
+                    warnings.warn("Low coverage (%s) in bam file '%s' can lead to poor results." \
+                                   % (coverage,files[gid]['bam']), Warning)
                 sample_names.append(sample_name)
                 runs = [r['bam'] for r in files.itervalues()]
                 bam = mapseq.merge_bam(ex,runs)
@@ -94,21 +99,15 @@ def main(argv = None):
                 for chrom,ref in genomeRef.iteritems():
                     future = snp.sam_pileup.nonblocking( ex, assembly, bam, ref,
                                                          via=opt.via, stdout=pileupFilename )
-                    pileup_dict[chrom][pileupFilename] = (future,sample_name) # {chr: {filename: (future,name)}}
+                    pileup_dict[chrom][pileupFilename] = (future,sample_name,bam) # {chr: {filename: (future,name)}}
             chr_filename = {}
             for chrom, dictPileup in pileup_dict.iteritems():
                 # Get the results from sam_pileup
                 # Write the list of all snps of THIS chromosome, from ALL samples
-                allSNPpos,parameters = snp.posAllUniqSNP(dictPileup) # {3021:'A'}, (minCoverage, minSNP)
+                allSNPpos = snp.posAllUniqSNP(dictPileup) # {3021:'A'}
                 if len(allSNPpos) == 0: continue
                 # Write results in a temporary file, for this chromosome
-                chr_filename[chrom] = snp.write_pileupFile(
-                    dictPileup, sample_names, allSNPpos, chrom,
-                    minCoverage = parameters[0],
-                    minSNP = parameters[1])
-
-            #shutil.copy(chr_filename['chr5'], '../../'+'chr5')
-            #shutil.copy(chr_filename['chrV'], '../../'+'yeast_chrV')
+                chr_filename[chrom] = snp.write_pileupFile(dictPileup, sample_names, allSNPpos, chrom)
 
             # Add exon & codon information & write the real file
             outall,outexons = snp.annotate_snps(chr_filename,sample_names,assembly,genomeRef)
