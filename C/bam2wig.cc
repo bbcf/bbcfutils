@@ -286,20 +286,20 @@ void printbed( posh &counts, const double cntw=1.0,
 inline static int accumulate( const samtools::bam1_t *b, void *d ) {
     samdata *data = (samdata*)d;
 // ****************** NH field = Number of Hits for this tag
-    int cur_count = 1;
+    int cur_count = 1, read_cut = opts.cut;
     if (bam_aux_get(b,"NH")) cur_count = samtools::bam_aux2i(bam_aux_get(b,"NH"));
     if (cur_count <= opts.maxhits || opts.maxhits < 0) {
 	float weight = 1.0/cur_count;
 	data->ntags++;
 // ****************** if cut > 0, set tag size = cut even if longer than read 
-	if (opts.cut < 0) opts.cut = b->core.l_qseq;
+	if (opts.cut < 0) read_cut = b->core.l_qseq;
 // ****************** ref is the target set (therefore current set is the control),
 // ****************** only record at positions present in ref
-	int start = b->core.pos+1, stop = b->core.pos+opts.cut;
+	int start = b->core.pos+1, stop = b->core.pos+read_cut;
 // ****************** BAM is 0-based, but our array will be 1-based
 	if (bam1_strand(b)) {
 	    stop = start+b->core.l_qseq-1;
-	    start = stop-opts.cut+1;
+	    start = stop-read_cut+1;
 	    if (start<1) start=1;
 	}
 	for ( int i = start; i <= stop; i++ ) {
