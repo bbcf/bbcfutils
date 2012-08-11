@@ -87,10 +87,6 @@ def main(argv = None):
             bam = {}
             for gid, files in bam_files.iteritems():
                 sample_name = groups[gid]['name']
-                coverage = files[gid]['stats']['actual_coverage']
-                if coverage < 5:
-                    warnings.warn("Low coverage (%s) in bam file '%s' can lead to poor results." \
-                                   % (coverage,files[gid]['bam']), Warning)
                 sample_names.append(sample_name)
                 runs = [r['bam'] for r in files.itervalues()]
                 bam = mapseq.merge_bam(ex,runs)
