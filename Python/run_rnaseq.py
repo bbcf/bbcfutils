@@ -64,20 +64,20 @@ def main():
         description = opt.key or opt.config
         pileup_level = opt.pileup_level.split(',')
 
-        job.options['ucsc_bigwig'] = job.options.get('ucsc_bigwig',True)
-        job.options['create_gdv_project'] = job.options.get('create_gdv_project',False)
+        job.options.setdefault('ucsc_bigwig',True)
+        job.options.setdefault('create_gdv_project',False)
+        job.options.setdefault('gdv_key',"")
         if isinstance(job.options['create_gdv_project'],str):
             job.options['create_gdv_project'] = job.options['create_gdv_project'].lower() in ['1','true','t']
         gdv_project = {'project':{'id': job.options.get('gdv_project_id',0)}}
-        if not('gdv_key' in job.options): job.options['gdv_key'] = ""
         job.options['discard_pcr_duplicates'] = False
+
         logfile = open((opt.key or opt.config)+".log",'w')
         debugfile = open((opt.key or opt.config)+".debug",'w')
         debugfile.write(json.dumps(job.options)+"\n\n"+json.dumps(gl)+"\n");debugfile.flush()
 
         # Retrieve mapseq output
-        mapseq_url = None
-        if 'hts_mapseq' in gl: mapseq_url = gl['hts_mapseq']['url']
+        mapseq_url = gl.get('hts_mapseq',{}).get('url')
 
         # Program body #
         with execution(M, description=description, remote_working_directory=opt.wdir ) as ex:

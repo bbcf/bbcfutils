@@ -53,14 +53,14 @@ def main(argv = None):
         if 'hts_mapseq' in gl:
             mapseq_url = gl['hts_mapseq']['url']
 
-        job.options['ucsc_bigwig'] = job.options.get('ucsc_bigwig',True)
+        job.options.setdefault('ucsc_bigwig',True)
         if isinstance(job.options['ucsc_bigwig'],basestring):
             job.options['ucsc_bigwig'] = job.options['ucsc_bigwig'].lower() in ['1','true','t']
-        job.options['create_gdv_project'] = job.options.get('create_gdv_project',False)
+        job.options.setdefault('create_gdv_project',False)
         if isinstance(job.options['create_gdv_project'],basestring):
             job.options['create_gdv_project'] = job.options['create_gdv_project'].lower() in ['1','true','t']
         gdv_project = {'project':{'id': job.options.get('gdv_project_id',0)}}
-        if not('gdv_key' in job.options): job.options['gdv_key'] = ""
+        job.options.setdefault('gdv_key',"")
 
         g_rep = genrep.GenRep( gl.get("genrep_url"), gl.get("bwt_root") )
         assembly = genrep.Assembly( assembly=job.assembly_id, genrep=g_rep )
@@ -78,7 +78,7 @@ def main(argv = None):
                 gdv_project = gdv.get_project(mail=gl['gdv']['email'], key=gl['gdv']['key'], project_key=job.options['gdv_key'])
                 if 'error' in gdv_project:
                     logfile.write("\nCreating GDV project.\n");logfile.flush()
-                    gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'], 
+                    gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
                                                    job.description, assembly.id,
                                                    gl['gdv']['url'] )
                 debugfile.write("GDV project: "+str(gdv_project['project']['id'])+"\n");debugfile.flush()
@@ -91,9 +91,9 @@ def main(argv = None):
             urls  = [download_url+str(k) for k in allfiles['sql'].keys()]
             names = [re.sub('\.sql.*','',str(f)) for f in allfiles['sql'].values()]
             logfile.write("Uploading GDV tracks:\n"+" ".join(urls)+"\n"+" ".join(names)+"\n");logfile.flush()
-            try: 
-                tr = gdv.multiple_tracks(mail=gl['gdv']['email'], key=gl['gdv']['key'], serv_url=gl['gdv']['url'], 
-                                         project_id=gdv_project['project']['id'], 
+            try:
+                tr = gdv.multiple_tracks(mail=gl['gdv']['email'], key=gl['gdv']['key'], serv_url=gl['gdv']['url'],
+                                         project_id=gdv_project['project']['id'],
                                          extensions=['sql']*len(urls),
                                          urls=urls, tracknames=names, force=True )
                 debugfile.write("GDV Tracks Status\n"+"\n".join([str(v) for v in tr])+"\n");debugfile.flush()

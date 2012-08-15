@@ -55,18 +55,18 @@ def main():
                         for loc,pwd in gl['lims']['passwd'].iteritems())
         else:
             dafl = None
-        job.options['compute_densities'] = job.options.get('compute_densities',True)
+        job.options.setdefault('compute_densities',True)
         if isinstance(job.options['compute_densities'],basestring):
             job.options['compute_densities'] = job.options['compute_densities'].lower() in ['1','true','t']
-        job.options['ucsc_bigwig'] = job.options.get('ucsc_bigwig',True)
+        job.options.setdefault('ucsc_bigwig',True)
         if isinstance(job.options['ucsc_bigwig'],basestring):
             job.options['ucsc_bigwig'] = job.options['ucsc_bigwig'].lower() in ['1','true','t']
         job.options['ucsc_bigwig'] &= (assembly.intype == 0)
-        job.options['create_gdv_project'] = job.options.get('create_gdv_project',False)
+        job.options.setdefault('create_gdv_project',False)
         if isinstance(job.options['create_gdv_project'],basestring):
             job.options['create_gdv_project'] = job.options['create_gdv_project'].lower() in ['1','true','t']
         gdv_project = {'project':{'id': job.options.get('gdv_project_id',0)}}
-        if not('gdv_key' in job.options): job.options['gdv_key'] = ""
+        job.options.setdefault('gdv_key',"")
         job.options['create_gdv_project'] = job.options['create_gdv_project'] and job.options['compute_densities']
         map_args = job.options.get('map_args',{})
         map_args['via'] = opt.via
@@ -118,9 +118,9 @@ def main():
             urls  = [download_url+str(k) for k in allfiles['sql'].keys()]
             names = [re.sub('\.sql.*','',str(f)) for f in allfiles['sql'].values()]
             logfile.write("Uploading GDV tracks:\n"+" ".join(urls)+"\n"+" ".join(names)+"\n");logfile.flush()
-            try: 
-                tr = gdv.multiple_tracks(mail=gl['gdv']['email'], key=gl['gdv']['key'], serv_url=gl['gdv']['url'], 
-                                         project_id=gdv_project['project']['id'], 
+            try:
+                tr = gdv.multiple_tracks(mail=gl['gdv']['email'], key=gl['gdv']['key'], serv_url=gl['gdv']['url'],
+                                         project_id=gdv_project['project']['id'],
                                          extensions=['sql']*len(urls),
                                          urls=urls, tracknames=names, force=True )
                 debugfile.write("GDV Tracks Status\n"+"\n".join([str(v) for v in tr])+"\n");debugfile.flush()
