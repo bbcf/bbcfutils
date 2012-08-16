@@ -7,7 +7,7 @@ from bein import execution, MiniLIMS
 from bein.util import use_pickle, add_pickle
 from bbcflib import genrep, frontend, gdv, mapseq, common, snp
 from bbcflib import email
-import sys, os, json, optparse
+import sys, os, json, optparse, re
 
 
 class Usage(Exception):
@@ -109,7 +109,7 @@ def main(argv = None):
                 allSNPpos = snp.posAllUniqSNP(dictPileup) # {3021:'A'}
                 if len(allSNPpos) == 0: continue
                 # Write results in a temporary file, for this chromosome
-                chr_filename[chrom] = snp.write_pileupFile(dictPileup, sample_names, allSNPpos, chrom)
+                chr_filename[chrom] = snp.write_pileupFile(dictPileup,sample_names,allSNPpos,chrom,assembly)
 
             # Add exon & codon information & write the real file
             outall,outexons = snp.annotate_snps(chr_filename,sample_names,assembly,genomeRef)
