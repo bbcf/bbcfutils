@@ -10,6 +10,7 @@ The class AnnoteFinder is used to create interactive - clickable - plots.
 
 import sys, os, json, urllib, math, csv, optparse, random, string
 import numpy
+from numpy import asarray,log,log10,log2,exp,sqrt,mean,median,seterr,float_,round
 from scipy import stats
 import matplotlib.pyplot as plt
 
@@ -55,10 +56,46 @@ def _name_or_index(cols, dialect, header):
     cols = dict(zip(range(1,len(cols)+1),cols))
     return cols
 
+def read_data(filename,sep,cols,labels,lower):
+    names=[]; counts=[]; pvals=[]
+    with open(filename,'r') as f:
+        # Guess file format & extract columns indexes
+        dialect,header = guess_file_format(f,sep)
+        try: csvreader = csv.reader(f, dialect=dialect, quoting=csv.QUOTE_NONE)
+        except TypeError: csvreader = csv.reader(f, dialect='excel-tab', quoting=csv.QUOTE_NONE)
+        pycols = _name_or_index(cols, dialect, header)
+        pylabels = _name_or_index(labels, dialect, header)
+        pylabels = [x[0] for x in pylabels.values()]
+        # Read the file
+        for row in csvreader:
+            try:
+                c1 = mean([float(row[x]) for x in pycols[1]])
+                c2 = mean([float(row[x]) for x in pycols[2]])
+            except ValueError: continue # Skip line if contains NA, nan, etc.
+            if (c1*c2 > lower):
+                label = '|'.join([row[x] for x in pylabels])
+                counts.append((c1,c2))
+                names.append(label)
+            pvals.append(None) # future p-values, not used yet
+    counts = asarray(counts)
+    return counts, names, pvals
+
+def _normalize(counts,mode):
+    seterr(divide='ignore')
+    if mode == 'tags':
+        colsum = counts.T.sum(1)
+        counts = (counts / colsum) * (10**round(log10(max(colsum))))
+        sf = None
+    if mode == 'sf':
+        loggeomeans = mean(log(counts),1)
+        sf = exp(median(log(counts).T - loggeomeans, 1))
+        counts = counts / sf
+    return counts, sf
+
 
 def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_format="counts",
            sep=None, limits=[None,None,None,None], slimits=[None,None], deg=3, bins=30,
-           assembly_id=None, quantiles=True, title="MA-plot", extremes=False):
+           assembly_id=None, normalize='sf', quantiles=True, title="MA-plot", extremes=False):
     """
     Creates an "MA-plot" to compare transcription levels of a set of genes
     in two different conditions. It returns the name of the .png file produced,
@@ -84,6 +121,7 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
     :param bins: (int) the number of divisions of the x axis for quantiles estimation.
     :param assembly_id: (str or int) if an assembly ID is given,
         the json output will provide links to information on genes, using GenRep.
+    :param normalize: (str) ``tags`` (total tag count) or ``sf`` (size factors).
     :param quantiles: (bool) if False, no quantile splines are drawn.
     :param title: (str) title to be written on top of the graph.
     :param extremes: (int) create an output file containing features for which ratios are outside the specified
@@ -91,12 +129,11 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
     """
     # Constants:
     if data_format == "counts":
-        #lower bound on scores
-        lower = 1
-        #bounds of what is taken into account for the computation of the splines
+        lower = 1 #lower bound on scores
+        #bounds of what is taken into account for the computation of the splines:
         spline_xmin = math.log10(math.sqrt(10)) #counts of 2,3 -> log(sqrt(2*3))
         spline_xmax = None
-        #bounds of the section of the splines that is displayed
+        #bounds of the section of the splines that is displayed:
         slimits[0] = slimits[0] or 0.8
     elif data_format == "rpkm":
         lower = 0
@@ -108,36 +145,22 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
 
     # Extract data from CSV
     if isinstance(dataset,str): dataset = [dataset]
-    names=[]; means=[]; ratios=[]; pvals=[]; points=[]; groups={}; counts={}
+    allnames=[]; allmeans=[]; allratios=[]; allpvals=[]; points=[]
+    groups={}; counts={}
     for data in dataset:
-        with open(data,'r') as f:
-            # Guess file format
-            dialect,header = guess_file_format(f,sep)
-            try: csvreader = csv.reader(f, dialect=dialect, quoting=csv.QUOTE_NONE)
-            except TypeError: csvreader = csv.reader(f, dialect='excel-tab', quoting=csv.QUOTE_NONE)
-            pycols = _name_or_index(cols, dialect, header)
-            pylabels = _name_or_index(labels, dialect, header)
-            pylabels = [x[0] for x in pylabels.values()]
-            # Read the file
-            n=[]; m=[]; r=[]; p=[]
-            for row in csvreader:
-                try:
-                    c1 = numpy.mean([float(row[x]) for x in pycols[1]])
-                    c2 = numpy.mean([float(row[x]) for x in pycols[2]])
-                except ValueError: continue # Skip line if contains NA, nan, etc.
-                if (c1*c2 > lower):
-                    label = '|'.join([row[x] for x in pylabels])
-                    counts[label] = (c1,c2)
-                    n.append(label)
-                    m.append(numpy.log10(numpy.sqrt(c1*c2)))
-                    r.append(numpy.log2(c1/c2))
-                p.append(None) # future p-values, not used yet
-        groups[data] = zip(n, m, r, p)
-        names.extend(n); means.extend(m); ratios.extend(r); pvals.extend(p)
-    points = zip(names, means, ratios, pvals)
-    try: xmin = min(means); xmax = max(means); ymin = min(ratios); ymax = max(ratios)
+        cnts,names,pvals = read_data(data,sep,cols,labels,lower)
+        cnts = asarray(cnts, dtype=float_)
+        if normalize: cnts,sf = _normalize(cnts,mode=normalize)
+        means = log10(sqrt(cnts[:,0]*cnts[:,1]))
+        ratios = log2(cnts[:,0]/cnts[:,1])
+        groups[data] = zip(names, means, ratios, pvals)
+        counts[data] = dict(zip(names,cnts))
+        allnames.extend(names); allmeans.extend(means); allratios.extend(ratios); allpvals.extend(pvals)
+
+    points = zip(allnames, allmeans, allratios, allpvals)
+    try: xmin = min(allmeans); xmax = max(allmeans); ymin = min(allratios); ymax = max(allratios)
     except ValueError:
-        print "\nError: non-numeric columns selected. Try to specify more suitable columns with [-c].\n"; raise
+        raise ValueError("\nError: non-numeric columns selected. Try to specify more suitable columns with [-c].\n")
 
     # Figure initialization
     fig = plt.figure(figsize=[14,9])
@@ -191,14 +214,19 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
             spline_annotes.append((k,x_spline[0],y_spline[0])) #quantile percentages
             spline_coords[k] = zip(x_spline,y_spline)
 
+        # Print extreme ratios to file
         if extremes:
             extremes_filename = "extreme_ratios_"+output_filename
             with open(extremes_filename,"w") as f:
                 c = csv.writer(f,delimiter="\t")
                 c.writerow(["Name","countsC1","countsC2","log10Mean","log2Fold"])
                 for p in extreme_ratios:
-                    c.writerow([p[0], str(counts[p[0]][0]), str(counts[p[0]][1]), str(p[1]), str(p[2])])
-            print "Ratios r<"+str(extremes)+"% "+str(100-extremes)+"%<r :", extremes_filename
+                    for data in dataset:
+                        if counts[data].get(p[0]) is not None:
+                            c.writerow([p[0], # label
+                                        str(counts[data][p[0]][0]), str(counts[data][p[0]][1]), # raw counts
+                                        str(p[1]), str(p[2])]) # mean & ratio
+            print "Ratios r < %s %s < r : %s" % (extremes,100-extremes,extremes_filename)
 
         # Annotation of splines (percentage)
         for sa in spline_annotes:
@@ -223,7 +251,7 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
         if mode == "normal": annotate = [0 for data in dataset]
         elif mode == "json": annotate = [1 for data in dataset]
     if mode == "interactive":
-        af = AnnoteFinder( means, ratios, names )
+        af = AnnoteFinder( allmeans, allratios, allnames )
         plt.connect('button_press_event', af)
         plt.draw()
         plt.show()
@@ -308,7 +336,6 @@ class AnnoteFinder:
       af = AnnoteFinder(xdata, ydata, annotes)
       connect('button_press_event', af)
   """
-
   def __init__(self, xdata, ydata, annotes, axis=None, xtol=None, ytol=None):
     self.data = zip(xdata, ydata, annotes)
     self.xrange = max(xdata) - min(xdata)
@@ -327,7 +354,7 @@ class AnnoteFinder:
     self.links = []
 
   def distance(self, x1, x2, y1, y2):
-    """Distance between two points (x1,y1) and (x2,y2)"""
+    """Euclidean distance between two points (x1,y1) and (x2,y2)"""
     return math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
 
   def __call__(self, event):
@@ -389,7 +416,7 @@ maplot.py [-h] [-c --cols] [-l --labels] [-m --mode] [-f --format] [-s --sep]
             prints to stdout a json containing enough information to reconstruct the plot using
             Javascript, or produces an interactive matplotlib figure. """
 
-help = iter([
+help=iter([
 """The numbers or names of the two columns containing the numeric data to compare, separated by
 commas. E.g. --cols 3,5.""",
 """The numbers or names of the columns containing the labels of the points, separated by
@@ -405,6 +432,8 @@ to detect it automatically. Use 'C^V' or '\t' for a <tab> delimiter.""",
 """Number of divisions of the x axis to calculate percentiles.""",
 """Identifier for the Genrep assembly (e.g. 'hg19' or 7) used to add more
 information about features into the json output.""",
+"""Normalize data: 'tags' to divide by the sum of all scores in each sample,
+'sf' to use DESeq-like size factors. 'sf' should not be used with already rpkm-normalized data.""",
 """Don't draw quantile splines. This may improve speed and lisibility in some cases.""",
 """(In 'normal' mode) Indication of which datasets to annotate.
 Must be a string of binary values separated by commas, of the same lenght as the number of datasets, \
@@ -429,23 +458,24 @@ def main():
     try:
         parser = optparse.OptionParser(usage=usage, description=description)
 
-        parser.add_option("-c", "--cols", default='2,3', help = help.next())
-        parser.add_option("-l", "--labels", default='1', help = help.next())
-        parser.add_option("-m", "--mode", default='normal', help = help.next())
-        parser.add_option("-f", "--format", default='counts', help = help.next())
-        parser.add_option("-s", "--sep", default=None, help = help.next())
-        parser.add_option("-d", "--deg", default=4, type="int", help = help.next())
-        parser.add_option("-b", "--bins", default=30, type="int", help = help.next())
-        parser.add_option("-a", "--assembly", default=None, help = help.next())
-        parser.add_option("-q", "--noquantiles", default=True, action="store_false", help = help.next())
-        parser.add_option("--annotate", default=None, help = help.next())
-        parser.add_option("--xmin", default=None, type="float", help = help.next())
-        parser.add_option("--xmax", default=None, type="float", help = help.next())
-        parser.add_option("--ymin", default=None, type="float", help = help.next())
-        parser.add_option("--ymax", default=None, type="float", help = help.next())
-        parser.add_option("--smin", default=None, type="float", help = help.next())
-        parser.add_option("--smax", default=None, type="float", help = help.next())
-        parser.add_option("-t","--title", default="MA-plot", help = help.next())
+        parser.add_option("-c", "--cols", default='2,3', help=help.next())
+        parser.add_option("-l", "--labels", default='1', help=help.next())
+        parser.add_option("-m", "--mode", default='normal', help=help.next())
+        parser.add_option("-f", "--format", default='counts', help=help.next())
+        parser.add_option("-s", "--sep", default=None, help=help.next())
+        parser.add_option("-d", "--deg", default=4, type="int", help=help.next())
+        parser.add_option("-b", "--bins", default=30, type="int", help=help.next())
+        parser.add_option("-a", "--assembly", default=None, help=help.next())
+        parser.add_option("-q", "--noquantiles", default=True, action="store_false", help=help.next())
+        parser.add_option("--normalize", default=None, help=help.next())
+        parser.add_option("--annotate", default=None, help=help.next())
+        parser.add_option("--xmin", default=None, type="float", help=help.next())
+        parser.add_option("--xmax", default=None, type="float", help=help.next())
+        parser.add_option("--ymin", default=None, type="float", help=help.next())
+        parser.add_option("--ymax", default=None, type="float", help=help.next())
+        parser.add_option("--smin", default=None, type="float", help=help.next())
+        parser.add_option("--smax", default=None, type="float", help=help.next())
+        parser.add_option("-t","--title", default="MA-plot", help=help.next())
         parser.add_option("-e","--extremes", default=False, type="int", help=help.next())
 
         (opt, args) = parser.parse_args()
@@ -472,10 +502,13 @@ def main():
             parser.error("--mode must be one of 'normal','interactive', or 'json' (got %s).\n" % opt.mode)
         if opt.format not in ["counts","rpkm"]:
             parser.error("--format must be one of 'counts' or 'rpkm' (got %s).\n" % opt.format)
+        if opt.normalize and opt.normalize not in ["tags","sf"]:
+            parser.error("--normalize must be one of 'tags' or 'sf' (got %s.\n)" % opt.normalize)
 
         MAplot(args, cols=cols, labels=labels, mode=opt.mode, data_format=opt.format, sep=opt.sep,
                 limits=limits, slimits=slimits,deg=opt.deg, bins=opt.bins, assembly_id=opt.assembly,
-                annotate=annotate, quantiles=opt.noquantiles, title=opt.title, extremes=opt.extremes)
+                normalize=opt.normalize, annotate=annotate, quantiles=opt.noquantiles, title=opt.title,
+                extremes=opt.extremes)
 
         sys.exit(0)
     except Usage, err:
