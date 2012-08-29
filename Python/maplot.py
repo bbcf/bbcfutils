@@ -10,7 +10,7 @@ The class AnnoteFinder is used to create interactive - clickable - plots.
 
 import sys, os, json, urllib, math, csv, optparse, random, string
 import numpy
-from numpy import asarray,log,log10,log2,exp,sqrt,mean,median,seterr,float_,round
+from numpy import asarray,log,log10,log2,exp,sqrt,mean,median,seterr,float_,round,nonzero
 from scipy import stats
 import matplotlib.pyplot as plt
 
@@ -81,16 +81,16 @@ def read_data(filename,sep,cols,labels,lower):
     return counts, names, pvals
 
 def _normalize(counts,mode):
-    seterr(divide='ignore')
     if mode == 'tags':
         colsum = counts.T.sum(1)
-        counts = (counts / colsum) * (10**round(log10(max(colsum))))
+        res = (counts / colsum) * (10**round(log10(max(colsum))))
         sf = None
-    if mode == 'sf':
+    elif mode == 'sf':
         loggeomeans = mean(log(counts),1)
-        sf = exp(median(log(counts).T - loggeomeans, 1))
-        counts = counts / sf
-    return counts, sf
+        diff = log(counts).T - loggeomeans
+        sf = exp(median(diff, 1))
+        res = counts / sf
+    return res, sf
 
 
 def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_format="counts",
@@ -150,6 +150,7 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
     for data in dataset:
         cnts,names,pvals = read_data(data,sep,cols,labels,lower)
         cnts = asarray(cnts, dtype=float_)
+        cnts = cnts[nonzero(cnts[:,0]*cnts[:,1])] # none of the counts is zero
         if normalize: cnts,sf = _normalize(cnts,mode=normalize)
         means = log10(sqrt(cnts[:,0]*cnts[:,1]))
         ratios = log2(cnts[:,0]/cnts[:,1])
