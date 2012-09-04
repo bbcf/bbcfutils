@@ -10,7 +10,7 @@ The class AnnoteFinder is used to create interactive - clickable - plots.
 
 import sys, os, json, urllib, math, csv, optparse, random, string
 import numpy
-from numpy import asarray,log,log10,log2,exp,sqrt,mean,median,seterr,float_,round,nonzero
+from numpy import asarray,log,log10,log2,exp,sqrt,mean,median,float_,round,nonzero
 from scipy import stats
 import matplotlib.pyplot as plt
 
@@ -284,9 +284,10 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
                            "points": {"symbol":"circle", "show":True},
                            "color": datacolors[data],
                            "pvals": pvals})
-        # - mean
+        # - median (bold line)
         jsdata.append({"label": "Mean", "data": spline_coords[50],
                        "lines": {"show":True}, "color": rgb_to_hex((255,0,255)) })
+        percentiles.pop(percentiles.index(50))
 
         # - splines
         splinelabels = {"id": "Spline labels",
@@ -295,11 +296,15 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
                         "lines": {"show":False},
                         "labels": ["1%","5%","25%","50%","75%","95%","99%"]}
         transparencies = iter([0.15, 0.2, 0.35, 0.35, 0.2, 0.15])
-        percentiles.pop(percentiles.index(50))
-        for i in percentiles:
-            jsdata.append({"id": str(i)+"%",
-                           "data": spline_coords[i],
-                           "lines": {"show":True, "lineWidth":0, "fill": transparencies.next()},
+        jsdata.append({"id": "1%",
+                       "data": spline_coords[1],
+                       "lines": {"show":True, "lineWidth":0, "fill": transparencies.next()},
+                       "color": rgb_to_hex((255,0,255))})
+        for k in range(1,len(percentiles)):
+            jsdata.append({"id": str(percentiles[k])+"%",
+                           "data": spline_coords[percentiles[k]],
+                           "lines": {"show":True, "lineWidth":0, "fill": transparencies.next(),
+                                     "fillBetween": str(percentiles[k-1])+"%"},
                            "color": rgb_to_hex((255,0,255))})
 
         jsdata = "var data = " + json.dumps(jsdata) + ";\n" \
