@@ -19,8 +19,8 @@ class Usage(Exception):
 def main():
     opts = (("-v", "--via", "Run executions using method 'via' (can be 'local' or 'lsf')", {'default': "lsf"}),
             ("-k", "--key", "Alphanumeric key of the new RNA-seq job", {'default': None}),
-            ("-d", "--rnaseq_minilims", "MiniLIMS where RNAseq executions and files will be stored.",
-                                     {'default': "/srv/rnaseq/public/data/rnaseq_minilims"}),
+            ("-d", "--junctions_minilims", "MiniLIMS where RNAseq executions and files will be stored.",
+                                     {'default': "/srv/junctions/public/data/junctions_minilims"}),
             ("-m", "--mapseq_minilims", "MiniLIMS where a previous Mapseq execution and files has been stored.",
                                      {'default': "/srv/mapseq/public/data/mapseq_minilims"}),
             ("-w", "--working-directory", "Create execution working directories in wdir",
@@ -40,11 +40,11 @@ def main():
 
         if os.path.exists(opt.wdir): os.chdir(opt.wdir)
         else: parser.error("Working directory '%s' does not exist." % opt.wdir)
-        if not(opt.rnaseq_minilims and os.path.exists(opt.rnaseq_minilims)
+        if not(opt.junctions_minilims and os.path.exists(opt.junctions_minilims)
                 and (opt.key != None or (opt.config and os.path.exists(opt.config)))):
             parser.error("Need a minilims and either a job key (-k) or a configuration file (-c).\n")
 
-        # RNA-seq job configuration #
+        # Junctions job configuration #
         M = MiniLIMS(opt.junctions_minilims)
         if opt.key:
             gl = use_pickle( M, "global variables" )
@@ -55,7 +55,6 @@ def main():
             (job,gl) = frontend.parseConfig(opt.config)
         else: raise Usage("Need either a job key (-k) or a configuration file (-c).")
         description = opt.key or opt.config
-        pileup_level = opt.pileup_level.split(',')
 
         job.options.setdefault('ucsc_bigwig',True)
         job.options.setdefault('create_gdv_project',False)
@@ -80,7 +79,7 @@ def main():
                                      script_path=gl.get('script_path',''), via=opt.via, fetch_unmapped=True)
             assert bam_files, "Bam files not found."
             logfile.write("Starting workflow.\n");logfile.flush()
-            result = junctions.junctions_workflow(ex, job, bam_files, via=opt.via)
+            junctions.junctions_workflow(ex, job, bam_files, via=opt.via)
 
             # Create GDV project #
             if job.options['create_gdv_project']:
@@ -121,11 +120,11 @@ def main():
         if 'email' in gl:
             r = email.EmailReport( sender=gl['email']['sender'],
                                    to=str(job.email).split(','),
-                                   subject="RNA-seq job "+str(job.description),
+                                   subject="Junctions job "+str(job.description),
                                    smtp_server=gl['email']['smtp'] )
-            r.appendBody('''Your RNA-seq job is finished.
+            r.appendBody('''Your Junctions job is finished.
                 \n The description was: '''+str(job.description)+''' and its unique key is '''+opt.key+'''.
-                \n You can retrieve the results at this url: '''+gl['hts_rnaseq']['url']+"jobs/"+opt.key+"/get_results" )
+                \n You can retrieve the results at this url: '''+gl['hts_junctions']['url']+"jobs/"+opt.key+"/get_results" )
             r.send()
 
         sys.exit(0)
