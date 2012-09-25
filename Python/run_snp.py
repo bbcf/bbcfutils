@@ -64,10 +64,9 @@ def main(argv = None):
         assembly = genrep.Assembly( assembly=job.assembly_id, genrep=g_rep )
         groups = job.groups
 
+        path_to_ref = None
         if opt.fasta_path and os.path.exists(opt.fasta_path):
             path_to_ref = opt.fasta_path
-        elif os.path.exists(assembly.fasta_path()):
-            path_to_ref = assembly.fasta_path()
 
         logfile = open(hts_key+".log",'w')
         debugfile = open(hts_key+".debug",'w')
@@ -82,7 +81,7 @@ def main(argv = None):
                                                         via=opt.via)
             assert bam_files, "Bam files not found."
             logfile.write("cat genome fasta files\n");logfile.flush()
-            genomeRef = snp.untar_genome_fasta(assembly, path_to_ref, convert=True)
+            genomeRef = assembly.untar_genome_fasta(path_to_ref=path_to_ref, convert=True)
             logfile.write("done\n");logfile.flush()
 
             pileup_dict = dict((chrom,{}) for chrom in genomeRef.keys()) # {chr: {}}
