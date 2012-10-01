@@ -93,7 +93,7 @@ fields: %s
 
 ############## MERGE ##############
 f = 'merge'
-usage[f] = usage['all'] %f +" fwd_file -r rev_file"
+usage[f] = usage['all'] %f +" -f fwd_file -r rev_file"
 description[f] = 'Merges two signal tracks after shifting each in downstream direction.'
 opts[f] = (("-f", "--forward", "A bedgraph-like file with ChIP density on the forward strand", {}),
         ("-r", "--reverse", "A bedgraph-like file with ChIP density on the reverse strand", {}),

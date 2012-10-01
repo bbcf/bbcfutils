@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import optparse, json
-import bbcflib.bFlatMajor as gMiner
+from bbcflib.bFlatMajor import run
 
 parser = optparse.OptionParser()
 for k in ['operation','output','assembly','datatype','args']:
@@ -15,7 +15,7 @@ if options.args:
         if isinstance(v,basestring): jsonargs[k] = str(v)
     kwargs.update(dict((str(k),v) for k,v in jsonargs.iteritems()))
 
-output = gMiner.run(*args,**kwargs)
+output = run(*args,**kwargs)
 if isinstance(output,(list,tuple)):
     print ",".join(output)
 else:
