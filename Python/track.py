@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 
 import optparse, json, sys, os
-from bbcflib import btrack 
+from bbcflib import btrack
+from bbcflib.bFlatMajor.stream import merge_scores
+from bbcflib.bFlatMajor.numeric import correlation
 
 functions = ["convert","read","merge","fetch"]
 usage = {'all': "track.py %s [OPTIONS]"}
 description = {'all': "Command-line interface to bbcflib.btrack functionalities."}
-opts = {'all': 
+opts = {'all':
         (("-a", "--assembly", "Assembly name or id",{'default':None}),
          ("-o", "--output", "Output file (default stdout)",{'default':None}),
          ("-c", "--chrmeta", "Json-formatted chrmeta dictionary (if not an assembly)", {'default': None}))}
@@ -24,7 +26,7 @@ opts[f] = (("-1", "--format1", "File format of first input file if extension not
            ("-d", "--datatype", "Datatype info in output track", {}))
 
 def convert(*args,**kw):
-    if len(args) != 2: 
+    if len(args) != 2:
         if len(args) == 1 and kw['output']:
             args.append(kw['output'])
         else:
@@ -68,9 +70,9 @@ def read(*args,**kw):
     fields = None
     if kw['fields']:
         fields = str(kw['fields']).split(",")
-    if kw['output'] is None: 
+    if kw['output'] is None:
         output = sys.stdout
-    else: 
+    else:
         output = open(kw['output'],'w')
     for infile in args:
         intrack = btrack.track(infile,format=kw['format'],chrmeta=kw['assembly'])
@@ -146,7 +148,7 @@ def merge(*args,**kw):
     tfwd.close()
     return 0
 
-def fetch(*args,**kw): 
+def fetch(*args,**kw):
     print "We need to implement this one..."
     return -10
 
@@ -162,7 +164,7 @@ def main(argv=None):
             fct = 'all'
             raise Usage(m)
 
-        parser = optparse.OptionParser(usage=usage[fct], 
+        parser = optparse.OptionParser(usage=usage[fct],
                                        description=description[fct])
         for opt in opts['all']+opts[fct]:
             parser.add_option(opt[0],opt[1],help=opt[2],**opt[3])
