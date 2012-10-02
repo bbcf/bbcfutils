@@ -18,6 +18,7 @@ opts = (("-m", "--minilims", "path to personal minilims, or name of an HTSstatio
         ("-l", "--list", "only list files",{'action':"store_true",'default':False}),
         ("-c", "--copy", "copy files to local path", {'action':"store_true",'default':False}),
         ("-s", "--symlink", "create symlinks to files in local path", {'action':"store_true",'default':False}),
+        ("-p", "--programs", "list execution's program arguments and outputs", {'action':"store_true",'default':False}),
         ("", "--basepath","HTS basepath",{'default':"/archive/epfl/bbcf/data/htsstation"}))
 
 class Usage(Exception):
@@ -44,6 +45,25 @@ def main(argv=None):
                 tags = dict(x.split("=") for x in tags)
             elif tags[0].count(":"):
                 tags = dict(x.split(":") for x in tags)
+        if options.programs:
+            if isinstance(options.execution, basestring):
+                exid = max(M.search_executions(with_text=options.execution))
+            else:
+                exid = int(options.execution or 0)
+            exec_data = M.fetch_execution(exid)['programs']
+            outfile = options.output and open(options.output,"w") or sys.stdout
+            for prog in exec_data:
+                pargs = prog['arguments']
+                if tags and all([t not in x for x in pargs for t in tags]):
+                    continue
+                stout = prog['stdout']
+                sterr = prog['stderr']
+                if pargs[0] == 'bsub': pargs = str(pargs[-1])
+                else: pargs = str(" ".join(pargs))
+                outfile.write("\n".join([pargs,stout,'',sterr]))
+                outfile.write("\n"+''.join(['-']*40)+"\n")
+            outfile.close()
+            return 0
         files = get_files(options.execution,M,select_param=tags)
         fprefix = ''
         if options.list:
