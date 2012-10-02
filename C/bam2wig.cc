@@ -472,11 +472,11 @@ int main( int argc, char **argv )
 		    s_data.counts[I->first] /= (pseudo_counts+I->second)*cntw;
 		weight = 1.0;
 	    }
+            opts.cut = old_cut;
 	}
 	if (opts.sql) createsql( s_data.counts, weight ); 
 	else          printbed( s_data.counts, weight, mode ); 
 	mode = std::ios_base::app;
-	opts.cut = old_cut;
     }
     samtools::bam_index_destroy( _in );
     samtools::samclose( _fs );
