@@ -419,6 +419,21 @@ int main( int argc, char **argv )
 	samtools::bam_index_build( opts.sfile.c_str() );
 	_in = samtools::bam_index_load( opts.sfile.c_str() );
     }
+    samtools::samfile_t *_cfs = 0;
+    samtools::bam_index_t *_cin = 0;
+    if ( opts.cfile.size() ) {
+	_cfs = samtools::samopen( opts.cfile.c_str(), "rb", 0 );
+	if ( !_cfs ) {
+	    std::cerr << "Could not open " << opts.cfile << "\n";
+	    return 2;
+	}
+	_cin = samtools::bam_index_load( opts.cfile.c_str() );
+	if (!_cin) {
+	    std::cerr << "Building index of " << opts.cfile << "\n";
+	    samtools::bam_index_build( opts.cfile.c_str() );
+	    _cin = samtools::bam_index_load( opts.cfile.c_str() );
+	}
+    }
     std::ios_base::openmode mode = std::ios_base::out;
     bool chrn_empty = opts.chrn.empty();
     for ( std::map< int, chr_region >::const_iterator I = chr_list.begin();
@@ -430,9 +445,11 @@ int main( int argc, char **argv )
 	opts.start = I->second.start;
 	opts.end = I->second.end;
 	samdata s_data;
+	s_data.counts.clear();
 	s_data.scounts = 0; // just making sure...
         s_data.ntags = 0;
 	samdata c_data;
+	c_data.counts.clear();
 	c_data.scounts = &s_data.counts;
         c_data.ntags = 0;
 
@@ -440,22 +457,10 @@ int main( int argc, char **argv )
 			     &s_data, accumulate );
 	
 	double weight = weight_per_tag( s_data.ntags );
-	if ( opts.cfile.size() ) {
-	    samtools::bam_index_destroy( _in );
-	    samtools::samclose( _fs );
-	    _fs = samtools::samopen( opts.cfile.c_str(), "rb", 0 );
-	    if ( !_fs ) {
-		std::cerr << "Could not open " << opts.cfile << "\n";
-		return 2;
-	    }
-	    _in = samtools::bam_index_load( opts.cfile.c_str() );
-	    if (!_in) {
-		std::cerr << "Building index of " << opts.cfile << "\n";
-		samtools::bam_index_build( opts.cfile.c_str() );
-		_in = samtools::bam_index_load( opts.cfile.c_str() );
-	    }
+	if ( _cfs != 0 ) {
+	    int old_cut = opts.cut;
 	    opts.cut = opts.cut_ct;
-	    samtools::bam_fetch( _fs->x.bam, _in, opts.chid, opts.start, opts.end,
+	    samtools::bam_fetch( _cfs->x.bam, _cin, opts.chid, opts.start, opts.end,
 				 &c_data, accumulate );
 	    weight = weight_per_tag( s_data.ntags, c_data.scounts, &c_data.counts );
 	    if (!opts.noratio) {
@@ -471,6 +476,7 @@ int main( int argc, char **argv )
 	if (opts.sql) createsql( s_data.counts, weight ); 
 	else          printbed( s_data.counts, weight, mode ); 
 	mode = std::ios_base::app;
+	opts.cut = old_cut;
     }
     samtools::bam_index_destroy( _in );
     samtools::samclose( _fs );
