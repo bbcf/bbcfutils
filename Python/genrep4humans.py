@@ -53,11 +53,15 @@ def main():
             fout = open(re.search('([._\-\w]+)', str(opt.output)).groups()[0], 'w')
         else:
             fout = sys.stdout
+        regions = None
         if opt.regions:
-            regions = []; start=None; end=None
-            for x in str(opt.regions).split(","):
-                chrom,start,end = re.search('(\S+):(\d+)\-(\d+)',x).groups()[0:3]
-                regions.append([chrom,int(start),int(end)])
+            if os.path.exists(opt.regions):
+                regions = opt.regions
+            else:
+                regions = []
+                for x in str(opt.regions).split(","):
+                    chrom,start,end = re.search('(\S+):(\d+)\-(\d+)',x).groups()[0:3]
+                    regions.append([chrom,int(start),int(end)])
 
         # Program body
         g_rep = genrep.GenRep(url=genrep_url, root=genrep_root)
@@ -74,11 +78,8 @@ def main():
         if not(opt.assembly):
             parser.print_help()
             return 0
-        if opt.regions:
-            seq = assembly.fasta_from_regions(regions=regions, out={})[0]
-            for reg in regions:
-                fout.write(">"+assembly.name+"|"+reg[0]+":"+str(reg[1])+"-"+str(reg[2])+"\n")
-                if seq[reg[0]]: fout.write(seq[reg[0]].pop(0)+"\n")
+        if regions:
+            seq = assembly.fasta_from_regions(regions=regions, out=fout)[0]
         if opt.bowtie:
             fout.write(">"+str(assembly.id)+":"+assembly.name+" bowtie index prefix\n")
             fout.write(assembly.index_path+"\n")
