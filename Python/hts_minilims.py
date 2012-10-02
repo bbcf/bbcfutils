@@ -9,7 +9,7 @@ from bbcflib.common import get_files
 
 module_list = ["demulitplexing","mapseq","chipseq","rnaseq","snp","4cseq"]
 usage = "hts_minilims.py [OPTIONS]"
-description = "Command-line interface to bbcflib.btrack functionalities."
+description = "Command-line interface to HTSstation minilims: list, copy or link selected files from given execution."
 
 opts = (("-m", "--minilims", "path to personal minilims, or name of an HTSstation module",{'default':''}),
         ("-e", "--execution", "name or number of the execution in the minilims",{'default':0}),
