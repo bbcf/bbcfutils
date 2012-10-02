@@ -18,7 +18,7 @@ opts = (("-l", "--list", "list available assemblies, or a chromosome table if an
         ("-s", "--stats", "genome stats", {'action': "store_true", 'default': False}),
         ("-i", "--intype", "0 for genome (default), 1 for exonome, 2 for transcriptome", {'type': "int", 'default': 0}),
         ("-a", "--assembly", "assembly (name or id)", {'default': None}),
-        ("-t", "--regions", "extract regions to fasta (ex: 'chr2:2-1356,chr1:10-45')", {'default': None}),
+        ("-t", "--regions", "extract regions to fasta (a string: 'chr2:2-1356,chr1:10-45' or a bed/gff/sql filename)", {'default': None}),
         ("-o", "--output", "output file (default standard output)", {'default': None}),
         ("-r", "--root", "genrep root directory (default: '/db/genrep/')", {'default': '/db/genrep/'}),
         ("-u", "--url", "url to genrep (default: 'http://bbcf-serv01.epfl.ch/genrep/')",{'default': 'http://bbcf-serv01.epfl.ch/genrep/'}),
