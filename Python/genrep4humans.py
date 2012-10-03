@@ -22,6 +22,7 @@ opts = (("-l", "--list", "list available assemblies, or a chromosome table if an
         ("-o", "--output", "output file (default standard output)", {'default': None}),
         ("-r", "--root", "genrep root directory (default: '/db/genrep/')", {'default': '/db/genrep/'}),
         ("-u", "--url", "url to genrep (default: 'http://bbcf-serv01.epfl.ch/genrep/')",{'default': 'http://bbcf-serv01.epfl.ch/genrep/'}),
+        ("-g", "--genes", "extract coordinates for a comma-separated list of Ensembl ids",{}),
         ("-c", "--convert", "convert bam headers to natural chromosome names",{}))
 
 class Usage(Exception):
@@ -34,7 +35,7 @@ def _compact_key(key):
     elif isinstance(key,tuple) and len(key)>2:
         return str(key[0])+"_"+str(key[1])+"."+str(key[2])
     else:
-        raise Usage("Can't handle this chromosome key ",key)
+        raise Usage("Can't handle this chromosome key %s"%key)
 
 def main():
     try:
@@ -86,6 +87,9 @@ def main():
         if opt.fasta:
             fout.write(">"+str(assembly.id)+":"+assembly.name+" fasta file\n")
             fout.write(assembly.fasta_path()+"\n")
+        if opt.genes:
+            for gcoord in assembly.gene_coordinates(opt.genes.split(",")):
+                fout.write("\t".join([str(x) for x in gcoord])+"\n")
         if opt.stats:
             stats = assembly.statistics(frequency=True)
             fout.write("\n".join([k+":\t"+str(stats[k]) for k in sorted(stats.keys())])+"\n")

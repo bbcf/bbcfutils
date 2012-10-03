@@ -5,7 +5,7 @@ from bbcflib import btrack
 from bbcflib.bFlatMajor.stream import merge_scores
 from bbcflib.bFlatMajor.numeric import correlation
 
-functions = ["convert","read","merge","fetch"]
+functions = ["convert","read","merge"]
 usage = {'all': "track.py %s [OPTIONS]"}
 description = {'all': "Command-line interface to bbcflib.btrack functionalities."}
 opts = {'all':
@@ -147,11 +147,6 @@ def merge(*args,**kw):
     trev.close()
     tfwd.close()
     return 0
-
-def fetch(*args,**kw):
-    print "We need to implement this one..."
-    return -10
-
 
 usage['all'] = usage['all'] %str(functions)
 def main(argv=None):
