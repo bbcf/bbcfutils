@@ -24,6 +24,7 @@ opts = (("-l", "--list", "list available assemblies, or a chromosome table if an
         ("-r", "--root", "genrep root directory (default: '/db/genrep/')", {'default': '/db/genrep/'}),
         ("-u", "--url", "url to genrep (default: 'http://bbcf-serv01.epfl.ch/genrep/')",{'default': 'http://bbcf-serv01.epfl.ch/genrep/'}),
         ("-g", "--genes", "extract coordinates for a comma-separated list of Ensembl ids",{}),
+        ("-z", "--all", "extract coordinates of all genes/transcripts/exons (depending on the 'intype')",{'action': "store_true", 'default': False}),
         ("-c", "--convert", "convert bam headers to natural chromosome names",{}))
 
 class Usage(Exception):
@@ -85,6 +86,15 @@ def main():
             fout.write(assembly.sqlite_path()+"\n")
         if opt.genes:
             for gcoord in assembly.gene_coordinates(opt.genes.split(",")):
+                fout.write("\t".join([str(x) for x in gcoord])+"\n")
+        if opt.all:
+            if opt.intype == 1:
+                feats = assembly.exon_track()
+            elif opt.intype == 2:
+                feats = assembly.transcript_track()
+            else:
+                feats = assembly.gene_track()
+            for gcoord in feats:
                 fout.write("\t".join([str(x) for x in gcoord])+"\n")
         if opt.stats:
             stats = assembly.statistics(frequency=True)
