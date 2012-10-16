@@ -92,7 +92,7 @@ def main():
                 logfile.write("\ncomputing densities.\n");logfile.flush()
                 if int(job.options.get('read_extension',-1))<=0:
                     job.options['read_extension'] = mapped_files.values()[0].values()[0]['stats']['read_length']
-                density_files = densities_groups( ex, job, mapped_files, assembly.chromosomes, via=opt.via )
+                density_files = densities_groups( ex, job, mapped_files, assembly.chrmeta, via=opt.via )
                 logfile.write("Finished computing densities.\n");logfile.flush()
                 if job.options['create_gdv_project']:
                     gdv_project = gdv.get_project(mail=gl['gdv']['email'], key=gl['gdv']['key'], project_key=job.options['gdv_key'])

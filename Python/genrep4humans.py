@@ -15,27 +15,21 @@ opts = (("-l", "--list", "list available assemblies, or a chromosome table if an
          {'action': "store_true", 'default': False}),
         ("-f", "--fasta", "get path to fasta", {'action': "store_true", 'default': False}),
         ("-b", "--bowtie", "get path prefix to bowtie indexes", {'action': "store_true", 'default': False}),
+        ("-d", "--db", "get path to sqlite database", {'action': "store_true", 'default': False}),
         ("-s", "--stats", "genome stats", {'action': "store_true", 'default': False}),
         ("-i", "--intype", "0 for genome (default), 1 for exonome, 2 for transcriptome", {'type': "int", 'default': 0}),
         ("-a", "--assembly", "assembly (name or id)", {'default': None}),
         ("-t", "--regions", "extract regions to fasta (a string: 'chr2:2-1356,chr1:10-45' or a bed/gff/sql filename)", {'default': None}),
-        ("-o", "--output", "output file (default standard output)", {'default': None}),
+        ("-o", "--output", "output file (default: standard output)", {'default': None}),
         ("-r", "--root", "genrep root directory (default: '/db/genrep/')", {'default': '/db/genrep/'}),
         ("-u", "--url", "url to genrep (default: 'http://bbcf-serv01.epfl.ch/genrep/')",{'default': 'http://bbcf-serv01.epfl.ch/genrep/'}),
         ("-g", "--genes", "extract coordinates for a comma-separated list of Ensembl ids",{}),
+        ("-z", "--all", "extract coordinates of all genes/transcripts/exons (depending on the 'intype')",{'action': "store_true", 'default': False}),
         ("-c", "--convert", "convert bam headers to natural chromosome names",{}))
 
 class Usage(Exception):
     def __init__(self,  msg):
         self.msg = msg
-
-def _compact_key(key):
-    if key == None or isinstance(key,str):
-        return key
-    elif isinstance(key,tuple) and len(key)>2:
-        return str(key[0])+"_"+str(key[1])+"."+str(key[2])
-    else:
-        raise Usage("Can't handle this chromosome key %s"%key)
 
 def main():
     try:
@@ -70,8 +64,8 @@ def main():
             assembly = genrep.Assembly(assembly=assembly_id,genrep=g_rep,intype=opt.intype)
         if opt.list:
             if opt.assembly:
-                table = ["\t".join((_compact_key(k),v['name'],str(v['length'])))
-                         for k,v in assembly.chromosomes.iteritems()]
+                table = ["\t".join((v['ac'],k,str(v['length'])))
+                         for k,v in assembly.chrmeta.iteritems()]
                 fout.write("\n".join(table)+"\n")
             else:
                 fout.write("\n".join(g_rep.assemblies_available())+"\n")
@@ -87,8 +81,20 @@ def main():
         if opt.fasta:
             fout.write(">"+str(assembly.id)+":"+assembly.name+" fasta file\n")
             fout.write(assembly.fasta_path()+"\n")
+        if opt.db:
+            fout.write(">"+str(assembly.id)+":"+assembly.name+" sqlite file\n")
+            fout.write(assembly.sqlite_path()+"\n")
         if opt.genes:
             for gcoord in assembly.gene_coordinates(opt.genes.split(",")):
+                fout.write("\t".join([str(x) for x in gcoord])+"\n")
+        if opt.all:
+            if opt.intype == 1:
+                feats = assembly.exon_track()
+            elif opt.intype == 2:
+                feats = assembly.transcript_track()
+            else:
+                feats = assembly.gene_track()
+            for gcoord in feats:
                 fout.write("\t".join([str(x) for x in gcoord])+"\n")
         if opt.stats:
             stats = assembly.statistics(frequency=True)
@@ -102,7 +108,7 @@ def main():
             import pysam
             infile = pysam.Samfile( opt.convert, 'rb' )
             header = infile.header
-            chromosomes = dict((_compact_key(k),v['name']) for k,v in assembly.chromosomes.iteritems())
+            chromosomes = dict((v['ac'],k) for k,v in assembly.chrmeta.iteritems())
             for h in header["SQ"]:
                 if h["SN"] in chromosomes:
                     h["SN"] = chromosomes[h["SN"]]

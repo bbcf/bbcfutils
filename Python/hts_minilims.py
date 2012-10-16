@@ -7,7 +7,7 @@ from bbcflib.common import get_files
 #hts_minilims.py -m mapseq -e vwEfIK6vG8iD64kZm5m6 -l -t type=pdf
 
 
-module_list = ["demulitplexing","mapseq","chipseq","rnaseq","snp","4cseq"]
+module_list = ["demultiplexing","mapseq","chipseq","rnaseq","snp","4cseq"]
 usage = "hts_minilims.py [OPTIONS]"
 description = "Command-line interface to HTSstation minilims: list, copy or link selected files from given execution."
 
