@@ -68,18 +68,20 @@ def main():
         debugfile = open((opt.key or opt.config)+".debug",'w')
         debugfile.write(json.dumps(job.options)+"\n\n"+json.dumps(gl)+"\n");debugfile.flush()
 
-        # Retrieve mapseq output
         mapseq_url = gl.get('hts_mapseq',{}).get('url')
+        index = gl.get('hts_junctions',{}).get('soapsplice_index')
 
         # Program body #
         with execution(M, description=description, remote_working_directory=opt.wdir ) as ex:
             debugfile.write("Enter execution. Current working directory: %s \n" % ex.working_directory);debugfile.flush()
-            logfile.write("Fetch bam and wig files\n");logfile.flush()
+            logfile.write("Fetch mapseq minilims\n");logfile.flush()
             (bam_files, job) = mapseq.get_bam_wig_files(ex, job, minilims=opt.mapseq_minilims, hts_url=mapseq_url,
                                      script_path=gl.get('script_path',''), via=opt.via, fetch_unmapped=True)
-            assert bam_files, "Bam files not found."
+            assert bam_files, "Files not found."
             logfile.write("Starting workflow.\n");logfile.flush()
-            junctions.junctions_workflow(ex, job, bam_files, via=opt.via)
+
+            sql,bed,bam = junctions.junctions_workflow(ex, job, bam_files, index,
+                              soapsplice_options=gl.get('soapsplice',{}), via=opt.via)
 
             # Create GDV project #
             if job.options['create_gdv_project']:
