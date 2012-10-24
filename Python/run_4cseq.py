@@ -105,7 +105,8 @@ def main(argv = None):
 	    c4seq_files = c4seq.workflow_groups( ex, job, primers_dict, assembly,
                                                  mapseq_files, mapseq_url, 
                                                  gl.get('hts_4cseq',{}).get('url'),
-                                                 gl['script_path'],logfile=logfile)
+                                                 gl['script_path'],logfile=logfile,
+                                                 via=via)
             if job.options.get('create_gdv_project'):
 		gdv_project=gdv.get_project(mail=gl['gdv']['email'], key=gl['gdv']['key'], project_key=job.options['gdv_key'])
 		if 'error' in gdv_project:
