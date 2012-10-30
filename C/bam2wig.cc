@@ -20,6 +20,7 @@ typedef posh::const_iterator poshcit;
 typedef posh::iterator poshit;
 typedef struct {
     int ntags;
+    int strand;
     posh counts;
     posh *scounts;
 } samdata;
@@ -37,7 +38,7 @@ static const std::string bed_plus("track type=bedGraph visibility=2 name=strand+
 static const std::string bed_minus("track type=bedGraph visibility=2 name=strand- color=200,10,0 windowingFunction=maximum\n");
 
 static struct global_options {
-    bool regress, noratio, six, sql;
+    bool regress, noratio, six, sql, nohds;
     long wtpm;
     int mincover, maxhits, maxcnt, cut, cut_ct, chid, start, end, merge;
     std::string ofile, sfile, cfile, chr, chrn;
@@ -203,7 +204,7 @@ void createsql( posh &counts, const double cntw=1.0 ) {
 
 // ************* wiggle track: 0-based starts, 4 cols *************
 // *************   bed output: 0-based starts, 6 cols *************
-void printbed( posh &counts, const double cntw=1.0, 
+void printbed( posh &counts, const double cntw=1.0, const std::string* header=0,
 	       std::ios_base::openmode mode = std::ios_base::out ) {
     if (counts.empty()) return;
     poshcit 
@@ -219,8 +220,8 @@ void printbed( posh &counts, const double cntw=1.0,
 	else std::cerr << "Could not open " << opts.ofile 
 		       << ", writing to stdout\n";
     }
+    if (header) (*outstr) << *header;
     if (opts.merge < 0) {
-	if (!opts.six) (*outstr) << bed_minus;
 	for ( poshcit I = I0; I != I1; ) {
             I--;
 	    lc = (int)(.5+1e2*I->second*cntw);
@@ -252,10 +253,6 @@ void printbed( posh &counts, const double cntw=1.0,
     stop = 0;
     I0 = counts.upper_bound(opts.start);
     I1 = counts.upper_bound(opts.end);
-    if (!opts.six) {
-	if (opts.merge < 0) (*outstr) << bed_plus;
-	else                (*outstr) << bed_both;
-    }
     for ( poshcit I = I0; I != I1; I++ ) {
 	lc = (int)(.5+1e2*I->second*cntw);
 	if (I->first > stop+1 || lastcnt != lc) {
@@ -285,18 +282,17 @@ void printbed( posh &counts, const double cntw=1.0,
 
 inline static int accumulate( const samtools::bam1_t *b, void *d ) {
     samdata *data = (samdata*)d;
+    int cur_count = 1, read_cut = opts.cut, dstr = data->strand;
 // ****************** NH field = Number of Hits for this tag
-    int cur_count = 1, read_cut = opts.cut;
     if (bam_aux_get(b,"NH")) cur_count = samtools::bam_aux2i(bam_aux_get(b,"NH"));
     if (cur_count <= opts.maxhits || opts.maxhits < 0) {
 	float weight = 1.0/cur_count;
 	data->ntags++;
 // ****************** if cut > 0, set tag size = cut even if longer than read 
 	if (opts.cut < 0) read_cut = b->core.l_qseq;
-// ****************** ref is the target set (therefore current set is the control),
-// ****************** only record at positions present in ref
-	int start = b->core.pos+1, stop = b->core.pos+read_cut;
 // ****************** BAM is 0-based, but our array will be 1-based
+	int start = b->core.pos+1, stop = b->core.pos+read_cut;
+        if ((dstr > 0 && bam1_strand(b)) || (dstr < 0 && !bam1_strand(b))) return 1;
 	if (bam1_strand(b)) {
 	    stop = start+b->core.l_qseq-1;
 	    start = stop-read_cut+1;
@@ -311,6 +307,8 @@ inline static int accumulate( const samtools::bam1_t *b, void *d ) {
                 if (opts.merge > -1) i2=i+opts.merge;
                 else                 i2=i;
             }
+// ****************** ref is the target set (therefore current set is the control),
+// ****************** only record at positions present in ref
 	    if (!data->scounts || data->scounts->count(i2)) data->counts[i2]+=weight;
 	}
     }
@@ -343,16 +341,18 @@ int main( int argc, char **argv )
 	cmd.add( cut_c );
 	TCLAP::ValueArg< long > wtpm( "w", "weight", "If 0: normalise by total tag count per megabase, if >0: uses 1e-7*w as factor",  false, -1, "int" );
 	cmd.add( wtpm );
-	TCLAP::SwitchArg reg( "r", "regress", "Normalize count by regression on control",  false, false );
+	TCLAP::SwitchArg reg( "r", "regress", "Normalize count by regression on control",  false );
 	cmd.add( reg );
-	TCLAP::SwitchArg nrat( "z", "noratio", "Do not compute ratio by control",  false, false );
+	TCLAP::SwitchArg nrat( "z", "noratio", "Do not compute ratio by control",  false );
 	cmd.add( nrat );
 	TCLAP::ValueArg< int > merge( "p", "merge", "Shift and merge strands",  false, -1, "int" );
 	cmd.add( merge );
-	TCLAP::SwitchArg sixc( "6", "sixcolumns", "Six columns bed output (default is 4-col bedgraph)",  false, false );
+	TCLAP::SwitchArg sixc( "6", "sixcolumns", "Six columns bed output (default is 4-col bedgraph)",  false );
 	cmd.add( sixc );
-	TCLAP::SwitchArg sql( "d", "sqldb", "Sqlite output",  false, false );
+	TCLAP::SwitchArg sql( "d", "sqldb", "Sqlite output",  false );
 	cmd.add( sql );
+	TCLAP::SwitchArg nohds( "u", "noheaders", "Without bed headers", false );
+	cmd.add( nohds );
 
 	cmd.parse( argc, argv );
 	global_options o = {
@@ -360,6 +360,7 @@ int main( int argc, char **argv )
 	    nrat.getValue(),
 	    sixc.getValue(),
 	    sql.getValue(),
+	    nohds.getValue(),
 	    wtpm.getValue(),
 	    std::max(0,mincv.getValue()),
 	    maxh.getValue(),
@@ -436,50 +437,72 @@ int main( int argc, char **argv )
     }
     std::ios_base::openmode mode = std::ios_base::out;
     bool chrn_empty = opts.chrn.empty();
-    for ( std::map< int, chr_region >::const_iterator I = chr_list.begin();
-	  I != chr_list.end();
-	  I++ ) {
-	opts.chid = I->first;
-	opts.chr = I->second.name;
-	if (chrn_empty) opts.chrn = opts.chr;
-	opts.start = I->second.start;
-	opts.end = I->second.end;
-	samdata s_data;
-	s_data.counts.clear();
-	s_data.scounts = 0; // just making sure...
-        s_data.ntags = 0;
-	samdata c_data;
-	c_data.counts.clear();
-	c_data.scounts = &s_data.counts;
-        c_data.ntags = 0;
+    std::vector< int > strset;
+    if (opts.merge >= 0 || opts.sql || opts.six) strset.push_back(0);
+    else {
+        strset.push_back(-1);
+        strset.push_back(1);
+    }
+    for ( std::vector< int >::const_iterator Istr = strset.begin(); Istr != strset.end(); Istr++ ) {
+        bool header = !(opts.nohds || opts.sql || opts.six);
+        for ( std::map< int, chr_region >::const_iterator I = chr_list.begin();
+              I != chr_list.end();
+              I++ ) {
+            opts.chid = I->first;
+            opts.chr = I->second.name;
+            if (chrn_empty) opts.chrn = opts.chr;
+            opts.start = I->second.start;
+            opts.end = I->second.end;
+            samdata s_data;
+            s_data.counts.clear();
+            s_data.scounts = 0; // just making sure...
+            s_data.ntags = 0;
+            s_data.strand = *Istr;
+            samdata c_data;
+            c_data.counts.clear();
+            c_data.scounts = &s_data.counts;
+            c_data.ntags = 0;
+            c_data.strand = *Istr;
 
-	samtools::bam_fetch( _fs->x.bam, _in, opts.chid, opts.start, opts.end, 
-			     &s_data, accumulate );
+            samtools::bam_fetch( _fs->x.bam, _in, opts.chid, opts.start, opts.end, 
+                                 &s_data, accumulate );
 	
-	double weight = weight_per_tag( s_data.ntags );
-	if ( _cfs != 0 ) {
-	    int old_cut = opts.cut;
-	    opts.cut = opts.cut_ct;
-	    samtools::bam_fetch( _cfs->x.bam, _cin, opts.chid, opts.start, opts.end,
-				 &c_data, accumulate );
-	    weight = weight_per_tag( s_data.ntags, c_data.scounts, &c_data.counts );
-	    if (!opts.noratio) {
-		double cntw = weight_per_tag(c_data.ntags)/weight;
-		for ( poshit I = s_data.counts.begin(); I != s_data.counts.end(); I++ )
-		    I->second += pseudo_counts;
+            double weight = weight_per_tag( s_data.ntags );
+            if ( _cfs != 0 ) {
+                int old_cut = opts.cut;
+                opts.cut = opts.cut_ct;
+                samtools::bam_fetch( _cfs->x.bam, _cin, opts.chid, opts.start, opts.end,
+                                     &c_data, accumulate );
+                weight = weight_per_tag( s_data.ntags, c_data.scounts, &c_data.counts );
+                if (!opts.noratio) {
+                    double cntw = weight_per_tag(c_data.ntags)/weight;
+                    for ( poshit I = s_data.counts.begin(); I != s_data.counts.end(); I++ )
+                        I->second += pseudo_counts;
 // *********** by construction, keys of control is a subset of keys of counts
-		for ( poshit I = c_data.counts.begin(); I != c_data.counts.end(); I++ )
-		    s_data.counts[I->first] /= (pseudo_counts+I->second)*cntw;
-		weight = 1.0;
-	    }
-            opts.cut = old_cut;
-	}
-	if (opts.sql) createsql( s_data.counts, weight ); 
-	else          printbed( s_data.counts, weight, mode ); 
-	mode = std::ios_base::app;
+                    for ( poshit I = c_data.counts.begin(); I != c_data.counts.end(); I++ )
+                        s_data.counts[I->first] /= (pseudo_counts+I->second)*cntw;
+                    weight = 1.0;
+                }
+                opts.cut = old_cut;
+            }
+            const std::string *_hd = 0;
+            if (header) {
+                if (*Istr == 0) _hd = &bed_both;
+                else if (*Istr > 0) _hd = &bed_plus;
+                else if (*Istr < 0) _hd = &bed_minus;
+            }
+            if (opts.sql) createsql( s_data.counts, weight ); 
+            else          printbed( s_data.counts, weight, _hd, mode ); 
+            mode = std::ios_base::app;
+            header = false;
+        }
     }
     samtools::bam_index_destroy( _in );
     samtools::samclose( _fs );
+    if ( opts.cfile.size() ) {
+        samtools::bam_index_destroy( _cin );
+        samtools::samclose( _cfs );
+    }
     return 0;
 }
 
