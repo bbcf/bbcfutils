@@ -287,7 +287,6 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
         # - median (bold line)
         jsdata.append({"label": "Mean", "data": spline_coords[50],
                        "lines": {"show":True}, "color": rgb_to_hex((255,0,255)) })
-        percentiles.pop(percentiles.index(50))
 
         # - splines
         splinelabels = {"id": "Spline labels",
@@ -300,6 +299,7 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
                        "data": spline_coords[1],
                        "lines": {"show":True, "lineWidth":0, "fill": transparencies.next()},
                        "color": rgb_to_hex((255,0,255))})
+        percentiles.pop(percentiles.index(50))
         for k in range(1,len(percentiles)):
             jsdata.append({"id": str(percentiles[k])+"%",
                            "data": spline_coords[percentiles[k]],
