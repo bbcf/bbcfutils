@@ -18,7 +18,7 @@ class Usage(Exception):
         self.msg = msg
 
 def main():
-    opts = (("-v", "--via", "Run executions using method 'via' (can be 'local' or 'lsf')", {'default': "lsf"}),
+    opts = (("-v", "--via", "Run executions using method 'via' (can be 'local' or 'lsf')", {'default':"lsf"}),
             ("-k", "--key", "Alphanumeric key of the new RNA-seq job", {'default': None}),
             ("-d", "--rnaseq_minilims", "MiniLIMS where RNAseq executions and files will be stored.",
                                      {'default': "/srv/rnaseq/public/data/rnaseq_minilims"}),
@@ -28,9 +28,8 @@ def main():
                                      {'default': os.getcwd(), 'dest':"wdir"}),
             ("-c", "--config", "Config file", {'default': None}),
             ("-p", "--pileup_level", "Target features, inside of quotes, separated by commas.\
-                                     E.g. 'genes,exons,transcripts'",{'default': "genes,exons,transcripts"}),
-            ("--design", "name of the file containing the design matrix.", {'default': None}),
-            ("--contrast", "name of the file containing the contrast matrix.", {'default': None}),
+                                     E.g. 'genes,exons,transcripts'",{'default':"genes,exons,transcripts"}),
+            ("-j", "--junctions", {'action':"store_true", 'default':False}),
            )
     try:
         usage = "run_rnaseq.py [-h -v via -k key -c config_file -w working_directory -d minilims -m mapseq_minilims]"
