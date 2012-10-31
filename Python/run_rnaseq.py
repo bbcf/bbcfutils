@@ -76,8 +76,8 @@ def main():
         debugfile = open((opt.key or opt.config)+".debug",'w')
         debugfile.write(json.dumps(job.options)+"\n\n"+json.dumps(gl)+"\n");debugfile.flush()
 
-        # Retrieve mapseq output
         mapseq_url = gl.get('hts_mapseq',{}).get('url')
+        rpath = gl.get('script_path')
 
         # Program body #
         with execution(M, description=description, remote_working_directory=opt.wdir ) as ex:
@@ -87,9 +87,7 @@ def main():
                                      script_path=gl.get('script_path',''), via=opt.via, fetch_unmapped=True)
             assert bam_files, "Bam files not found."
             logfile.write("Starting workflow.\n");logfile.flush()
-            result = rnaseq.rnaseq_workflow(ex, job, bam_files, pileup_level=pileup_level, via=opt.via)
-            rnaseq.differential_analysis(ex, result, rpath=gl.get('script_path'),
-                                         design=opt.design, contrast=opt.contrast)
+            rnaseq.rnaseq_workflow(ex, job, bam_files, pileup_level=pileup_level, via=opt.via, rpath=rpath)
 
             # Create GDV project #
             if job.options['create_gdv_project']:
