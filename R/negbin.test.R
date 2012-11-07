@@ -64,9 +64,9 @@ write_result <- function(output_file, res_list, sep='\t'){
         for (x in names(res_list)){
             xs = unlist(strsplit(x,' '))
             xs = paste(xs[1],xs[2],xs[3],sep='')
-            output_file = paste(output_file,xs,sep='_')
-            write(x,output_file)
-            write.table(res_list[[x]],output_file,quote=F,row.names=T,col.names=T,append=T,sep="\t") # write.csv?
+            out = paste(output_file,xs,sep='_')
+            write(x,out)
+            write.table(res_list[[x]],out,quote=F,row.names=T,col.names=T,append=T,sep="\t")
         }
     }
 }
