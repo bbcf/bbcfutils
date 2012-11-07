@@ -62,11 +62,6 @@ def main(argv = None):
 
         g_rep = genrep.GenRep( gl.get("genrep_url"), gl.get("bwt_root") )
         assembly = genrep.Assembly( assembly=job.assembly_id, genrep=g_rep )
-        groups = job.groups
-
-        path_to_ref = None
-        if opt.fasta_path and os.path.exists(opt.fasta_path):
-            path_to_ref = opt.fasta_path
 
         logfile = open(hts_key+".log",'w')
         debugfile = open(hts_key+".debug",'w')
@@ -81,44 +76,7 @@ def main(argv = None):
                                                         via=opt.via)
             assert bam_files, "Bam files not found."
             logfile.write("cat genome fasta files\n");logfile.flush()
-            genomeRef = assembly.untar_genome_fasta(path_to_ref=path_to_ref, convert=True)
-            logfile.write("done\n");logfile.flush()
-
-            pileup_dict = dict((chrom,{}) for chrom in genomeRef.keys()) # {chr: {}}
-            sample_names = []
-            bam = {}
-            for gid, files in bam_files.iteritems():
-                sample_name = groups[gid]['name']
-                sample_names.append(sample_name)
-                runs = [r['bam'] for r in files.itervalues()]
-                if len(runs) > 1:
-                    bam = mapseq.merge_bam(ex,runs)
-                    mapseq.index_bam(ex,bam)
-                else: bam = runs[0]
-                pileupFilename = common.unique_filename_in()
-                # Samtools pileup
-                for chrom,ref in genomeRef.iteritems():
-                    future = snp.sam_pileup.nonblocking( ex, assembly, bam, ref,
-                                                         via=opt.via, stdout=pileupFilename )
-                    pileup_dict[chrom][pileupFilename] = (future,sample_name,bam) # {chr: {filename: (future,name)}}
-            chr_filename = {}
-            for chrom, dictPileup in pileup_dict.iteritems():
-                # Get the results from sam_pileup
-                # Write the list of all snps of THIS chromosome, from ALL samples
-                allSNPpos = snp.posAllUniqSNP(dictPileup) # {3021:'A'}
-                if len(allSNPpos) == 0: continue
-                # Write results in a temporary file, for this chromosome
-                chr_filename[chrom] = snp.write_pileupFile(dictPileup,sample_names,allSNPpos,chrom,assembly)
-
-            # Add exon & codon information & write the real file
-            outall,outexons = snp.annotate_snps(chr_filename,sample_names,assembly,genomeRef)
-            description = common.set_file_descr("allSNP.txt",step="SNPs",type="txt")
-            ex.add(outall,description=description)
-            description = common.set_file_descr("exonsSNP.txt",step="SNPs",type="txt")
-            ex.add(outexons,description=description)
-
-            # Create tracks for UCSC and GDV:
-            snp.create_tracks(ex,outall,sample_names,assembly)
+            snp.snp_workflow(ex,job,bam_files,assembly,path_to_ref=opt.fasta_path,via=opt.via)
 
             # Create GDV project #
             if job.options['create_gdv_project']:
@@ -149,6 +107,7 @@ def main(argv = None):
             except Exception, err:
                 debugfile.write("GDV Tracks Failed: %s\n" %err);debugfile.flush()
                 pass
+
         logfile.close()
         debugfile.close()
         print json.dumps(allfiles)
@@ -174,5 +133,6 @@ def main(argv = None):
 
 if __name__ == '__main__':
     sys.exit(main())
+
 
 

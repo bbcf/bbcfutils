@@ -29,7 +29,8 @@ def main():
             ("-c", "--config", "Config file", {'default': None}),
             ("-p", "--pileup_level", "Target features, inside of quotes, separated by commas.\
                                      E.g. 'genes,exons,transcripts'",{'default':"genes,exons,transcripts"}),
-            ("-j", "--junctions", {'action':"store_true", 'default':False}),
+            ("-j", "--junctions", "Whether or not to seqrch for splice junctions using SOAPsplice",
+                                     {'action':"store_true", 'default':False}),
            )
     try:
         usage = "run_rnaseq.py [-h -v via -k key -c config_file -w working_directory -d minilims -m mapseq_minilims]"
@@ -46,9 +47,10 @@ def main():
 
         if os.path.exists(opt.wdir): os.chdir(opt.wdir)
         else: parser.error("Working directory '%s' does not exist." % opt.wdir)
-        if not(opt.rnaseq_minilims and os.path.exists(opt.rnaseq_minilims)
-                and (opt.key != None or (opt.config and os.path.exists(opt.config)))):
-            parser.error("Need a minilims and either a job key (-k) or a configuration file (-c).\n")
+        if not(opt.rnaseq_minilims and os.path.exists(opt.rnaseq_minilims)):
+            parser.error("Need to specify an existing minilims (-d), got %s." % opt.rnaseq_minilims)
+        if (opt.key is None) or not (opt.config and os.path.exists(opt.config)):
+            parser.error("Need either a job key (-k) or a configuration file (-c).\n")
 
         # RNA-seq job configuration #
         M = MiniLIMS(opt.rnaseq_minilims)
@@ -86,7 +88,8 @@ def main():
                                      script_path=gl.get('script_path',''), via=opt.via, fetch_unmapped=True)
             assert bam_files, "Bam files not found."
             logfile.write("Starting workflow.\n");logfile.flush()
-            rnaseq.rnaseq_workflow(ex, job, bam_files, pileup_level=pileup_level, via=opt.via, rpath=rpath)
+            rnaseq.rnaseq_workflow(ex, job, bam_files, pileup_level=pileup_level, via=opt.via,
+                                   rpath=rpath, junctions=opt.junctions)
 
             # Create GDV project #
             if job.options['create_gdv_project']:
