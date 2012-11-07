@@ -36,9 +36,8 @@ def main(argv = None):
 
         if os.path.exists(opt.wdir): os.chdir(opt.wdir)
         else: parser.error("Working directory '%s' does not exist." % opt.wdir)
-        if not(os.path.exists(opt.snp_limspath)
-               and (opt.key != None or (opt.config and os.path.exists(opt.config)))):
-            raise Usage("Need a minilims and a job key or a configuration file")
+        if not os.path.exists(opt.snp_limspath):
+            parser.error("Need to specify an existing minilims (-d), got %s." % opt.rnaseq_minilims)
         M = MiniLIMS( opt.snp_limspath )
         if opt.key:
             hts_key = opt.key
@@ -75,7 +74,6 @@ def main(argv = None):
                                                         script_path=gl.get('script_path',''),
                                                         via=opt.via)
             assert bam_files, "Bam files not found."
-            logfile.write("cat genome fasta files\n");logfile.flush()
             snp.snp_workflow(ex,job,bam_files,assembly,path_to_ref=opt.fasta_path,via=opt.via)
 
             # Create GDV project #

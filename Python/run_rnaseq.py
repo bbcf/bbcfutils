@@ -49,8 +49,6 @@ def main():
         else: parser.error("Working directory '%s' does not exist." % opt.wdir)
         if not(opt.rnaseq_minilims and os.path.exists(opt.rnaseq_minilims)):
             parser.error("Need to specify an existing minilims (-d), got %s." % opt.rnaseq_minilims)
-        if (opt.key is None) or not (opt.config and os.path.exists(opt.config)):
-            parser.error("Need either a job key (-k) or a configuration file (-c).\n")
 
         # RNA-seq job configuration #
         M = MiniLIMS(opt.rnaseq_minilims)
