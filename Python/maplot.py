@@ -8,7 +8,7 @@ will be plotted in a different color, and be annotated if requested.
 The class AnnoteFinder is used to create interactive - clickable - plots.
 """
 
-import sys, os, json, urllib, math, csv, optparse, random, string
+import sys, os, json, math, csv, optparse, random, string
 import numpy
 from numpy import asarray,log,log10,log2,exp,sqrt,mean,median,float_,round,nonzero
 from scipy import stats
@@ -310,20 +310,6 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
         jsdata = "var data = " + json.dumps(jsdata) + ";\n" \
                  + "var splinelabels = " + json.dumps(splinelabels) + ";\n"
 
-        # - url for more info on features
-        if assembly_id:
-            assemblies = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/assemblies.json").read()
-            assemblies = json.loads(assemblies)
-            try: assembly_id = int(assembly_id)
-            except: pass
-            for a in assemblies:
-                if a['assembly']['name'] == assembly_id or a['assembly']['id'] == assembly_id:
-                    nr_assembly_id =  a['assembly']['nr_assembly_id']
-                    md5 = a['assembly']['md5']; break
-            url_template = urllib.urlopen("http://bbcftools.vital-it.ch/genrep/nr_assemblies/" +
-                            "get_links/" + str(nr_assembly_id) + ".json?gene_name=%3CName%3E&md5=" + md5)
-            jsdata = jsdata + "var url_template = " + url_template.read() + ";"
-        else: jsdata = jsdata + "var url_template = null;"
         print >> sys.stdout, jsdata
 
     return 0
