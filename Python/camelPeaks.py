@@ -6,7 +6,7 @@ Need a list of peaks and a density file in input.
 
 """
 
-import bbcflib.btrack as track
+from bbcflib.btrack import track
 from bbcflib import genrep
 from bbcflib.bFlatMajor.common import sorted_stream
 import rpy2.robjects as robjects
@@ -25,7 +25,7 @@ opts = (("-p", "--peaks",
          "Maximum region size to consider (default 3000)",{'default': 3000,'type':"int"}),
         ("-e", "--extension",
          "Read extension used for computing the density (default 40)",{'default': 40,'type':"int"}),
-        ("-x", "--mu", "Fragment size (default 80)",{'default': 80,'type':"int"}),
+        ("-x", "--mu", "Lower cutoff to fragment size (default 80)",{'default': 80,'type':"int"}),
         ("-z", "--script", "R script path (default ./)",{'default': './'}),
         ("-g", "--genome", "Genome assembly code",{'default': None}),
         ("-k", "--kernel", "Deconvolution kernel ('gaussian' or 'geometric', default 'geometric')",{'default': "geometric"})
@@ -55,19 +55,19 @@ def main(argv = None):
 ####        
         if opt.chromosome and opt.length: chrmeta = {opt.chromosome: {'length': opt.length}}
         else: chrmeta = opt.genome
-        peak_track = track.track(opt.peaks,chrmeta=chrmeta)
+        peak_track = track(opt.peaks,chrmeta=chrmeta)
         chrmeta = peak_track.chrmeta
         if opt.chromosome: chrmeta = {opt.chromosome: chrmeta[opt.chromosome]}
         track_info = {'datatype': peak_track.info.get('datatype','qualitative')}
-        outbed = track.track(opt.output+"_peaks.bed", chrmeta=chrmeta,
+        outbed = track(opt.output+"_peaks.bed", chrmeta=chrmeta,
                              fields=["chr","start","end","name","score"])
-        outwig = track.track(opt.output+"_deconv.bedgraph", chrmeta=chrmeta)
+        outwig = track(opt.output+"_deconv.bedgraph", chrmeta=chrmeta)
         outwig.open(mode='overwrite')
         topts = {'chrmeta': chrmeta, 'readonly': True}
         for chrom,cv in chrmeta.iteritems():
             peak_stream = sorted_stream(peak_track.read(selection=chrom),[chrom])
-            strands = {track.track(opt.forward,**topts).read(chrom,fields=['start','end','score']): 'plus',
-                       track.track(opt.reverse,**topts).read(chrom,fields=['start','end','score']): 'minus'}
+            strands = {track(opt.forward,**topts).read(chrom,fields=['start','end','score']): 'plus',
+                       track(opt.reverse,**topts).read(chrom,fields=['start','end','score']): 'minus'}
             robjects.r('options(stringsAsFactors=F)')
             robjects.r('counts=data.frame()')
             for row_count,peak in enumerate(peak_stream):

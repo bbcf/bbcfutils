@@ -115,7 +115,7 @@ inverse.solve = function(counts,
     if (optimize) {
         solved = solve.one(counts,par[1],par[2],len,1e-3,ktype)
         O = order(sapply(solved$rtn,function(x)x$value))
-        npeaks = min(4,length(O))
+        npeaks = min(10,length(O))
         par = optim(par=par,fn=fit.score,counts=counts[O[1:npeaks]],
           len=len,reg=1e-3,ktype=ktype,
           gr=NULL,method='L-BFGS-B',lower=c(len+1,len+1),upper=c(600,600),
