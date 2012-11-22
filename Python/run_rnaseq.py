@@ -77,7 +77,10 @@ def main():
 
         mapseq_url = gl.get('hts_mapseq',{}).get('url')
         rpath = gl.get('script_path')
-        junctions = opt.junctions or job.options.get('find_junctions')
+        if "find_junctions" in job.options:
+            job.options['find_junctions'] = job.options['find_junctions'].lower() in ['1','true','t']
+        else:
+            job.options['find_junctions'] = opt.junctions
 
         # Program body #
         with execution(M, description=description, remote_working_directory=opt.wdir ) as ex:
@@ -88,7 +91,7 @@ def main():
             assert bam_files, "Bam files not found."
             logfile.write("Starting workflow.\n");logfile.flush()
             rnaseq.rnaseq_workflow(ex, job, bam_files, pileup_level=pileup_level, via=opt.via,
-                                   rpath=rpath, junctions=junctions)
+                                   rpath=rpath, junctions=job.options['find_junctions'])
 
             # Create GDV project #
             if job.options['create_gdv_project']:
