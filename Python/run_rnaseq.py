@@ -6,7 +6,7 @@ A High-throughput RNA-seq analysis workflow.
 python run_rnaseq.py -v lsf -c config_files/gapkowt.txt -d rnaseq -p transcripts,genes
 python run_rnaseq.py -v lsf -c config_files/rnaseq.txt -d rnaseq -p genes -m /scratch/cluster/monthly/jdelafon/mapseq
 """
-import os, sys, json, re
+import os, sys, json, re, sqlite3
 import optparse
 from bbcflib import rnaseq, frontend, common, mapseq, email, gdv
 from bein.util import use_pickle, add_pickle
@@ -51,7 +51,9 @@ def main():
             parser.error("Need to specify an existing minilims (-d), got %s." % opt.rnaseq_minilims)
 
         # RNA-seq job configuration #
-        M = MiniLIMS(opt.rnaseq_minilims)
+        try: M = MiniLIMS(opt.rnaseq_minilims)
+        except sqlite3.OperationalError:
+            raise ValueError("MiniLIMS not found: %s ." % os.path.abspath(opt.rnaseq_minilims))
         if opt.key:
             gl = use_pickle( M, "global variables" )
             htss = frontend.Frontend( url=gl['hts_rnaseq']['url'] )
@@ -77,10 +79,7 @@ def main():
 
         mapseq_url = gl.get('hts_mapseq',{}).get('url')
         rpath = gl.get('script_path')
-        if "find_junctions" in job.options:
-            job.options['find_junctions'] = job.options['find_junctions'].lower() in ['1','true','t']
-        else:
-            job.options['find_junctions'] = opt.junctions
+        job.options['find_junctions'] = opt.junctions or (job.options.get('find_junctions','').lower() in ['1','true','t'])
 
         # Program body #
         with execution(M, description=description, remote_working_directory=opt.wdir ) as ex:
@@ -91,7 +90,7 @@ def main():
             assert bam_files, "Bam files not found."
             logfile.write("Starting workflow.\n");logfile.flush()
             rnaseq.rnaseq_workflow(ex, job, bam_files, pileup_level=pileup_level, via=opt.via,
-                                   rpath=rpath, junctions=job.options['find_junctions'])
+                                   rpath=rpath, junctions=job.options['find_junctions'], logfile=logfile, debugfile=debugfile)
 
             # Create GDV project #
             if job.options['create_gdv_project']:
