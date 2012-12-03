@@ -19,7 +19,11 @@ opts = (("-m", "--minilims", "path to personal minilims, or name of an HTSstatio
         ("-c", "--copy", "copy files to local path", {'action':"store_true",'default':False}),
         ("-s", "--symlink", "create symlinks to files in local path", {'action':"store_true",'default':False}),
         ("-p", "--programs", "list execution's program arguments and outputs", {'action':"store_true",'default':False}),
-        ("", "--basepath","HTS basepath",{'default':"/archive/epfl/bbcf/data/htsstation"}))
+        ("-g", "--gdv", "key of a gdv project to send sql files to", {'default':None}),
+        ("", "--basepath","HTS basepath",{'default':"/archive/epfl/bbcf/data/htsstation"}),
+        ("", "--gdvurl","GDV base url",{'default':None}),
+        ("", "--email","GDV user email",{'default':""}),
+        ("", "--key","GDV user key",{'default':""}))
 
 class Usage(Exception):
     def __init__(self,  msg):
@@ -45,6 +49,7 @@ def main(argv=None):
                 tags = dict(x.split("=") for x in tags)
             elif tags[0].count(":"):
                 tags = dict(x.split(":") for x in tags)
+        if options.gdv: tags['type'] = 'sql'
         if options.programs:
             if isinstance(options.execution, basestring):
                 exid = max(M.search_executions(with_text=options.execution))
@@ -75,6 +80,9 @@ def main(argv=None):
             if not(options.output): options.output = "./"
             if not(os.path.isdir(options.output)):
                 options.output, fprefix = os.path.split(options.output)
+        if options.gdv: 
+            gdvpaths = []
+            gdvnames = []
         for t in sorted(files.keys()):
             for k,v in files[t].iteritems():
                 fpath = os.path.join(M.file_path,k)
@@ -90,7 +98,28 @@ def main(argv=None):
                 if options.list: outfile.write("\t".join([t,par_dict.get('groupId',''),fname,fpath,comment])+"\n")
                 if options.copy: shutil.copy(fpath, os.path.join(options.output,fname))
                 if options.symlink: os.symlink(fpath, os.path.join(options.output,fname))
+                if options.gdv: 
+                    gdvpaths.append(fpath)
+                    gdvnames.append(re.sub('\.sql.*','',str(fname)))
         if options.list and options.output: outfile.close()
+        if options.gdv:
+            from bbcflib import gdv
+            gdvurl = options.gdvurl or gdv.default_url
+            gdvproject = gdv.get_project(mail=options.email, key=options.key,
+                                          project_key=options.gdv)
+            if gdvproject.get('project',{}).get('id',0)>0:
+                try:
+                    tr = gdv.multiple_tracks( mail=options.email, key=options.key,
+                                              project_id=gdvproject['project']['id'],
+                                              urls=gdvpaths, names=gdvnames, extensions=['sql']*len(gdvpaths),
+                                              force=True, serv_url=gdvurl )
+                except Exception, err:
+                    raise Usage("GDV Tracks Failed: %s\n" %err)
+                print """
+*********** GDV project at: ***********
+%s/public/project?k=%s&id=%s
+***************************************
+""" %(gdvurl,gdvproject['project']['download_key'],gdvproject['project']['id'])
         return 0
 
     except Usage, err:
