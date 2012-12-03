@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import optparse, sys, os, shutil
+import optparse, sys, os, shutil, re
 from bein import MiniLIMS
 from bbcflib.common import get_files
 
@@ -49,7 +49,9 @@ def main(argv=None):
                 tags = dict(x.split("=") for x in tags)
             elif tags[0].count(":"):
                 tags = dict(x.split(":") for x in tags)
-        if options.gdv: tags['type'] = 'sql'
+        if options.gdv: 
+            if tags: tags['type'] = 'sql'
+            else: tags = {'type': 'sql'}
         if options.programs:
             if isinstance(options.execution, basestring):
                 exid = max(M.search_executions(with_text=options.execution))
@@ -106,7 +108,7 @@ def main(argv=None):
             from bbcflib import gdv
             gdvurl = options.gdvurl or gdv.default_url
             gdvproject = gdv.get_project(mail=options.email, key=options.key,
-                                          project_key=options.gdv)
+                                         project_key=options.gdv)
             if gdvproject.get('project',{}).get('id',0)>0:
                 try:
                     tr = gdv.multiple_tracks( mail=options.email, key=options.key,
