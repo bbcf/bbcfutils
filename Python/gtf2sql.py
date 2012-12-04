@@ -27,21 +27,20 @@ params = {'info': {'datatype':'relational'},
 gtf_read_fields = ['chr','source','name','start','end','strand','frame','attributes']
 sql_fields = ['chr','biotype','type','start','end','strand','frame']+std_outfields
 
-for a in genrep.GenRep().assemblies_available():
-    assembly = genrep.Assembly(a)
+for _a,info in genrep.GenRep().assemblies_available():
+    assembly = genrep.Assembly(_a)
     gtf_path = os.path.join(basepath,assembly.md5+".gtf.gz")
     if not(assembly.bbcf_valid and os.path.exists(gtf_path)): continue
-    print a, gtf_path
-    gtf = track(gtf_path,intypes={'frame':_frame,
-                                  'exon_number': _exon_number,
-                                  'start': ensembl_to_ucsc},
+    print info, gtf_path
+    gtf = track(gtf_path, intypes={'frame': _frame,
+                                   'exon_number': _exon_number},
                 chrmeta=assembly.chrmeta)
-
     all_fields = set(_split_attributes(gtf.read(fields=['attributes'])))
     new_fields = [f for f in all_fields if not(f in std_outfields)]
-    xsplit = split_field(gtf.read(fields=gtf_read_fields),
-                         outfields=std_outfields+new_fields,
-                         infield='attributes', header_split=' ')
+    xsplit = split_field(ensembl_to_ucsc(
+            gtf.read(fields=gtf_read_fields)),
+            outfields=std_outfields+new_fields,
+            infield='attributes', header_split=' ')
     xsplit.fields[:7] = sql_fields[:7]
     outname = assembly.md5+".sql"
     if os.path.exists(outname): os.unlink(outname)

@@ -68,7 +68,7 @@ def main():
                          for k,v in assembly.chrmeta.iteritems()]
                 fout.write("\n".join(table)+"\n")
             else:
-                fout.write("\n".join(g_rep.assemblies_available())+"\n")
+                fout.write("\n".join(v[1] for v in g_rep.assemblies_available())+"\n")
             return 0
         if not(opt.assembly):
             parser.print_help()
