@@ -34,18 +34,17 @@ for (sample in sort(names(stats.by.sample))) {
       main='Mismatches between reads and reference')
     text(x=mean(df$reads),y=p,lab=df$reads,cex=1.1)
     ps=as.numeric(c(stats$alignments$fwd,stats$alignments$rev))
-    col=c('blue','red')
-    pie(ps,labels=paste(c("Forward","Reverse"),ps),col=col,
-	main='Alignements per strand of reference',cex=1.1)
+    if (sum(ps)>0) {
+      col=c('blue','red')
+      pie(ps,labels=paste(c("Forward","Reverse"),ps),col=col,
+          main='Alignements per strand of reference',cex=1.1)
+    }
     df=data.frame(genome=as.numeric(stats$genome_size),
       expected=as.numeric(stats$expected_coverage),
       actual=as.numeric(stats$actual_coverage))
     col=c('darkorange','forestgreen','forestgreen')
     p=barplot(c(df$genome,df$genome*df$expected,df$genome*df$actual)*1e-6,
-      horiz=T,border=0,
-      col=col,
-      ylab='',xlab='Megabase',
-      main='Genome coverage')
+      horiz=T,border=0,col=col,ylab='',xlab='Megabase',main='Genome coverage')
     text(x=df$genome*5e-7,y=p,lab=c(
                    sprintf("genome size: %.0f",df$genome),
                    sprintf("total read length: %.1f%%",df$expected*100),
