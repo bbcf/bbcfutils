@@ -282,34 +282,82 @@ void printbed( posh &counts, const double cntw=1.0, const std::string* header=0,
 
 inline static int accumulate( const samtools::bam1_t *b, void *d ) {
     samdata *data = (samdata*)d;
-    int cur_count = 1, read_cut = opts.cut, dstr = data->strand;
+    int nh = 1, read_cut = opts.cut, dstr = data->strand;
 // ****************** NH field = Number of Hits for this tag
-    if (bam_aux_get(b,"NH")) cur_count = samtools::bam_aux2i(bam_aux_get(b,"NH"));
-    if (cur_count <= opts.maxhits || opts.maxhits < 0) {
-	float weight = 1.0/cur_count;
-	data->ntags++;
+    if (bam_aux_get(b,"NH")) nh = samtools::bam_aux2i(bam_aux_get(b,"NH"));
+    if (nh > opts.maxhits && opts.maxhits >= 0) return 1;
+    float weight = 1.0/nh;
 // ****************** if cut > 0, set tag size = cut even if longer than read 
-	if (opts.cut < 0) read_cut = b->core.l_qseq;
+    if (opts.cut < 0) read_cut = b->core.l_qseq;
+    if (opts.merge > -1 && (b->core.flag&BAM_FPROPER_PAIR)) {
+	read_cut = b->core.isize-opts.merge;
+	opts.cut = 1;
+	if (read_cut < 1 || bam1_strand(b)) return 1;
+    }
+    data->ntags++;
+    if (bam1_strand(b) && dstr <= 0) { // ********* reverse strand *********
 // ****************** BAM is 0-based, but our array will be 1-based
-	int start = b->core.pos+1, stop = b->core.pos+read_cut;
-        if ((dstr > 0 && bam1_strand(b)) || (dstr < 0 && !bam1_strand(b))) return 1;
-	if (bam1_strand(b)) {
-	    stop = start+b->core.l_qseq-1;
-	    start = stop-read_cut+1;
-	    if (start<1) start=1;
-	}
-	for ( int i = start; i <= stop; i++ ) {
-            int i2;
-            if (bam1_strand(b)) { // reverse strand
-                if (opts.merge > -1) i2=i-opts.merge;
-                else                 i2=-i;
-            } else {              // forward strand
-                if (opts.merge > -1) i2=i+opts.merge;
-                else                 i2=i;
-            }
+	int start = b->core.pos+1, stop = start+b->core.l_qseq;
+	int st0 = std::max(1,stop-read_cut);
+	for ( uint32_t j = 0; j < b->core.n_cigar; j++ ) {
+	    int op = bam1_cigar(b)[j]&BAM_CIGAR_MASK,
+		shift = bam1_cigar(b)[j]>>BAM_CIGAR_SHIFT;
+	    if (op == 0) {
+		int ri0 = std::max(st0,start), ri1 = start+shift;
+		if (opts.merge > -1) {
+		    ri0 -= opts.merge;
+		    ri1 -= opts.merge;
+		} else {
+		    ri1 = -ri0+1;
+		    ri0 = -start-shift+1;
+		}
 // ****************** ref is the target set (therefore current set is the control),
 // ****************** only record at positions present in ref
-	    if (!data->scounts || data->scounts->count(i2)) data->counts[i2]+=weight;
+		for ( int i = ri0; i < ri1; i++ ) 
+		    if (!data->scounts || data->scounts->count(i)) data->counts[i]+=weight;
+	    }
+	    if (op != 1) start += shift;
+	    if (op == 1) st0 += shift;
+	    if (op == 2 || op == 3) stop += shift;
+	}
+	if (opts.cut > 0) {
+	    int ri0 = st0, ri1 = b->core.pos+1;
+	    if (opts.merge > -1) {
+		ri0 -= opts.merge;
+		ri1 -= opts.merge;
+	    } else {
+		ri0 = -ri1+1;
+		ri1 = -st0+1;
+	    }
+	    for ( int i = ri0; i < ri1; i++ ) 
+		if (!data->scounts || data->scounts->count(i)) data->counts[i]+=weight;
+	}
+    } else if ((!bam1_strand(b)) && dstr >= 0) { // ********* forward strand *********
+	int start = b->core.pos+1, stop = start+read_cut;
+	for ( uint32_t j = 0; j < b->core.n_cigar; j++ ) {
+	    int op = bam1_cigar(b)[j]&BAM_CIGAR_MASK,
+		shift = bam1_cigar(b)[j]>>BAM_CIGAR_SHIFT;
+	    if (op == 0) {
+		int ri0 = start, ri1 = std::min(start+shift, stop);
+		if (opts.merge > -1) {
+		    ri0 += opts.merge;
+		    ri1 += opts.merge;
+		}
+		for ( int i = ri0; i < ri1; i++ ) 
+		    if (!data->scounts || data->scounts->count(i)) data->counts[i]+=weight;
+	    }
+	    if (op != 1) start += shift;
+	    if (op == 1) stop -= shift;
+	    if (op == 2 || op == 3) stop += shift;
+	}
+	if (opts.cut > 0) {
+	    int ri0 = start, ri1 = stop;
+	    if (opts.merge > 0) {
+		ri0 += opts.merge;
+                if (b->core.flag&BAM_FPROPER_PAIR == 0) ri1 += opts.merge;
+	    }
+	    for ( int i = ri0; i < ri1; i++ ) 
+		if (!data->scounts || data->scounts->count(i)) data->counts[i]+=weight;
 	}
     }
     return 1;
@@ -333,7 +381,7 @@ int main( int argc, char **argv )
 	cmd.add( mincv );
 	TCLAP::ValueArg< int > maxct( "t", "maxcounts", "Maximum coverage",  false, 0, "int" );
 	cmd.add( maxct );
-	TCLAP::ValueArg< int > maxh( "m", "maxhits", "Maximum hit count",  false, 10, "int" );
+	TCLAP::ValueArg< int > maxh( "m", "maxhits", "Maximum duplicate level",  false, -1, "int" );
 	cmd.add( maxh );
 	TCLAP::ValueArg< int > cut( "q", "cut", "Tags (pseudo-)size",  false, -1, "int" );
 	cmd.add( cut );

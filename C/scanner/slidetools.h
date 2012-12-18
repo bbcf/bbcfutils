@@ -20,7 +20,7 @@ typedef struct
 {
   int npos;
   int span;
-        char *header;
+  char *header;
   onePos *pos;
 }
 WeightMat;

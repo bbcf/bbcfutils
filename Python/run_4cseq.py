@@ -100,7 +100,8 @@ def main(argv = None):
 	debugfile.write(json.dumps(job.options)+"\n\n"+json.dumps(gl)+"\n");debugfile.flush()
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
 	    logfile.write("Enter execution, fetch bam and wig files.\n");logfile.flush()
-            (mapseq_files, job) = mapseq.get_bam_wig_files( ex, job, ms_limspath, mapseq_url, suffix=['merged'],script_path=gl['script_path'], via=via )
+            (mapseq_files, job) = mapseq.get_bam_wig_files( ex, job, ms_limspath, mapseq_url, suffix=['merged'],
+                                                            script_path=gl['script_path'], via=via )
             logfile.write("Starting workflow.\n");logfile.flush()
 	    c4seq_files = c4seq.workflow_groups( ex, job, primers_dict, assembly,
                                                  mapseq_files, mapseq_url, 
