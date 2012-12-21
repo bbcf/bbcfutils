@@ -375,13 +375,13 @@ int main( int argc, char **argv )
 	cmd.add( cf ); 
 	TCLAP::ValueArg< std::string > ch( "a", "chromosome", "Chromosome region", false, "", "string" );
 	cmd.add( ch ); 
-	TCLAP::ValueArg< std::string > cn( "n", "chrname", "Chromosome name", false, "", "string" );
+	TCLAP::ValueArg< std::string > cn( "n", "chrname", "Chromosome name (if different from -a)", false, "", "string" );
 	cmd.add( cn ); 
 	TCLAP::ValueArg< int > mincv( "l", "mincover", "Minimum coverage",  false, 0, "int" );
 	cmd.add( mincv );
 	TCLAP::ValueArg< int > maxct( "t", "maxcounts", "Maximum coverage",  false, 0, "int" );
 	cmd.add( maxct );
-	TCLAP::ValueArg< int > maxh( "m", "maxhits", "Maximum duplicate level",  false, -1, "int" );
+	TCLAP::ValueArg< int > maxh( "m", "maxhits", "Maximum number of hits per read",  false, -1, "int" );
 	cmd.add( maxh );
 	TCLAP::ValueArg< int > cut( "q", "cut", "Tags (pseudo-)size",  false, -1, "int" );
 	cmd.add( cut );
@@ -393,7 +393,7 @@ int main( int argc, char **argv )
 	cmd.add( reg );
 	TCLAP::SwitchArg nrat( "z", "noratio", "Do not compute ratio by control",  false );
 	cmd.add( nrat );
-	TCLAP::ValueArg< int > merge( "p", "merge", "Shift and merge strands",  false, -1, "int" );
+	TCLAP::ValueArg< int > merge( "p", "merge", "Shift and merge strands. If >=0 on paired-end, will count whole fragment minus p from each end",  false, -1, "int" );
 	cmd.add( merge );
 	TCLAP::SwitchArg sixc( "6", "sixcolumns", "Six columns bed output (default is 4-col bedgraph)",  false );
 	cmd.add( sixc );
