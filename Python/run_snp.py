@@ -25,13 +25,20 @@ def main(argv = None):
             ("-d", "--snp_limspath", "MiniLIMS where SNP executions and files will be stored.", \
                                      {'default': "/srv/snp/public/data/snp_minilims"}),
             ("-f", "--fasta_path", "Path to a directory containing a fasta file for each chromosome",
-                                     {'default':None}),)
+                                     {'default':None}),
+            ("--minsnp", "Minimum number of reads supporting an SNP at a position for it to be considered.", {'default':5}),
+            ("--mincov", "Minimum percentage of reads supporting the SNP for it to be returned.", {'default':40}),
+           )
+
     try:
         usage = "run_snp.py [OPTIONS]"
         desc = """Compares sequencing data to a reference assembly to detect SNP."""
         parser = optparse.OptionParser(usage=usage, description=desc)
         for opt in opts:
-            parser.add_option(opt[0],opt[1],help=opt[2],**opt[3])
+            if len(opt) == 4:
+                parser.add_option(opt[0],opt[1],help=opt[2],**opt[3])
+            else:
+                parser.add_option(opt[0],help=opt[1],**opt[2])
         (opt, args) = parser.parse_args()
 
         if os.path.exists(opt.wdir): os.chdir(opt.wdir)
@@ -74,7 +81,8 @@ def main(argv = None):
                                                         script_path=gl.get('script_path',''),
                                                         via=opt.via)
             assert bam_files, "Bam files not found."
-            snp.snp_workflow(ex,job,bam_files,assembly,path_to_ref=opt.fasta_path,via=opt.via)
+            snp.snp_workflow(ex,job,bam_files,assembly,mincov=opt.mincov,minsnp=opt.minsnp,
+                             path_to_ref=opt.fasta_path,via=opt.via)
 
             # Create GDV project #
             if job.options['create_gdv_project']:
