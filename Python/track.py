@@ -167,7 +167,7 @@ def main(argv=None):
         return eval(fct)(*args,**options.__dict__)
 
     except Usage, err:
-        print >>sys.stderr, err.msg
+        print >>sys.stderr, '\n',err.msg,'\n'
         print >>sys.stderr, usage[fct]
         if parser: parser.print_help()
         return 1
