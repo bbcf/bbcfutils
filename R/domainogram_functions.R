@@ -293,7 +293,7 @@ runDomainogram <- function(dataToTreat,curName,wmaxDomainogram=500,wmax_BRICKS=5
         foundBricks<-createBRICK(resDomainogram,wmax_BRICKS)
         coordBricks<-getBRICKSCoord(foundBricks,dataToTreat,resDomainogram)
         write.table(cbind(rep(curChr,nrow(coordBricks)),coordBricks),paste(path,prefName,"_foundBRICKS.txt",sep=""),quote=FALSE,sep="\t",row.names=FALSE)
-	save(dataToTreat,resDomainogram,foundBricks,coordBricks,file=paste("../",prefName,"_domainograms.RData",sep=""))
+	try(save(dataToTreat,resDomainogram,foundBricks,coordBricks,file=paste(path,"../",prefName,"_domainograms.RData",sep="")))
 	selectedBricks<-plotSelectedBRICKS(coordBricks,dataToTreat,myLim=0,myTitle=curName,imgFile=paste(path,prefName,"_selectedBRICKS.pdf",sep=""))
         write.table(cbind(rep(curChr,nrow(selectedBricks)),selectedBricks),paste(path,prefName,"_selectedBRICKS.txt",sep=""),quote=FALSE,sep="\t",row.names=FALSE)
 
@@ -311,9 +311,9 @@ runDomainogram <- function(dataToTreat,curName,wmaxDomainogram=500,wmax_BRICKS=5
 	write.table(toWrite,selectedBricksFile_pval,quote=FALSE,sep="\t",row.names=FALSE,col.names=FALSE,append=TRUE)
 
 	gsub("chr","",curChr)
-	save(dataToTreat,resDomainogram,selectedBricks,foundBricks,coordBricks,file=paste("../",prefName,"_domainograms.RData",sep=""))
+	try(save(dataToTreat,resDomainogram,selectedBricks,foundBricks,coordBricks,file=paste(path,"../",prefName,"_domainograms.RData",sep="")))
 	print("Done!")
-	resFiles=c(paste(path,prefName,"_domainogram.pdf",sep=""),paste(path,prefName,"_foundBRICKS.txt",sep=""),paste("../",prefName,"_domainograms.RData",sep=""),paste(path,prefName,"_selectedBRICKS.pdf",sep=""),paste(path,prefName,"_selectedBRICKS.txt",sep=""),selectedBricksFile,selectedBricksFile_pval)
+	try(resFiles=c(paste(path,prefName,"_domainogram.pdf",sep=""),paste(path,prefName,"_foundBRICKS.txt",sep=""),paste(path,"../",prefName,"_domainograms.RData",sep=""),paste(path,prefName,"_selectedBRICKS.pdf",sep=""),paste(path,prefName,"_selectedBRICKS.txt",sep=""),selectedBricksFile,selectedBricksFile_pval))
 
 	return(resFiles)
 }
