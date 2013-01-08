@@ -35,7 +35,7 @@ plotDomainogram <- function(myScores,wmax,nGrad,myCex=1.5)
 #	print(summary(p))
 	print("Done!")
 #	plot(0,0,ylim=c(0,1),xlim=c(0,wmax))
-gradient.rect(0,0.5,1,0.9,col=myCols,gradient="y",border=NA)
+        gradient.rect(0,0.5,1,0.9,col=myCols,gradient="y",border=NA)
         rect(1,0.5,2,0.5)
         rect(1,0.66,2,0.66)
         rect(1,0.78,2,0.78)
@@ -45,7 +45,6 @@ gradient.rect(0,0.5,1,0.9,col=myCols,gradient="y",border=NA)
         text(5,0.78,label=format(10^-myBreaks[7],scientific=TRUE),pch=3)
         text(5,0.9,label=10^-myBreaks[10],pch=3)
 }
-#plotDomainogram(dataDown[1:100,4],40,20,1)
 
 plotLegend <- function(imgFile="")
 {
@@ -65,41 +64,6 @@ plotLegend <- function(imgFile="")
 	if(nchar(imgFile)>0){dev.off()}
 }
 
-# optimized (per line by using the precendent + won't plot the domainogram if
-# imgFile=NA
-createDomainogram <- function(myScores,wmax=20,nGrad=10,myCex=1.5,imgFile="",decrease=TRUE)
-{
-        r <- rank(myScores)
-	if(decrease){q <- 1-((r-0.5)/length(myScores))}else{q <- (r-0.5)/length(myScores)}
-        myCols <- smoothColors("black",(nGrad-2)/2,"purple",(nGrad-2)/2,"red")
-        myBreaks=seq(-0.0001,6,length.out=10)
-        myPch=17;
-        m=matrix(nrow=wmax,ncol=length(myScores))
-        print(dim(m))
-        if(is.na(imgFile)){print("Will not plot the resulting domainogram")}else{if(nchar(imgFile)>0){print("will plot the resulting domainogram:");print(imgFile);plotLegend(paste(imgFile,"_legend.pdf",sep=""));pdf(imgFile);}else{X11()}}
-        for(w in 1:wmax)
-        {
-                if(w/100-round(w/100)==0){cat(paste(w,";",sep=""))}
-                if(w==1){
-                        s<-unlist(lapply(1:length(q),function(i){-2*log(q[i])}))
-                        p <- unlist(lapply(1:length(s),function(i){w=w;pchisq(s[i],df=2*w,ncp=0,lower.tail=FALSE)}));p[which(p<10^-6)]=10^-6; m[w,]=p; prev <- s
-		}
-                else
-                {
-                        s <- unlist(lapply(w:length(q),function(i){-2*log(q[i])+prev[i-w+1]}))
-                        p <- unlist(lapply(1:length(s),function(i){w=w;pchisq(s[i], df=2*w, ncp=0,lower.tail=FALSE)}))
-                        p[which(p<10^-6)]=10^-6;m[w,w:ncol(m)]=p; prev <- s;
-                 }
-
-		if(!is.na(imgFile))
-		{
-                	if(w==1){plot(c(1:ncol(m)),rep(w*(1/wmax),ncol(m)),xlim=c(0,length(myScores)),ylim=c(0,1),col=myCols[cut(-log10(m[w,]),myBreaks,labels=FALSE)],pch=myPch,cex=myCex)}
-                	else{points(c(1:length(m[w,w:ncol(m)]))+(w/2),rep(w*(1/wmax),length(m[w,w:ncol(m)])),col=myCols[cut(-log10(m[w,w:ncol(m)]),myBreaks,labels=FALSE)],pch=myPch,cex=myCex)}
-		}
-        }
-        if(!is.na(imgFile) && nchar(imgFile)>0){dev.off()}
-        return(m)
-}
 
 createDomainogram_vJ <- function(dataToTreat,wmax=20,nGrad=10,myCex=1.5,imgFile="",decrease=TRUE,main='')
 {
@@ -112,8 +76,6 @@ createDomainogram_vJ <- function(dataToTreat,wmax=20,nGrad=10,myCex=1.5,imgFile=
         q <- -2*log((r-0.5)/lensc)
     }
     myCols <- smoothColors("black",(nGrad-2)/2,"purple",(nGrad-2)/2,"red")
-    myBreaks=seq(-0.0001,6,length.out=10)
-    myPch=17;
     mflat = q
     prev = q
     for(w in 2:wmax) {
@@ -121,13 +83,11 @@ createDomainogram_vJ <- function(dataToTreat,wmax=20,nGrad=10,myCex=1.5,imgFile=
         prev = q[-(1:(w-1))]+prev[1:(lensc-w+1)]
         mflat=c(mflat,prev)
     }
-#    mflat =
-#    pchisq(mflat,df=rep(2*1:wmax,lensc+1-1:wmax),ncp=0,lower.tail=FALSE)
     s0 = data.frame(s=round(mflat,digits=6),df=rep(2*1:wmax,lensc+1-1:wmax))
     su = unique(s0)
     mflat = data.frame(pv=pchisq(su$s,df=su$df,ncp=0,lower.tail=FALSE),
       row.names=paste(su$s,su$df,sep='_'))[paste(s0$s,s0$df,sep='_'),1]
-    mflat[mflat<1e-6]=1e-6
+    #mflat[mflat<1e-6]=1e-6
     wptr = lensc
     print("Make matrice from mflat")
     print(paste("lensc=",lensc))
@@ -140,23 +100,13 @@ createDomainogram_vJ <- function(dataToTreat,wmax=20,nGrad=10,myCex=1.5,imgFile=
     }
 
      plotDomainogram_vJ(dataToTreat,m,wmax,lensc,myCols,imgFile,plotAxis=TRUE)
-#    plotDomainogram_vJ(dataToTreat,m,wmax,lensc,myCols,gsub(".pdf","_noAxis.pdf",imgFile),plotAxis=FALSE)
-
-#	plot(xcoord-rep(1:wmax/2,lensc+1-1:wmax),
-#             rep(1:wmax/wmax,lensc+1-1:wmax),
-#             ylim=c(0,1),
-#             xlab='Position',ylab='Size',
-#             main=main, yaxt='n',
-#             col=myCols[cut(-log10(mflat),myBreaks,labels=FALSE)],
-#             pch=myPch,cex=myCex)
-#        axis(side=2,at=seq(0,wmax,length.out=10)/wmax,
-#             labels=round(seq(0,wmax,length.out=10),0),las=2)
     return(m)
 }
 
 plotDomainogram_vJ <- function(dataToTreat,domainogram.m,wmax,lensc,myCols,imgFile='',plotAxis=TRUE,main='')
 {
    m=domainogram.m
+   m[m<1e-6]=1e-6
    if (is.na(imgFile)) {
         print("Will not plot the resulting domainogram")
     } else {
@@ -165,11 +115,6 @@ plotDomainogram_vJ <- function(dataToTreat,domainogram.m,wmax,lensc,myCols,imgFi
             print(imgFile)
             plotLegend(paste(imgFile,"_legend.pdf",sep=""))
             pdf(imgFile,width = 7, height = 5.5, pointsize = 8)
-            #png(imgFile,width = 1024, height = 800, units = "px")
-           # pdf(gsub("pdf","pdf",imgFile),width = round(1024/72), height = round(800/72)) #square of side 1/72 inch, which is also the ‘pixel’ size assumed for graphics
-         #   pdf(gsub("pdf","pdf",imgFile),width = 18, height = 13, res=300) #square of side 1/72 inch, which is also the ‘pixel’ size assumed for graphics
-	   #  postscript(gsub("pdf","ps",imgFile),width=round(1024/72), height=round(800/72))
-	    #jpeg(gsub("pdf","jpeg",imgFile),width=1024, height=800, units = "px", quality=90, bg="black")
         } else {
             X11(width = 12, height = 9)
         }
@@ -190,81 +135,6 @@ plotDomainogram_vJ <- function(dataToTreat,domainogram.m,wmax,lensc,myCols,imgFi
 	if(nchar(imgFile)>0) dev.off()
     }
 }
-
-
-
-
-# optimized (per line by using the precendent
-createDomainogram_v1 <- function(myScores,wmax=20,nGrad=10,myCex=1.5,imgFile="")
-{
-        r <- rank(myScores)
-        q <- 1-((r-0.5)/length(myScores))
-        myCols <- smoothColors("black",(nGrad-2)/2,"purple",(nGrad-2)/2,"red")
-        myBreaks=seq(-0.0001,6,length.out=10)
-        myPch=17;
-        m=matrix(nrow=wmax,ncol=length(myScores))
-        print(dim(m))
-        if(nchar(imgFile)>0){print(imgFile);plotLegend(paste(imgFile,"_legend.pdf",sep=""));pdf(imgFile);}else{X11()}
-        for(w in 1:wmax)
-        {
-                if(w/100-round(w/100)==0){cat(paste(w,";",sep=""))}
-#                for(i in w:length(myScores))
-#                {	
-			if(w==1){
-			s<-unlist(lapply(1:length(q),function(i){-2*log(q[i])}))
-			p <- unlist(lapply(1:length(s),function(i){w=w;pchisq(s[i], df=2*w,ncp=0,lower.tail=FALSE)}));p[which(p<10^-6)]=10^-6; m[w,]=p; prev <- s } 
-			#if(w==1){s<--2*log(q[i]); p <- pchisq(s, df=2*w, ncp=0,lower.tail=FALSE); m[w,i]=max(p,10^-6);
-                        else
-                        {
-                               # s <- -2*log(prod(q[(i-w+1):i])); p<-pchisq(s,df=2*w, ncp=0,lower.tail=FALSE); m[w,i]=max(p,10^-6);
-				s <- unlist(lapply(w:length(q),function(i){-2*log(q[i])+prev[i-w+1]}))
-                        	p <- unlist(lapply(1:length(s),function(i){w=w;pchisq(s[i], df=2*w, ncp=0,lower.tail=FALSE)}))
-				p[which(p<10^-6)]=10^-6;m[w,w:ncol(m)]=p; prev <- s;
-                                #if(is.na(m[w,i])){print(paste("w=",w,";i=",i,"=>",m[w,i]));print(head(s));print(head(p));return(s);exit}
-                        }
- #               }
-                if(w==1){plot(c(1:ncol(m)),rep(w*(1/wmax),ncol(m)),xlim=c(0,length(myScores)),ylim=c(0,1),col=myCols[cut(-log10(m[w,]),myBreaks,labels=FALSE)],pch=myPch,cex=myCex)}
-                else{points(c(1:length(m[w,w:ncol(m)]))+(w/2),rep(w*(1/wmax),length(m[w,w:ncol(m)])),col=myCols[cut(-log10(m[w,w:ncol(m)]),myBreaks,labels=FALSE)],pch=myPch,cex=myCex)
-                #tmp=myCols[cut(-log10(m[w,w:ncol(m)]),myBreaks,labels=FALSE)];if("#FFFFFF" %in% tmp){print(which(tmp=="#FFFFFF"));print("exit cause White %color");return(m)}
-                }
-        }
-        if(nchar(imgFile)>0){dev.off()}
-        return(m)
-}
-
-
-createDomainogram_v0 <- function(myScores,wmax=20,nGrad=10,myCex=1.5,imgFile="")
-{
-        r <- rank(myScores)
-        q <- 1-((r-0.5)/length(myScores))
-        myCols <- smoothColors("black",(nGrad-2)/2,"purple",(nGrad-2)/2,"red")
-        myBreaks=seq(-0.0001,6,length.out=10)
-        myPch=17;
-	m=matrix(nrow=wmax,ncol=length(myScores)) 
-	print(dim(m))
-	if(nchar(imgFile)>0){print(imgFile);plotLegend(paste(imgFile,"_legend.pdf",sep=""));pdf(imgFile);}else{X11()}
-	for(w in 1:wmax)
-	{	
-		if(w/100-round(w/100)==0){cat(paste(w,";",sep=""))}
-        	for(i in w:length(myScores))
-        	{
-                	if(w==1){s<--2*log(q[i]); p <- pchisq(s, df=2*w, ncp=0,lower.tail=FALSE); m[w,i]=max(p,10^-6); 
-			}
-                	else
-                	{
-				s <- -2*log(prod(q[(i-w+1):i])); p<-pchisq(s, df=2*w, ncp=0,lower.tail=FALSE); m[w,i]=max(p,10^-6); 
-				#if(is.na(m[w,i])){print(paste("w=",w,";i=",i,"=>",m[w,i]));print(head(s));print(head(p));return(s);exit}
-                	}
-        	}
-		if(w==1){plot(c(1:ncol(m)),rep(w*(1/wmax),ncol(m)),xlim=c(0,length(myScores)),ylim=c(0,1),col=myCols[cut(-log10(m[w,]),myBreaks,labels=FALSE)],pch=myPch,cex=myCex)}
-		else{points(c(1:length(m[w,w:ncol(m)]))+(w/2),rep(w*(1/wmax),length(m[w,w:ncol(m)])),col=myCols[cut(-log10(m[w,w:ncol(m)]),myBreaks,labels=FALSE)],pch=myPch,cex=myCex)
-		#tmp=myCols[cut(-log10(m[w,w:ncol(m)]),myBreaks,labels=FALSE)];if("#FFFFFF" %in% tmp){print(which(tmp=="#FFFFFF"));print("exit cause White color");return(m)}
-		}
-	}
-	if(nchar(imgFile)>0){dev.off()}
-	return(m)
-}
-#res<-createDomainogram(myScores[1:500],500,10,0.7)
 
 createBRICK <-function(P,wmax,gamma=0.01)
 {
@@ -347,24 +217,14 @@ plotSelectedBRICKS <- function(coordBRICKS,data,myLim=0,myTitle="",imgFile="")
 	}
 	rect(coordBRICKS[k,1],-log10(coordBRICKS[k,4]),coordBRICKS[k,2],-log10(coordBRICKS[k,4])+0.2,col=colToUse,border=colToUse)
 	
-#	myBy=5
-#	grps=cut(coordBRICKS[k,3],breaks=seq(0,max(coordBRICKS[k,3])+1,by=myBy),right=TRUE)
-#	ngrps=length(seq(0,max(coordBRICKS[k,3])+1,by=myBy))
 	if(myLim==0){
                 plot(c(0,0),col="white",xlim=c(min(coordBRICKS[,1]),max(coordBRICKS[,2])),ylim=c(min(coordBRICKS[k,3])-1,max(coordBRICKS[,3])),xlab="",ylab="segment length",main="length of selected BRICKS",axes=TRUE)
-#		valX=seq(0,round(max(coordBRICKS[,1])/10^7),by=2)
-#		plot(c(0,0),col="white",xlim=c(min(coordBRICKS[,1]),max(coordBRICKS[,2])),ylim=c(0.4,0.5*ngrps),xlab="",ylab="segment length",main="length of selected BRICKS",axes=FALSE)
-		#axis(1,at=10^7*valX,labels=valX)
-#		axis(2,at=0.1+0.5*1:(ngrps-1),labels=levels(grps),las=1,cex=0.8)
-		#axis(2,at=1:length(names(table(coordBRICKS[,3]))),labels=names(table(coordBRICKS[,3])))
         }
         else{
                 plot(c(0,0),col="white",xlim=c(min(coordBRICKS[,1]),min(coordBRICKS[,2])+myLim),ylim=c(0,max(coordBRICKS[,3])+1),xlab="",ylab="segment length",main="length of selected BRICKS")
 
         }
-#        rect(coordBRICKS[k,1],coordBRICKS[k,3],coordBRICKS[k,2],coordBRICKS[k,3]+0.2,col=colToUse,border=colToUse)
         rect(coordBRICKS[k,1],coordBRICKS[k,3],coordBRICKS[k,2],coordBRICKS[k,3]+0.2,col=colToUse,border=colToUse)
-#	rect(coordBRICKS[k,1],0.5*as.numeric(grps),coordBRICKS[k,2],0.5*as.numeric(grps)+0.2,col=colToUse,border=colToUse)
 
 	if(nchar(imgFile)>0){dev.off()}
 	if(length(k)==1){print("k=1=>will force the res to be a matrix");return(matrix(coordBRICKS[k,],nrow=k,ncol=ncol(coordBRICKS),byrow=TRUE))}
@@ -433,7 +293,7 @@ runDomainogram <- function(dataToTreat,curName,wmaxDomainogram=500,wmax_BRICKS=5
         foundBricks<-createBRICK(resDomainogram,wmax_BRICKS)
         coordBricks<-getBRICKSCoord(foundBricks,dataToTreat,resDomainogram)
         write.table(cbind(rep(curChr,nrow(coordBricks)),coordBricks),paste(path,prefName,"_foundBRICKS.txt",sep=""),quote=FALSE,sep="\t",row.names=FALSE)
-	save(dataToTreat,resDomainogram,foundBricks,coordBricks,file=paste(path,prefName,"_domainograms.RData",sep=""))
+	save(dataToTreat,resDomainogram,foundBricks,coordBricks,file=paste("../",prefName,"_domainograms.RData",sep=""))
 	selectedBricks<-plotSelectedBRICKS(coordBricks,dataToTreat,myLim=0,myTitle=curName,imgFile=paste(path,prefName,"_selectedBRICKS.pdf",sep=""))
         write.table(cbind(rep(curChr,nrow(selectedBricks)),selectedBricks),paste(path,prefName,"_selectedBRICKS.txt",sep=""),quote=FALSE,sep="\t",row.names=FALSE)
 
@@ -441,25 +301,19 @@ runDomainogram <- function(dataToTreat,curName,wmaxDomainogram=500,wmax_BRICKS=5
 	selectedBricksFile=paste(path,prefName,"_selectedBRICKS.bedGraph",sep="")
 	header=paste("track type=bedGraph name='",curName," (selected BRICKS)' description='",curName," (selected BRICKS)' visibility=full windowingFunction=maximum",sep="")
 	write.table(header,selectedBricksFile,row.names=FALSE,col.names=FALSE,quote=FALSE)
-	toWrite<-cbind(rep(curChr,nrow(selectedBricks)),selectedBricks[,1:2],round(selectedBricks[,6],2))
+	toWrite<-cbind(rep(curChr,nrow(selectedBricks)),selectedBricks[,1:2],selectedBricks[,6])
 	write.table(toWrite,selectedBricksFile,quote=FALSE,sep="\t",row.names=FALSE,col.names=FALSE,append=TRUE)
 
 	selectedBricksFile_pval=paste(path,prefName,"_selectedBRICKS_pval.bedGraph",sep="")
 	header=paste("track type=bedGraph name='",curName," (-log10(pval) selected BRICKS)' description='",curName," (-log10(pval) selected BRICKS)' visibility=full windowingFunction=maximum",sep="")
 	write.table(header,selectedBricksFile_pval,row.names=FALSE,col.names=FALSE,quote=FALSE)
-	toWrite<-cbind(rep(curChr,nrow(selectedBricks)),selectedBricks[,1:2],round(selectedBricks[,4],2))
+	toWrite<-cbind(rep(curChr,nrow(selectedBricks)),selectedBricks[,1:2],-log10(selectedBricks[,4]))
 	write.table(toWrite,selectedBricksFile_pval,quote=FALSE,sep="\t",row.names=FALSE,col.names=FALSE,append=TRUE)
 
 	gsub("chr","",curChr)
-	save(dataToTreat,resDomainogram,selectedBricks,foundBricks,coordBricks,file=paste(path,prefName,"_domainograms.RData",sep=""))
-# doesn't work when called via lsf ...
-#	print(paste("---- Will call getAnnotationsBRICKS with selectedBricks (",nrow(selectedBricks)," BRICKS)",sep=""))
-#	if(specie=="human") #pb with "mouse"...
-#	{
-#		getAnnotationsBRICKS(selectedBricks,extension=1000,curName=curName,specie=specie,curChr=curChr,path=path)
-#	}
+	save(dataToTreat,resDomainogram,selectedBricks,foundBricks,coordBricks,file=paste("../",prefName,"_domainograms.RData",sep=""))
 	print("Done!")
-	resFiles=c(paste(path,prefName,"_domainogram.pdf",sep=""),paste(path,prefName,"_foundBRICKS.txt",sep=""),paste(path,prefName,"_domainograms.RData",sep=""),paste(path,prefName,"_selectedBRICKS.pdf",sep=""),paste(path,prefName,"_selectedBRICKS.txt",sep=""),selectedBricksFile,selectedBricksFile_pval)
+	resFiles=c(paste(path,prefName,"_domainogram.pdf",sep=""),paste(path,prefName,"_foundBRICKS.txt",sep=""),paste("../",prefName,"_domainograms.RData",sep=""),paste(path,prefName,"_selectedBRICKS.pdf",sep=""),paste(path,prefName,"_selectedBRICKS.txt",sep=""),selectedBricksFile,selectedBricksFile_pval)
 
 	return(resFiles)
 }
