@@ -313,7 +313,7 @@ runDomainogram <- function(dataToTreat,curName,wmaxDomainogram=500,wmax_BRICKS=5
 	gsub("chr","",curChr)
 	try(save(dataToTreat,resDomainogram,selectedBricks,foundBricks,coordBricks,file=paste(path,"../",prefName,"_domainograms.RData",sep="")))
 	print("Done!")
-	try(resFiles=c(paste(path,prefName,"_domainogram.pdf",sep=""),paste(path,prefName,"_foundBRICKS.txt",sep=""),paste(path,"../",prefName,"_domainograms.RData",sep=""),paste(path,prefName,"_selectedBRICKS.pdf",sep=""),paste(path,prefName,"_selectedBRICKS.txt",sep=""),selectedBricksFile,selectedBricksFile_pval))
+	resFiles=c(paste(path,prefName,"_domainogram.pdf",sep=""),paste(path,prefName,"_foundBRICKS.txt",sep=""),paste(path,"../",prefName,"_domainograms.RData",sep=""),paste(path,prefName,"_selectedBRICKS.pdf",sep=""),paste(path,prefName,"_selectedBRICKS.txt",sep=""),selectedBricksFile,selectedBricksFile_pval)
 
 	return(resFiles)
 }
