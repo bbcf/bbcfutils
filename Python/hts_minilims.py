@@ -130,7 +130,7 @@ def main(argv=None):
         return 0
 
     except Usage, err:
-        print >>sys.stderr, err.msg
+        print >>sys.stderr, "\n"+err.msg+"\n"
         print >>sys.stderr, usage
         if parser: parser.print_help()
         return 1
