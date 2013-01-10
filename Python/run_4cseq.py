@@ -95,22 +95,22 @@ def main(argv = None):
         assembly = genrep.Assembly( assembly=job.assembly_id, genrep=g_rep )
         primers_file=os.path.join(working_dir,'primers.fa')
         primers_dict=c4seq.loadPrimers(primers_file)
-	logfile = open(hts_key+".log",'w')
-	debugfile = open(hts_key+".debug",'w')
-	debugfile.write(json.dumps(job.options)+"\n\n"+json.dumps(gl)+"\n");debugfile.flush()
+        logfile = open(hts_key+".log",'w')
+        debugfile = open(hts_key+".debug",'w')
+        debugfile.write(json.dumps(job.options)+"\n\n"+json.dumps(gl)+"\n");debugfile.flush()
         with execution( M, description=hts_key, remote_working_directory=working_dir ) as ex:
-	    logfile.write("Enter execution, fetch bam and wig files.\n");logfile.flush()
-            (mapseq_files, job) = mapseq.get_bam_wig_files( ex, job, ms_limspath, mapseq_url, suffix=['merged'],
+            logfile.write("Enter execution, fetch bam and wig files.\n");logfile.flush()
+            job = mapseq.get_bam_wig_files( ex, job, ms_limspath, mapseq_url, suffix=['merged'],
                                                             script_path=gl['script_path'], via=via )
             logfile.write("Starting workflow.\n");logfile.flush()
-	    c4seq_files = c4seq.workflow_groups( ex, job, primers_dict, assembly,
-                                                 mapseq_files, mapseq_url,
+            c4seq_files = c4seq.workflow_groups( ex, job, primers_dict, assembly,
+                                                 mapseq_url,
                                                  gl.get('hts_4cseq',{}).get('url'),
                                                  gl['script_path'],logfile=logfile,
                                                  via=via)
             if job.options.get('create_gdv_project'):
-		gdv_project=gdv.get_project(mail=gl['gdv']['email'], key=gl['gdv']['key'], project_key=job.options['gdv_key'])
-		if 'error' in gdv_project:
+                gdv_project=gdv.get_project(mail=gl['gdv']['email'], key=gl['gdv']['key'], project_key=job.options['gdv_key'])
+                if 'error' in gdv_project:
                     logfile.write("\nCreating GDV project.\n");logfile.flush()
                     gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
                                                    job.description, assembly.id,
@@ -126,25 +126,26 @@ def main(argv = None):
 
         allfiles = common.get_files( ex.id, M )
         if gdv_project.get('project',{}).get('id',0)>0:
-            gdv_project_url = gl['gdv']['url']+"public/project?k="+str(gdv_project['project']['download_key'])+"&id="+str(gdv_project['project']['id'])
+            gdv_project_url = gl['gdv']['url']+"public/project?k="+str(gdv_project['project']['download_key'])\
+                                              +"&id="+str(gdv_project['project']['id'])
             allfiles['url'] = {gdv_project_url: 'GDV view'}
             download_url = gl['hts_4cseq']['download']
-	    urls=[]
-	    names=[]
+            urls=[]
+            names=[]
             exts=[]
-	    for l,t in allfiles.iteritems():
-		    for k,v in allfiles[l].iteritems():
-			if re.search(r'gdv:1',v):
-				urls.append(download_url+str(k))
-				if re.search(r'\.sql',str(v)):
-                                    names.append(re.sub('\.sql.*','',str(v)))
-                                    exts.append('sql')
-				if re.search(r'\.bedGraph',str(v)):
-                                    names.append(re.sub('\.bedGraph.*','',str(v)))
-                                    exts.append('bedGraph')
+            for l,t in allfiles.iteritems():
+                for k,v in allfiles[l].iteritems():
+                    if re.search(r'gdv:1',v):
+                        urls.append(download_url+str(k))
+                        if re.search(r'\.sql',str(v)):
+                            names.append(re.sub('\.sql.*','',str(v)))
+                            exts.append('sql')
+                        if re.search(r'\.bedGraph',str(v)):
+                            names.append(re.sub('\.bedGraph.*','',str(v)))
+                            exts.append('bedGraph')
 
-	    logfile.write("Uploading GDV tracks:\n");logfile.flush()
-	    debugfile.write("Uploading GDV tracks:\n"+" ".join(urls)+"\n"+" ".join(names)+"\n");debugfile.flush()
+            logfile.write("Uploading GDV tracks:\n");logfile.flush()
+            debugfile.write("Uploading GDV tracks:\n"+" ".join(urls)+"\n"+" ".join(names)+"\n");debugfile.flush()
             try:
                 gdv.multiple_tracks(mail=gl['gdv']['email'], key=gl['gdv']['key'], serv_url=gl['gdv']['url'],
                                     project_id=gdv_project['project']['id'],
@@ -152,8 +153,8 @@ def main(argv = None):
             except Exception, err:
                 debugfile.write("GDV Tracks Failed: %s\n" %err);debugfile.flush()
                 pass
-	logfile.close()
-	debugfile.close()
+        logfile.close()
+        debugfile.close()
         print json.dumps(allfiles)
         with open(hts_key+".done",'w') as done:
             json.dump(allfiles,done)
