@@ -54,7 +54,12 @@ def main(argv=None):
             else: tags = {'type': 'sql'}
         if options.programs:
             if isinstance(options.execution, basestring):
-                exid = max(M.search_executions(with_text=options.execution))
+                exlist = M.search_executions(with_description=options.execution)
+                if len(exlist) == 0:
+                    exlist = M.search_executions(with_text=options.execution)
+                if len(exlist) == 0:
+                    raise Usage("Execution with key %s not found in %s." %(options.execution,options.minilims))
+                exid = max(exlist)
             else:
                 exid = int(options.execution or 0)
             exec_data = M.fetch_execution(exid)['programs']
@@ -125,7 +130,7 @@ def main(argv=None):
         return 0
 
     except Usage, err:
-        print >>sys.stderr, err.msg
+        print >>sys.stderr, "\n"+err.msg+"\n"
         print >>sys.stderr, usage
         if parser: parser.print_help()
         return 1
