@@ -69,10 +69,10 @@ def main(argv = None):
         debugfile.write(json.dumps(job.options)+"\n\n"+json.dumps(gl)+"\n");debugfile.flush()
         with execution( M, description=opt.key, remote_working_directory=opt.wdir ) as ex:
             logfile.write("Enter execution, fetch bam and wig files.\n");logfile.flush()
-            (mapped_files, job) = mapseq.get_bam_wig_files( ex, job, minilims=opt.mapseq_minilims, hts_url=mapseq_url,
+            job = mapseq.get_bam_wig_files( ex, job, minilims=opt.mapseq_minilims, hts_url=mapseq_url,
                                                             script_path=gl.get('script_path',''), via=opt.via )
             logfile.write("Starting workflow.\n");logfile.flush()
-            chipseq_files = workflow_groups( ex, job, mapped_files, assembly,
+            chipseq_files = workflow_groups( ex, job, assembly,
                                              gl.get('script_path',''), logfile=logfile, via=opt.via )
             if job.options.get('create_gdv_project'):
                 gdv_project = gdv.get_project(mail=gl['gdv']['email'], key=gl['gdv']['key'], project_key=job.options['gdv_key'])

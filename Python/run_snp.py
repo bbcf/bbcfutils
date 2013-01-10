@@ -76,12 +76,11 @@ def main(argv = None):
         # Program body
         with execution( M, description=hts_key, remote_working_directory=opt.wdir ) as ex:
             print "Current working directory:", ex.working_directory
-            (bam_files, job) = mapseq.get_bam_wig_files(ex, job, minilims=opt.mapseq_limspath,
+            job = mapseq.get_bam_wig_files(ex, job, minilims=opt.mapseq_limspath,
                                                         hts_url=mapseq_url,
                                                         script_path=gl.get('script_path',''),
                                                         via=opt.via)
-            assert bam_files, "Bam files not found."
-            snp.snp_workflow(ex,job,bam_files,assembly,mincov=opt.mincov,minsnp=opt.minsnp,
+            snp.snp_workflow(ex,job,assembly,mincov=opt.mincov,minsnp=opt.minsnp,
                              path_to_ref=opt.fasta_path,via=opt.via)
 
             # Create GDV project #

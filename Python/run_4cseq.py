@@ -104,7 +104,7 @@ def main(argv = None):
                                                             script_path=gl['script_path'], via=via )
             logfile.write("Starting workflow.\n");logfile.flush()
 	    c4seq_files = c4seq.workflow_groups( ex, job, primers_dict, assembly,
-                                                 mapseq_files, mapseq_url, 
+                                                 mapseq_files, mapseq_url,
                                                  gl.get('hts_4cseq',{}).get('url'),
                                                  gl['script_path'],logfile=logfile,
                                                  via=via)
@@ -113,7 +113,7 @@ def main(argv = None):
 		if 'error' in gdv_project:
                     logfile.write("\nCreating GDV project.\n");logfile.flush()
                     gdv_project = gdv.new_project( gl['gdv']['email'], gl['gdv']['key'],
-                                                   job.description, assembly.id, 
+                                                   job.description, assembly.id,
                                                    gl['gdv']['url'] )
                 debugfile.write("GDV project: "+str(gdv_project['project']['id'])+"\n");debugfile.flush()
                 add_pickle( ex, gdv_project, description=common.set_file_descr("gdv_json",step='gdv',type='py',view='admin') )
@@ -142,12 +142,12 @@ def main(argv = None):
 				if re.search(r'\.bedGraph',str(v)):
                                     names.append(re.sub('\.bedGraph.*','',str(v)))
                                     exts.append('bedGraph')
-	
+
 	    logfile.write("Uploading GDV tracks:\n");logfile.flush()
 	    debugfile.write("Uploading GDV tracks:\n"+" ".join(urls)+"\n"+" ".join(names)+"\n");debugfile.flush()
             try:
-                gdv.multiple_tracks(mail=gl['gdv']['email'], key=gl['gdv']['key'], serv_url=gl['gdv']['url'], 
-                                    project_id=gdv_project['project']['id'], 
+                gdv.multiple_tracks(mail=gl['gdv']['email'], key=gl['gdv']['key'], serv_url=gl['gdv']['url'],
+                                    project_id=gdv_project['project']['id'],
                                     urls=urls, tracknames=names, extensions=exts, force=True )
             except Exception, err:
                 debugfile.write("GDV Tracks Failed: %s\n" %err);debugfile.flush()
