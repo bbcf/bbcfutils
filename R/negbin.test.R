@@ -29,7 +29,6 @@
 # - other columns contain counts, one column per sample
 # - columns containing counts are labeled "counts.<groupName>.<sampleIndex>" (e.g. counts.G1.3).
 
-
 library(MASS)
 
 args=commandArgs(trailingOnly = TRUE)
@@ -80,12 +79,10 @@ DES <- function(data, conds, method='normal', output_file=FALSE){  ## DESeq ##
     cds <- estimateSizeFactors(cds)
     cds <- estimateVarianceFunctions(cds, method=method)
     couples = combn(groups,2)
-    contrast.names = c()
     for (i in 1:dim(couples)[2]){
         res <- nbinomTest(cds, couples[1,i], couples[2,i])
         res = res[order(res[,8]),] # sort w.r.t. adjusted p-value
         comp = paste(couples[1,i],"-",couples[2,i])
-        contrast.names = c(contrast.names,comp)
         result[[comp]] = res
     }
     write_result(output_file, result)
