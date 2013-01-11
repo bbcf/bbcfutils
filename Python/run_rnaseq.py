@@ -85,11 +85,10 @@ def main():
         with execution(M, description=description, remote_working_directory=opt.wdir ) as ex:
             logfile.write("Enter execution. Current working directory: %s \n" % ex.working_directory);logfile.flush()
             logfile.write("Fetch bam and wig files\n");logfile.flush()
-            (bam_files, job) = mapseq.get_bam_wig_files(ex, job, minilims=opt.mapseq_minilims, hts_url=mapseq_url,
+            job = mapseq.get_bam_wig_files(ex, job, minilims=opt.mapseq_minilims, hts_url=mapseq_url,
                                      script_path=gl.get('script_path',''), via=opt.via, fetch_unmapped=True)
-            assert bam_files, "Bam files not found."
             logfile.write("Starting workflow.\n");logfile.flush()
-            rnaseq.rnaseq_workflow(ex, job, bam_files, pileup_level=pileup_level, via=opt.via,
+            rnaseq.rnaseq_workflow(ex, job, pileup_level=pileup_level, via=opt.via,
                                    rpath=rpath, junctions=job.options['find_junctions'],
                                    debugfile=debugfile, logfile=logfile)
 
