@@ -1,10 +1,7 @@
 #!/usr/bin/env python
 
 """
-A High-throughput RNA-seq analysis workflow.
-
-python run_rnaseq.py -v lsf -c config_files/gapkowt.txt -d rnaseq -p transcripts,genes
-python run_rnaseq.py -v lsf -c config_files/rnaseq.txt -d rnaseq -p genes -m /scratch/cluster/monthly/jdelafon/mapseq
+Job launcher.
 """
 import os, sys, json, re, sqlite3
 import optparse
@@ -30,16 +27,16 @@ def run(workflow_object):
         if os.path.exists(opt.wdir): os.chdir(opt.wdir)
         else: parser.error("Working directory '%s' does not exist." % opt.wdir)
         if not(opt.minilims and os.path.exists(opt.minilims)):
-            parser.error("Need to specify an existing minilims (-d), got %s." % opt.rnaseq_minilims)
+            parser.error("Need to specify an existing minilims (-d), got %s." % opt.minilims)
 
-        # RNA-seq job configuration #
+        # Job configuration #
         try: M = MiniLIMS(opt.minilims)
         except sqlite3.OperationalError:
-            raise ValueError("MiniLIMS not found: %s ." % os.path.abspath(opt.rnaseq_minilims))
+            raise ValueError("MiniLIMS not found: %s ." % os.path.abspath(opt.minilims))
         if opt.key:
             gl = use_pickle( M, "global variables" )
-            htss = frontend.Frontend( url=gl['hts_rnaseq']['url'] )
-            job = htss.job(opt.key) # new *RNA-seq* job instance
+            htss = frontend.Frontend( url=gl[WO.hts]['url'] )
+            job = htss.job(opt.key) # new Job instance
             [M.delete_execution(x) for x in M.search_executions(with_description=opt.key,fails=True)]
         elif opt.config and os.path.exists(opt.config):
             (job,gl) = frontend.parseConfig(opt.config)
