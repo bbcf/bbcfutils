@@ -7,9 +7,27 @@ from bbcflib.common import get_files
 #hts_minilims.py -m mapseq -e vwEfIK6vG8iD64kZm5m6 -l -t type=pdf
 
 
+import textwrap
+class TextWrapper:
+    @staticmethod
+    def wrap(text, width=70, **kw):
+        if text.count("\n"):
+            return [textwrap.wrap(l, width, **kw) for l in text.split("\n")]
+        else:
+            return textwrap.wrap(text, width, **kw)
+
+    @staticmethod
+    def fill(text, width=70, **kw):
+        return "\n".join([textwrap.fill(l, width, **kw) for l in text.split("\n")])
+
+optparse.textwrap = TextWrapper()
+
 module_list = ["demultiplexing","mapseq","chipseq","rnaseq","snp","4cseq"]
 usage = "hts_minilims.py [OPTIONS]"
-description = "Command-line interface to HTSstation minilims: list, copy or link selected files from given execution."
+description = """Command-line interface to HTSstation minilims: list, copy or link selected files from given execution.
+Typical example:
+    'hts_minilims.py -m mapseq -e afP4AJAe5EcvEop1EH48 -l -t type=bam'
+"""
 
 opts = (("-m", "--minilims", "path to personal minilims, or name of an HTSstation module",{'default':''}),
         ("-e", "--execution", "name or number of the execution in the minilims",{'default':0}),
