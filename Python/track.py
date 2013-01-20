@@ -95,6 +95,8 @@ fields: %s
             continue
         for x in intrack.read(selection=selection,fields=fields):
             output.write("\t".join([str(y) for y in x])+"\n")
+        intrack.close()
+    output.close()
     return 0
 
 ############## MERGE ##############
