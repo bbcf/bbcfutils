@@ -81,16 +81,18 @@ def read(*args,**kw):
     for infile in args:
         intrack = btrack.track(infile,format=kw['format'],chrmeta=kw['assembly'])
         if kw['description']:
-            fileinfo = ",".join(["%s=%s" %(k,v) for k,v in intrack.info.iteritems()])
+            if intrack.info:
+                fileinfo = ",".join(["%s=%s" %(k,v) for k,v in intrack.info.iteritems()])
+            else: fileinfo = 'None'
             chromlist = ",".join(sorted(intrack.chrmeta.keys()))
             fields = ",".join(intrack.fields)
             output.write(\
-"""*****************************
-%s (%s):
-infos: %s
-chromosomes: %s
-fields: %s
-*****************************
+"""# *****************************************
+# File '%s' (%s):
+# Infos: %s
+# Chromosomes: %s
+# Fields: %s
+# *****************************************
 """ %(os.path.basename(infile), intrack.format, fileinfo, chromlist, fields))
             continue
         for x in intrack.read(selection=selection,fields=fields):
