@@ -51,8 +51,8 @@ f = 'read'
 usage[f] = usage['all'] %f +" file1 [file2 ...]"
 description[f] = 'A generic genomic track data reader.'
 opts[f] = (("-t", "--format", "File format if extension not explicit",{'default':None}),
-        ("-s", "--selection", "Selection dictionary or coma-separated list of chromosome names",
-         {'default':None}),
+        ("-s", "--selection", """Selection or comma-separated list of chromosome names. Selection
+         can be a dictionary (json) or a string of the form `chr:start-end`.""",{'default':None}),
         ("-f", "--fields", "Fields in output",{'default':None}),
         ("-d", "--description", "Only print a description of the file",{'action':"store_true"}))
 
@@ -65,6 +65,10 @@ def read(*args,**kw):
             for k,v in jsonargs.iteritems():
                 if isinstance(v,basestring): jsonargs[k] = str(v)
             selection = dict((str(k),v) for k,v in jsonargs.iteritems())
+        elif kw['selection'].count(":"):
+            chr,coord = kw['selection'].split(':')
+            start,end = coord.split('-')
+            selection = {'chr':chr,'start':(start,end),'end':(start,end)}
         else:
             selection = str(kw['selection']).split(",")
     fields = None
