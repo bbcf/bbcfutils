@@ -47,9 +47,16 @@ def main():
             opt.key = job.description
         else:
             raise Usage("Need either a job key (-k) or a configuration file (-c).")
-        if "fasta_file" in job.options and os.path.exists(job.options["fasta_file"]):
-            assembly = { 'fasta_path': os.path.join(opt.wdir,job.options["fasta_file"]),
-                         'chromosomes': {}, 'index_path ': None }
+        if "fasta_file" in job.options:
+            assembly = { 'chromosomes': {}, 'index_path ': None }
+            if os.path.exists(job.options["fasta_file"]):
+                assembly['fasta_path'] = os.path.abspath(job.options["fasta_file"])
+            else:
+                for ext in (".fa",".fa.gz",".tar.gz"):
+                    if os.path.exists("ref_sequence"+ext):
+                        assembly['fasta_path'] = os.path.abspath("ref_sequence"+ext)
+            if not 'fasta_path' in assembly:
+                raise Usage("Don't know where to find fasta file %s." %job.options["fasta_file"])
         else:
             g_rep = genrep.GenRep( url=gl.get("genrep_url"), root=gl.get("bwt_root") )
             assembly = genrep.Assembly( assembly=job.assembly_id, genrep=g_rep,
