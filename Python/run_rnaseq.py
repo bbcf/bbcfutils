@@ -23,7 +23,9 @@ class Rnaseq_job:
                      ("-c", "--config", "Config file", {'default': None}),
                      ("-p", "--pileup_level", "Target features, inside of quotes, separated by commas.\
                                               E.g. 'genes,exons,transcripts'",{'default':"genes,exons,transcripts"}),
-                     ("-j", "--junctions", "Whether or not to seqrch for splice junctions using SOAPsplice",
+                     ("-j", "--junctions", "whether or not to search for splice junctions using soapsplice",
+                                              {'action':"store_true", 'default':False}),
+                     ("-u", "--unmapped", "whether or not to use unmapped reads from a previous mapping job, if available",
                                               {'action':"store_true", 'default':False}),
                     )
         self.name = "RNA-seq job"
@@ -36,14 +38,15 @@ class Rnaseq_job:
     def workflow(self,ex,job,opt,gl,logfile,debugfile):
         job.options['discard_pcr_duplicates'] = False
         job.options['find_junctions'] = opt.junctions or (job.options.get('find_junctions','').lower() in ['1','true','t'])
+        job.options['unmapped'] = opt.unmapped or (job.options.get('unmapped','').lower() in ['1','true','t'])
         mapseq_url = gl.get('hts_mapseq',{}).get('url')
         pileup_level = opt.pileup_level.split(',')
         logfile.write("Fetch bam and wig files\n");logfile.flush()
         job = mapseq.get_bam_wig_files(ex, job, minilims=opt.mapseq_minilims, hts_url=mapseq_url,
                                        script_path=gl.get('script_path',''), via=opt.via, fetch_unmapped=True)
         logfile.write("Starting workflow.\n");logfile.flush()
-        rnaseq.rnaseq_workflow(ex, job, pileup_level=pileup_level, via=opt.via,
-                               rpath=gl.get('script_path'), junctions=job.options['find_junctions'],
+        rnaseq.rnaseq_workflow(ex, job, pileup_level=pileup_level, via=opt.via, rpath=gl.get('script_path'),
+                               junctions=job.options['find_junctions'], unmapped=job.options['unmapped'],
                                debugfile=debugfile, logfile=logfile)
 
 if __name__ == '__main__':
