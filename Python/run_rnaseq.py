@@ -30,9 +30,9 @@ class Rnaseq_job:
                     )
         self.name = "RNA-seq job"
         self.usage = "run_rnaseq.py [-h -v via -k key -c config_file -w working_directory -d minilims -m mapseq_minilims]"
-        self.desc = """A High-throughput RNA-seq analysis workflow. It returns a file containing
-                  a column of transcript counts for each given BAM file, normalized using DESeq's
-                  size factors. """
+        self.desc = """A High-throughput RNA-seq analysis workflow. It returns text files containing
+                  read counts for exons, genes and transcripts for each given BAM file, and the result
+                  of a DESeq run (differential expression analysis) for every pair of groups. """
         self.hts = 'hts_rnaseq'
 
     def workflow(self,ex,job,opt,gl,logfile,debugfile):
