@@ -78,7 +78,7 @@ while (<IN>) {
       $prevHeader=$header;
     }
     if ($nHeader>1) {
-      $chr = ($prevHeader =~ />(\S+)\s/)?$1:"NA";
+      $chr = ($prevHeader =~ />(\S+)/)?$1:"NA";
       if ($logFile) {
         print LOG "chromosome $chr\tsequence length=".length($seq)."\t";
       }
@@ -121,7 +121,7 @@ while (<IN>) {
     $seq .= $_;
   }
 }
-$chr = ($prevHeader =~ />(\S+)\s/)?$1:"NA";
+$chr = ($prevHeader =~ />(\S+)/)?$1:"NA";
 if ($logFile) {
   print LOG "chromosome $chr\tsequence length=".length($seq)."\t";
 }

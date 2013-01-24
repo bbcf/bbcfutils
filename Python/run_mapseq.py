@@ -47,9 +47,13 @@ def main():
             opt.key = job.description
         else:
             raise Usage("Need either a job key (-k) or a configuration file (-c).")
-        g_rep = genrep.GenRep( url=gl.get("genrep_url"), root=gl.get("bwt_root") )
-        assembly = genrep.Assembly( assembly=job.assembly_id, genrep=g_rep,
-                                    intype=job.options.get('input_type_id',0) )
+        if "fasta_file" in job.options and os.path.exists(job.options["fasta_file"]):
+            assembly = { 'fasta_path': os.path.join(opt.wdir,job.options["fasta_file"]),
+                         'chromosomes': {}, 'index_path ': None }
+        else:
+            g_rep = genrep.GenRep( url=gl.get("genrep_url"), root=gl.get("bwt_root") )
+            assembly = genrep.Assembly( assembly=job.assembly_id, genrep=g_rep,
+                                        intype=job.options.get('input_type_id',0) )
         if 'lims' in gl:
             dafl = dict((loc,daflims.DAFLIMS( username=gl['lims']['user'], password=pwd ))
                         for loc,pwd in gl['lims']['passwd'].iteritems())
