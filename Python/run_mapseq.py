@@ -102,7 +102,7 @@ def main():
             if job.options['compute_densities']:
                 if isinstance(assembly,genrep.Assembly): chrmeta = assembly.chrmeta
                 elif isinstance(assembly,dict) and 'chrmeta' in assembly: chrmeta = assembly['chrmeta']
-                else: break
+                else: chrmeta = {}
                 logfile.write("\ncomputing densities.\n");logfile.flush()
                 if int(job.options.get('read_extension',-1))<=0:
                     job.options['read_extension'] = mapped_files.values()[0].values()[0]['stats']['read_length']
