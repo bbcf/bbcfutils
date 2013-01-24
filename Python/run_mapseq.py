@@ -47,6 +47,7 @@ def main():
             opt.key = job.description
         else:
             raise Usage("Need either a job key (-k) or a configuration file (-c).")
+        job_intype = job.options.get('input_type_id',0)
         if "fasta_file" in job.options:
             assembly = { 'chromosomes': {}, 'index_path ': None }
             if os.path.exists(job.options["fasta_file"]):
@@ -59,8 +60,7 @@ def main():
                 raise Usage("Don't know where to find fasta file %s." %job.options["fasta_file"])
         else:
             g_rep = genrep.GenRep( url=gl.get("genrep_url"), root=gl.get("bwt_root") )
-            assembly = genrep.Assembly( assembly=job.assembly_id, genrep=g_rep,
-                                        intype=job.options.get('input_type_id',0) )
+            assembly = genrep.Assembly( assembly=job.assembly_id, genrep=g_rep, intype=job_intype )
         if 'lims' in gl:
             dafl = dict((loc,daflims.DAFLIMS( username=gl['lims']['user'], password=pwd ))
                         for loc,pwd in gl['lims']['passwd'].iteritems())
@@ -72,7 +72,7 @@ def main():
         job.options.setdefault('ucsc_bigwig',True)
         if isinstance(job.options['ucsc_bigwig'],basestring):
             job.options['ucsc_bigwig'] = job.options['ucsc_bigwig'].lower() in ['1','true','t']
-        job.options['ucsc_bigwig'] &= (assembly.intype == 0)
+        job.options['ucsc_bigwig'] &= (job_intype == 0)
         job.options.setdefault('create_gdv_project',False)
         if isinstance(job.options['create_gdv_project'],basestring):
             job.options['create_gdv_project'] = job.options['create_gdv_project'].lower() in ['1','true','t']
@@ -100,10 +100,13 @@ def main():
                                      gl.get('script_path',''),
                                      description=set_file_descr(v['name']+"_mapping_report.pdf",groupId=k,step='stats',type='pdf') )
             if job.options['compute_densities']:
+                if isinstance(assembly,genrep.Assembly): chrmeta = assembly.chrmeta
+                elif isinstance(assembly,dict) and 'chrmeta' in assembly: chrmeta = assembly['chrmeta']
+                else: break
                 logfile.write("\ncomputing densities.\n");logfile.flush()
                 if int(job.options.get('read_extension',-1))<=0:
                     job.options['read_extension'] = mapped_files.values()[0].values()[0]['stats']['read_length']
-                density_files = densities_groups( ex, job, mapped_files, assembly.chrmeta, via=opt.via )
+                density_files = densities_groups( ex, job, mapped_files, chrmeta, via=opt.via )
                 logfile.write("Finished computing densities.\n");logfile.flush()
                 if job.options['create_gdv_project']:
                     gdv_project = gdv.get_project(mail=gl['gdv']['email'], key=gl['gdv']['key'], project_key=job.options['gdv_key'])
