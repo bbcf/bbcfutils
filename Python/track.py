@@ -163,10 +163,10 @@ usage[f] = usage['all'] %f + " -m method file1 [file2 ...]"
 description[f] = """Normalizes the scores of several signal tracks.
 For each input file `file.format`, a new file `file.norm.format`
 will be created in the same folder."""
-opts[f] = (("-m", "--method", """Normalization method:
-    - 'total': division by the total number of reads (default);
-    - 'deseq': division by DESeq's 'size factors';
-    - 'quantile': quantile normalization.""",
+opts[f] = (("-m", "--method", "Normalization method. " \
+            + "'total': division by the total number of reads (default); " \
+            + "'deseq': division by DESeq size factors; " \
+            + "'quantile': quantile normalization. ", \
       {'default':'total'}),
    )
 
