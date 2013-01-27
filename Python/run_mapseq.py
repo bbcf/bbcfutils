@@ -47,7 +47,7 @@ def main():
             opt.key = job.description
         else:
             raise Usage("Need either a job key (-k) or a configuration file (-c).")
-        job_intype = job.options.get('input_type_id',0)
+        job_intype = int(job.options.get('input_type_id',0))
         if "fasta_file" in job.options:
             assembly = { 'chromosomes': {}, 'index_path': None }
             if os.path.exists(job.options["fasta_file"]):
