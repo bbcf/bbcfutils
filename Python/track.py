@@ -3,9 +3,9 @@
 import optparse, json, sys, os
 from bbcflib import btrack
 from bbcflib.bFlatMajor.stream import merge_scores
-from bbcflib.bFlatMajor.numeric import correlation
+from bbcflib.bFlatMajor.numeric import correlation,normalize
 
-functions = ["convert","read","merge"]
+functions = ["convert","read","merge","norm"]
 usage = {'all': "track.py %s [OPTIONS]"}
 description = {'all': "Command-line interface to bbcflib.btrack functionalities."}
 opts = {'all':
@@ -109,7 +109,8 @@ opts[f] = (("-f", "--forward", "A bedgraph-like file with ChIP density on the fo
         ("-r", "--reverse", "A bedgraph-like file with ChIP density on the reverse strand", {}),
         ("-1","--formatf", "Format of the forward track.", {}),
         ("-2","--formatr", "Format of the reverse track.", {}),
-        ("-p", "--shift", "Shift positions downstream. If <0 will compute an optimal shift using autocorrelation.", {'default':0, 'action':"store", 'type':int}))
+        ("-p", "--shift", "Shift positions downstream. If <0 will compute an optimal shift using autocorrelation.",
+         {'default':0, 'action':"store", 'type':int}))
 
 def merge(*args,**kw):
     if not(kw['forward'] and os.path.exists(kw['forward'])):
@@ -156,6 +157,37 @@ def merge(*args,**kw):
     tfwd.close()
     return 0
 
+############## NORMALIZE ##############
+f = 'norm'
+usage[f] = usage['all'] %f + " -m method file1 [file2 ...]"
+description[f] = """Normalizes the scores of several signal tracks.
+For each input file `file.format`, a new file `file.norm.format`
+will be created in the same folder."""
+opts[f] = (("-m", "--method", "Normalization method. " \
+            + "'total': division by the total number of reads (default); " \
+            + "'deseq': division by DESeq size factors; " \
+            + "'quantile': quantile normalization. ", \
+      {'default':'total'}),
+   )
+
+def norm(*args,**kw):
+    if len(args) < 1: raise Usage("No input file provided")
+    trackList = [btrack.track(t) for t in args]
+    streams = [t.read() for t in trackList]
+    result = normalize(streams,method=kw['method'])
+    for k,t in enumerate(trackList):
+        format = t.format
+        prefix = args[k].rstrip(format)
+        newname = prefix+'norm.'+format
+        tout = btrack.track(newname, chrmeta=kw.get('chrmeta',kw.get('assembly')))
+        tout.write(result[k],mode='overwrite')
+        tout.close()
+    return 0
+
+
+##################################
+############## MAIN ##############
+##################################
 usage['all'] = usage['all'] %str(functions)
 def main(argv=None):
     parser = None
