@@ -1,0 +1,125 @@
+#!/usr/bin/env python
+
+import os, sys, optparse
+
+try:
+    from maplot import MAplot
+except ImportError:
+    print ("You do not seem to have the \"maplot\" package installed. "
+           "Either you never installed it or your PYTHON_PATH is not set correctly. "
+           "To install the package, cou can use the command \"easy_install maplot\". "
+           "For more instructions see the README.txt file.")
+    sys.exit()
+
+
+usage = """
+
+maplot.py [-h] [-c --cols] [-l --labels] [-m --mode] [-f --format] [-s --sep]
+          [-d --deg] [-b --bins] [-a --assembly] [-q --noquantiles]
+          [--annotate] [--xmin --xmax --ymin --ymax] [--smin --smax]
+          [-t --title] [-e --extremes]
+          data_1 .. data_n
+
+**Input**: Text files containing at least two numeric columns representing the two
+           samples to compare, and one with labels for each pair of points. Files must all
+           be in the same format. By default the first column contains the labels,
+           whilst columns are 2 and 3 contain the scores for the two respective samples.
+           Else, precise which columns to use with the
+           `--cols` and `--labels` arguments.
+
+**Output**: Depending on the chosen `--mode`, prints to stdout the name of the .png file produced,
+            prints to stdout a json containing enough information to reconstruct the plot using
+            Javascript, or produces an interactive matplotlib figure. """
+
+description = """Creates an `MA-plot` to compare transcription levels of a set of genes (or other genomic features) in two different conditions."""
+
+parser = optparse.OptionParser(usage=usage, description=description)
+
+parser.add_option("-c", "--cols", default='2,3',
+    help = ("The numbers or names of the two columns containing the numeric data to compare, "
+            "separated by commas. E.g. --cols 3,5. One can also give it a set of columns (replicates) "
+            "for each of the two samples, in json format. E.g. '{1:[2,3],2:[4,5]}' if group 1 consists "
+            "of columns 2 and 3, and group 2 of columns 4 and 5. Replicates will be averaged.")),
+parser.add_option("-l", "--labels", default='1',
+    help = ("The numbers or names of the columns containing the labels of the points, separated by commas. "
+            "The first element must contain unique labels; others will be concatenated. "
+            "E.g. --labels 1,6,7 may produce `Id | name | desc` labels.")),
+parser.add_option("-m", "--mode", default='normal',
+    help = ("Display mode: 'normal' for static .pgn output, 'interactive' - clic to display gene names, "
+            "or 'json' - json output to stdout for Javascript web interface.")),
+parser.add_option("-f", "--format", default='counts',
+    help = ("Data type: 'counts' for raw count data (default), 'rpkm' for normalized data.")),
+parser.add_option("-s", "--sep", default=None,
+    help = ("The character delimiting the columns of the file. If not specified, the program tries to detect it "
+            "automatically. Use 'C^V' or '\t' for a <tab> delimiter.")),
+parser.add_option("-d", "--deg", default=4, type="int",
+    help = ("Degree of the interpolant percentile splines.")),
+parser.add_option("-b", "--bins", default=30, type="int",
+    help = ("Number of divisions of the x axis to calculate percentiles.")),
+parser.add_option("-a", "--assembly", default=None,
+    help = ("Identifier for the Genrep assembly (e.g. 'hg19' or 7) used to add more information "
+            "about features into the json output. Requires the 'bbcflib' package")),
+parser.add_option("-q", "--noquantiles", default=True, action="store_false",
+    help = ("Don't draw quantile splines. This may improve speed and lisibility in some cases.")),
+parser.add_option("--normalize", default=None,
+    help= ("Normalize data: 'tags' to divide by the sum of all scores in each sample,"
+           "'sf' to use DESeq-like size factors."))
+parser.add_option("--annotate", default=None,
+    help = ("In 'normal' mode, indication of which datasets to annotate. "
+            "Must be a string of binary values separated by commas, of the same lenght as the number of datasets, "
+            "1 indicating to annotate the corresponding set, 0 not to annotate. "
+            "E.g. For a list of datasets d1,d2,d3, if you want to annotate only d3 "
+            "type --annotate 0,0,1. It is advised to annotate only very small secondary datasets.")),
+parser.add_option("--xmin", default=None, type="float",
+    help = ("Minimum x value to be displayed on the output graph.")),
+parser.add_option("--xmax", default=None, type="float",
+    help = ("Maximum x value to be displayed on the output graph.")),
+parser.add_option("--ymin", default=None, type="float",
+    help = ("Minimum y value to be displayed on the output graph.")),
+parser.add_option("--ymax", default=None, type="float",
+    help = ("Maximum y value to be displayed on the output graph.")),
+parser.add_option("--smin", default=None, type="float",
+    help = ("Left bound to draw splines.")),
+parser.add_option("--smax", default=None, type="float",
+    help = ("Right bound to draw splines.")),
+parser.add_option("-t","--title", default="MA-plot",
+    help = ("Adds a title to the figure")),
+parser.add_option("-e","--extremes", default=False, type="int",
+    help = ("Create an output file containing features for which ratios were outside the specified "
+            "percentile (two-sided). For the moment, must be 1 or 5. The file is named *extreme_ratios_xxxxx* ."))
+
+(opt, args) = parser.parse_args()
+
+args = [os.path.abspath(a) for a in args]
+if len(args) < 1:
+    parser.error("At least one data file must be specified.\n")
+for a in args:
+    assert os.path.exists(a), "File not found: %s\n" % a
+
+annotate = None
+if opt.annotate:
+    annotate = [int(b) for b in opt.annotate.split(",")]
+    assert len(args) == len(annotate), "There must be one digit per dataset in --annotate.\n"
+limits = [None or opt.xmin, None or opt.xmax, None or opt.ymin, None or opt.ymax]
+slimits = [None or opt.smin, None or opt.smax]
+cols = opt.cols
+if not cols.startswith("{"):
+    cols = cols.split(",")
+    if len(cols) != 2:
+        parser.error("--cols must be *two* integers or strings separated by commas (got %s).\n" % opt.cols)
+labels = opt.labels.split(",")
+if opt.mode not in ["normal","interactive","json"]:
+    parser.error("--mode must be one of 'normal','interactive', or 'json' (got %s).\n" % opt.mode)
+if opt.format not in ["counts","rpkm"]:
+    parser.error("--format must be one of 'counts' or 'rpkm' (got %s).\n" % opt.format)
+if opt.normalize and opt.normalize not in ["tags","sf"]:
+    parser.error("--normalize must be one of 'tags' or 'sf' (got %s.\n)" % opt.normalize)
+
+
+MAplot(args, cols=cols, labels=labels, mode=opt.mode, data_format=opt.format, sep=opt.sep,
+        limits=limits, slimits=slimits,deg=opt.deg, bins=opt.bins, assembly_id=opt.assembly,
+        normalize=opt.normalize, annotate=annotate, quantiles=opt.noquantiles, title=opt.title,
+        extremes=opt.extremes)
+
+sys.exit(0)
+

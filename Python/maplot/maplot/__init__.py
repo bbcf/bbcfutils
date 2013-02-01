@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+
 """
 Creates an `MA-plot` to compare transcription levels of a set of genes
 (or other features) in two different conditions, from a CSV file.
@@ -8,12 +9,18 @@ will be plotted in a different color, and be annotated if requested.
 The class AnnoteFinder is used to create interactive - clickable - plots.
 """
 
-import sys, os, json, math, csv, optparse, random, string
+__version__ = '1.0.3'
+
+import sys, os, json, math, csv, random, string
 import numpy
-from numpy import asarray,log,log10,log2,exp,sqrt,mean,median,float_,round,nonzero
 from scipy import stats
 import matplotlib.pyplot as plt
+from numpy import asarray,log,log10,log2,exp,sqrt,mean,median,float_,round,nonzero
 
+
+class Usage(Exception):
+    def __init__(self,  msg):
+        self.msg = msg
 
 def unique_filename(len=20, path=None):
     """Return a *len*-characters random filename, unique in the given *path*."""
@@ -72,6 +79,8 @@ def read_data(filename,sep,cols,labels,lower):
                 c1 = mean([float(row[x]) for x in pycols[1]])
                 c2 = mean([float(row[x]) for x in pycols[2]])
             except ValueError: continue # Skip line if contains NA, nan, etc.
+            except IndexError:
+                raise IndexError("list index out of range. Probably wrong separator given with -s (got \"%s\")" % sep)
             if (c1*c2 > lower):
                 label = '|'.join([row[x] for x in pylabels])
                 counts.append((c1,c2))
@@ -92,10 +101,9 @@ def _normalize(counts,mode):
         res = counts / sf
     return res, sf
 
-
 def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_format="counts",
            sep=None, limits=[None,None,None,None], slimits=[None,None], deg=3, bins=30,
-           assembly_id=None, normalize='sf', quantiles=True, title="MA-plot", extremes=False):
+           assembly_id=None, normalize="sf", quantiles=True, title="MA-plot", extremes=False):
     """
     Creates an "MA-plot" to compare transcription levels of a set of genes
     in two different conditions. It returns the name of the .png file produced,
@@ -130,17 +138,17 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
     # Constants:
     if data_format == "counts":
         lower = 1 #lower bound on scores
-        #bounds of what is taken into account for the computation of the splines:
+        #bounds of what is taken into account for the computation of the splines
         spline_xmin = math.log10(math.sqrt(10)) #counts of 2,3 -> log(sqrt(2*3))
         spline_xmax = None
-        #bounds of the section of the splines that is displayed:
+        #bounds of the section of the splines that is displayed
         slimits[0] = slimits[0] or 0.8
     elif data_format == "rpkm":
         lower = 0
         spline_xmin = math.log10(0.1)
         spline_xmax = None
-        slimits[0] = slimits[0] or -1
-    min_pts_per_bin = 12
+        slimits[0] = slimits[0] or -0.5
+    min_pts_per_bin = 20
     output_filename = unique_filename()
 
     # Extract data from CSV
@@ -206,7 +214,7 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
 
             coeffs = numpy.polyfit(x, h, deg)
             smin = slimits[0] or x[0]
-            smax =  slimits[1] or 1.*x[-2]
+            smax =  slimits[1] or 0.85*x[-1]
             x_spline = numpy.array(numpy.linspace(smin, smax, 10*bins))
             y_spline = numpy.polyval(coeffs, x_spline)
 
@@ -252,7 +260,7 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
         if mode == "normal": annotate = [0 for data in dataset]
         elif mode == "json": annotate = [1 for data in dataset]
     if mode == "interactive":
-        af = AnnoteFinder( allmeans, allratios, allnames )
+        af = AnnoteFinder(allmeans,allratios,allnames)
         plt.connect('button_press_event', af)
         plt.draw()
         plt.show()
@@ -328,6 +336,7 @@ class AnnoteFinder:
       af = AnnoteFinder(xdata, ydata, annotes)
       connect('button_press_event', af)
   """
+
   def __init__(self, xdata, ydata, annotes, axis=None, xtol=None, ytol=None):
     self.data = zip(xdata, ydata, annotes)
     self.xrange = max(xdata) - min(xdata)
@@ -346,7 +355,7 @@ class AnnoteFinder:
     self.links = []
 
   def distance(self, x1, x2, y1, y2):
-    """Euclidean distance between two points (x1,y1) and (x2,y2)"""
+    """Distance between two points (x1,y1) and (x2,y2)"""
     return math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
 
   def __call__(self, event):
@@ -382,133 +391,4 @@ class AnnoteFinder:
     annotesToDraw = [(x,y,a) for x,y,a in self.data if a==annote]
     for x,y,a in annotesToDraw:
       self.drawAnnote(self.axis, x, y, a)
-
-
-#---------------------------- MAIN ------------------------------#
-
-class Usage(Exception):
-    def __init__(self,  msg):
-        self.msg = msg
-
-usage = """
-
-maplot.py [-h] [-c --cols] [-l --labels] [-m --mode] [-f --format] [-s --sep]
-          [-d --deg] [-b --bins] [-a --assembly] [-q --noquantiles]
-          [--annotate] [--xmin --xmax --ymin --ymax] [--smin --smax]
-          [-t --title] [-e --extremes]
-          data_1 .. data_n
-
-**Input**: CSV files containing at least two numeric columns representing the two
-           samples to compare, and one with labels for each pair of points. Files must all
-           be in the same format. By default numeric columns are 2 and 3,
-           whilst column 1 contains the labels. Else, precise which columns to use with the
-           `--cols` argument.
-
-**Output**: depending on the chosen `--mode`, prints to stdout the name of the .png file produced,
-            prints to stdout a json containing enough information to reconstruct the plot using
-            Javascript, or produces an interactive matplotlib figure. """
-
-help=iter([
-"""The numbers or names of the two columns containing the numeric data to compare, separated by
-commas. E.g. --cols 3,5.""",
-"""The numbers or names of the columns containing the labels of the points, separated by
-commas. The first element must contain unique labels; others will be concatenated.
-E.g. --labels 1,6,7 may produce `Id | name | desc` labels.""",
-"""Display mode: 'normal' for static .pgn output,
-'interactive' - clic to display gene names, or
-'json' - json output to stdout for Javascript web interface.""",
-"""Data type: 'counts' for raw count data (default), 'rpkm' for normalized data.""",
-"""The character delimiting the columns of the file. If not specified, the program tries
-to detect it automatically. Use 'C^V' or '\t' for a <tab> delimiter.""",
-"""Degree of the interpolant percentile splines.""",
-"""Number of divisions of the x axis to calculate percentiles.""",
-"""Identifier for the Genrep assembly (e.g. 'hg19' or 7) used to add more
-information about features into the json output.""",
-"""Normalize data: 'tags' to divide by the sum of all scores in each sample,
-'sf' to use DESeq-like size factors. 'sf' should not be used with already rpkm-normalized data.""",
-"""Don't draw quantile splines. This may improve speed and lisibility in some cases.""",
-"""(In 'normal' mode) Indication of which datasets to annotate.
-Must be a string of binary values separated by commas, of the same lenght as the number of datasets, \
-1 indicating to annotate the corresponding set, 0 not to annotate. \
-E.g. For a list of datasets d1,d2,d3, if you want to annotate only d3, \
-type --annotate 0,0,1. It is advised to annotate only very small secondary datasets.""",
-"""Minimum x value to be displayed on the output graph.""",
-"""Maximum x value to be displayed on the output graph.""",
-"""Minimum y value to be displayed on the output graph.""",
-"""Maximum y value to be displayed on the output graph.""",
-"""Left bound to draw splines.""",
-"""Right bound to draw splines.""",
-"""Adds a title to the figure""",
-"""Create an output file containing features for which ratios were outside the specified
- percentile (two-sided). For the moment, must be 1 or 5. The file is named *extreme_ratios_xxxxx* ."""
-])
-
-description = """Creates an `MA-plot` to compare transcription levels of a set of
-genes (or other genomic features) in two different conditions."""
-
-def main():
-    try:
-        parser = optparse.OptionParser(usage=usage, description=description)
-
-        parser.add_option("-c", "--cols", default='2,3', help=help.next())
-        parser.add_option("-l", "--labels", default='1', help=help.next())
-        parser.add_option("-m", "--mode", default='normal', help=help.next())
-        parser.add_option("-f", "--format", default='counts', help=help.next())
-        parser.add_option("-s", "--sep", default=None, help=help.next())
-        parser.add_option("-d", "--deg", default=4, type="int", help=help.next())
-        parser.add_option("-b", "--bins", default=30, type="int", help=help.next())
-        parser.add_option("-a", "--assembly", default=None, help=help.next())
-        parser.add_option("-q", "--noquantiles", default=True, action="store_false", help=help.next())
-        parser.add_option("--normalize", default=None, help=help.next())
-        parser.add_option("--annotate", default=None, help=help.next())
-        parser.add_option("--xmin", default=None, type="float", help=help.next())
-        parser.add_option("--xmax", default=None, type="float", help=help.next())
-        parser.add_option("--ymin", default=None, type="float", help=help.next())
-        parser.add_option("--ymax", default=None, type="float", help=help.next())
-        parser.add_option("--smin", default=None, type="float", help=help.next())
-        parser.add_option("--smax", default=None, type="float", help=help.next())
-        parser.add_option("-t","--title", default="MA-plot", help=help.next())
-        parser.add_option("-e","--extremes", default=False, type="int", help=help.next())
-
-        (opt, args) = parser.parse_args()
-
-        args = [os.path.abspath(a) for a in args]
-        if len(args) < 1:
-            parser.error("At least one data file must be specified.\n")
-        for a in args:
-            assert os.path.exists(a), "File not found: %s\n" % a
-
-        annotate = None
-        if opt.annotate:
-            annotate = [int(b) for b in opt.annotate.split(",")]
-            assert len(args) == len(annotate), "There must be one digit per dataset in --annotate.\n"
-        limits = [None or opt.xmin, None or opt.xmax, None or opt.ymin, None or opt.ymax]
-        slimits = [None or opt.smin, None or opt.smax]
-        cols = opt.cols
-        if not cols.startswith("{"):
-            cols = cols.split(",")
-            if len(cols) != 2:
-                parser.error("--cols must be *two* integers or strings separated by commas (got %s).\n" % opt.cols)
-        labels = opt.labels.split(",")
-        if opt.mode not in ["normal","interactive","json"]:
-            parser.error("--mode must be one of 'normal','interactive', or 'json' (got %s).\n" % opt.mode)
-        if opt.format not in ["counts","rpkm"]:
-            parser.error("--format must be one of 'counts' or 'rpkm' (got %s).\n" % opt.format)
-        if opt.normalize and opt.normalize not in ["tags","sf"]:
-            parser.error("--normalize must be one of 'tags' or 'sf' (got %s.\n)" % opt.normalize)
-
-        MAplot(args, cols=cols, labels=labels, mode=opt.mode, data_format=opt.format, sep=opt.sep,
-                limits=limits, slimits=slimits,deg=opt.deg, bins=opt.bins, assembly_id=opt.assembly,
-                normalize=opt.normalize, annotate=annotate, quantiles=opt.noquantiles, title=opt.title,
-                extremes=opt.extremes)
-
-        sys.exit(0)
-    except Usage, err:
-        print >>sys.stderr, err.msg
-        print >>sys.stderr, usage
-        return 2
-
-if __name__ == '__main__':
-    sys.exit(main())
-
 
