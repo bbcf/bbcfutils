@@ -18,10 +18,6 @@ import matplotlib.pyplot as plt
 from numpy import asarray,log,log10,log2,exp,sqrt,mean,median,float_,round,nonzero
 
 
-class Usage(Exception):
-    def __init__(self,  msg):
-        self.msg = msg
-
 def unique_filename(len=20, path=None):
     """Return a *len*-characters random filename, unique in the given *path*."""
     if not path: path = os.getcwd()
