@@ -2,8 +2,8 @@
 
 import optparse, json, sys, os
 from bbcflib import btrack
-from bbcflib.bFlatMajor.stream import merge_scores
-from bbcflib.bFlatMajor.numeric import correlation,normalize
+from bbcflib.bFlatMajor.stream import merge_scores, normalize
+from bbcflib.bFlatMajor.numeric import correlation
 
 functions = ["convert","read","merge","norm"]
 usage = {'all': "track.py %s [OPTIONS]"}
