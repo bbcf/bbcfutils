@@ -319,7 +319,12 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
                  + "var splinelabels = " + json.dumps(splinelabels) + ";\n"
 
         print >> sys.stdout, jsdata
+<<<<<<< HEAD
         return jsdata
+=======
+
+    return output_filename
+>>>>>>> pass log files as param
 
 
 #----------------------------------------------------------#
