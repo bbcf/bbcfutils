@@ -1,7 +1,7 @@
-Command-line, documented tool to easily draw interactive MA-plots,
+Command-line tool to easily draw interactive MA-plots,
 mainly designed for the analysis of RNA-seq data.
 
-Script written by 
+Script written by
 Julien Delafontaine,
 Bioinformatics and Biostatistics Core Facility,
 EPFL 2011-2012,

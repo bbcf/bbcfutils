@@ -99,7 +99,7 @@ def _normalize(counts,mode):
 
 def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_format="counts",
            sep=None, limits=[None,None,None,None], slimits=[None,None], deg=3, bins=30,
-           assembly_id=None, normalize="sf", quantiles=True, title="MA-plot", extremes=False):
+           assembly_id=None, normalize="sf", quantiles=True, title="MA-plot", extremes=False, prefix=None):
     """
     Creates an "MA-plot" to compare transcription levels of a set of genes
     in two different conditions. It returns the name of the .png file produced,
@@ -145,7 +145,7 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
         spline_xmax = None
         slimits[0] = slimits[0] or -0.5
     min_pts_per_bin = 20
-    output_filename = unique_filename()
+    prefix = prefix or unique_filename()
 
     # Extract data from CSV
     if isinstance(dataset,str): dataset = [dataset]
@@ -191,7 +191,8 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
         for i in range(len(intervals)-2,-1,-1): #from l-1 to 0, decreasing
             p_in_i = [p for p in points if p[1]>=intervals[i] and p[1]<intervals[i+1]]
             if len(p_in_i) < min_pts_per_bin:
-                intervals = numpy.delete(intervals,i); bins-=1
+                intervals = numpy.delete(intervals,i)
+                bins-=1
             else:
                 points_in.append(p_in_i)
         points_in.reverse()
@@ -200,28 +201,28 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
         # Compute percentiles in each bin
         spline_annotes=[]; spline_coords={}; extreme_ratios=[]
         percentiles = [1,5,25,50,75,95,99]
-        for k in percentiles:
-            h=[]
-            for b in range(bins):
-                score = stats.scoreatpercentile([p[2] for p in points_in[b]], k)
-                h.append(score)
-                if k == extremes: extreme_ratios.extend([p for p in points_in[b] if p[2] < score])
-                if k == 100-extremes: extreme_ratios.extend([p for p in points_in[b] if p[2] > score])
+        if len(x) > 1: #if there are too few points there will be only one bin
+            for k in percentiles:
+                h=[]
+                for b in range(bins):
+                    score = stats.scoreatpercentile([p[2] for p in points_in[b]], k)
+                    h.append(score)
+                    if k == extremes: extreme_ratios.extend([p for p in points_in[b] if p[2] < score])
+                    if k == 100-extremes: extreme_ratios.extend([p for p in points_in[b] if p[2] > score])
+                coeffs = numpy.polyfit(x, h, deg)
+                smin = slimits[0] or x[0]
+                smax =  slimits[1] or 0.85*x[-1]
+                x_spline = numpy.array(numpy.linspace(smin, smax, 10*bins))
+                y_spline = numpy.polyval(coeffs, x_spline)
 
-            coeffs = numpy.polyfit(x, h, deg)
-            smin = slimits[0] or x[0]
-            smax =  slimits[1] or 0.85*x[-1]
-            x_spline = numpy.array(numpy.linspace(smin, smax, 10*bins))
-            y_spline = numpy.polyval(coeffs, x_spline)
-
-            ax.plot(x_spline, y_spline, "-", color="blue")
-            #ax.plot(x, h, "o", color="blue") # testing
-            spline_annotes.append((k,x_spline[0],y_spline[0])) #quantile percentages
-            spline_coords[k] = zip(x_spline,y_spline)
+                ax.plot(x_spline, y_spline, "-", color="blue")
+                #ax.plot(x, h, "o", color="blue") # testing
+                spline_annotes.append((k,x_spline[0],y_spline[0])) #quantile percentages
+                spline_coords[k] = zip(x_spline,y_spline)
 
         # Print extreme ratios to file
         if extremes:
-            extremes_filename = "extreme_ratios_"+output_filename
+            extremes_filename = prefix + "_extreme_ratios.txt"
             with open(extremes_filename,"w") as f:
                 c = csv.writer(f,delimiter="\t")
                 c.writerow(["Name","countsC1","countsC2","log10Mean","log2Fold"])
@@ -267,13 +268,15 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
                 for p in groups[data]:
                     ax.annotate(p[0], xy=(p[1],p[2]))
                     annotes[data].append(p[0])
+
     if mode == "normal":
-        figname = "maplot_"+output_filename +".png"
+        figname = prefix +".png"
         fig.savefig(figname)
         print "Figure:", figname
+        return figname
 
     # Output for Javascript
-    if mode == "json":
+    elif mode == "json":
         def rgb_to_hex(rgb):
             return '#%02x%02x%02x' % rgb
         jsdata = []
@@ -315,8 +318,7 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
                  + "var splinelabels = " + json.dumps(splinelabels) + ";\n"
 
         print >> sys.stdout, jsdata
-
-    return 0
+        return jsdata
 
 
 #----------------------------------------------------------#
