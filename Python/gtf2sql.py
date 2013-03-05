@@ -12,10 +12,6 @@ def _split_attributes(stream,field='attributes'):
                 yield header.groups()[0].strip('"')
 
 
-def _frame(x):
-    if x == '.' or x is None: x='-1'
-    return int(x)
-
 def _exon_number(x):
     if x is None: x='1'
     return int(x)
@@ -32,18 +28,14 @@ for _a,info in genrep.GenRep().assemblies_available():
     gtf_path = os.path.join(basepath,assembly.md5+".gtf.gz")
     if not(assembly.bbcf_valid and os.path.exists(gtf_path)): continue
     print info, gtf_path
-    gtf = track(gtf_path, intypes={'frame': _frame,
-                                   'exon_number': _exon_number},
-                chrmeta=assembly.chrmeta)
+    gtf = track(gtf_path, intypes={'exon_number': _exon_number},chrmeta=assembly.chrmeta)
     all_fields = set(_split_attributes(gtf.read(fields=['attributes'])))
     new_fields = [f for f in all_fields if not(f in std_outfields)]
-    xsplit = split_field(ensembl_to_ucsc(
-            gtf.read(fields=gtf_read_fields)),
-            outfields=std_outfields+new_fields,
-            infield='attributes', header_split=' ')
+    xsplit = split_field(ensembl_to_ucsc(gtf.read(fields=gtf_read_fields)),
+                         outfields=std_outfields+new_fields, infield='attributes', 
+                         header_split=' ', strip_input=True)
     xsplit.fields[:7] = sql_fields[:7]
     outname = assembly.md5+".sql"
     if os.path.exists(outname): os.unlink(outname)
-    outf = track(outname,fields=sql_fields+new_fields,
-                 chrmeta=assembly.chrmeta,**params)
+    outf = track(outname,fields=sql_fields+new_fields,chrmeta=assembly.chrmeta,**params)
     outf.write(map_chromosomes(xsplit,assembly.chromosomes))
