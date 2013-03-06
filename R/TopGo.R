@@ -6,9 +6,9 @@ attribute_go = "go_id"
 attribute_gene = "external_gene_id"
 filter_go = "with_go"
 
-def getIdsInTerm = function(x) {
-    I = match(id_set,unlist(genesInTerm(data,x)),nomatch=0)>0
-    paste(sort(genome[id_set[I],1]),collapse=', ')
+getIdsInTerm = function(x,subset,data,genome) {
+    I = match(subset,unlist(genesInTerm(data,x)),nomatch=0)>0
+    paste(sort(genome[subset[I],1]),collapse=', ')
 }
 
 single_topGo = function( geneList, genome, gene2GO, allGenes, pdf, table ) {
@@ -16,6 +16,7 @@ single_topGo = function( geneList, genome, gene2GO, allGenes, pdf, table ) {
     output = table
     tab = list()
     append = FALSE
+    subset = allGenes[geneList == 1]
     for (ontol in c("BP","CC","MF")) {
         data = new("topGOdata",description=ontol,ontology=ontol,
           allGenes=geneList,annot=annFUN.gene2GO,gene2GO=gene2GO)
@@ -25,7 +26,7 @@ single_topGo = function( geneList, genome, gene2GO, allGenes, pdf, table ) {
           classicFisher=result$classicFisher, elimFisher=result$elimFisher, 
           orderBy="elimFisher", ranksOf="elimFisher", topNodes=10)
         showSigOfNodes(data,score(result$elimFisher), first=10, useInfo="all")
-        tab = cbind(tab,genes=sapply(tab$GO.ID, getIdsInTerm))
+        tab = cbind(tab,genes=sapply(tab$GO.ID, getIdsInTerm, subset, data, genome))
         write(c("",ontol,""),file=output,append=append)
         append = TRUE
         write.table(tab,file=output,quote=F,sep="\t",row.names=F,append=append)
@@ -50,11 +51,11 @@ multi_topGo = function( filename, assembly_id,
     I = which(!duplicated(genome[,"ensembl_gene_id"]))
     genome = data.frame(gene_name=genome[I,attr2],row.names=genome[I,"ensembl_gene_id"])
     allGenes = row.names(genome)
-    genome[which(!nchar(genome[,1])),1] = allGenes[which(!nchar(genome[,1]))]
+    if (any(!nchar(genome[,1])))
+      genome[which(!nchar(genome[,1])),1] = allGenes[which(!nchar(genome[,1]))]
 
     id_set = scan(filename,what=character())
     name0 = gsub("[.].*","",gsub(".*/","",filename))
-    id_set = scan(file,what=character())
     I = grep("#",id_set)
     id_sets = list()
     if (length(I) == 0) {
@@ -64,7 +65,7 @@ multi_topGo = function( filename, assembly_id,
         n = 1
         i = 1
         for (j in I[-1]) {
-            name = gsub("#","",id_set[i])
+            name = gsub("[[:space:]]+","_",gsub("#","",id_set[i]))
             if (nchar(name) == 0) name = paste(name0,n,sep='.')
             id_sets[[name]] = id_set[(i+1):(j-1)]
             i = j
@@ -78,8 +79,8 @@ multi_topGo = function( filename, assembly_id,
         geneList = factor(as.numeric(match(allGenes,subset,nomatch=0)>0))
         if (length(levels(geneList)) == 2) {
             names(geneList) = allGenes
-            pdflist[[listName]] = paste(listName,pdf,sep="_")
-            tablelist[[listName]] = paste(listName,table,sep="_")
+            pdflist[[listName]] = gsub(".pdf",paste("_",listName,".pdf",sep=""),pdf)
+            tablelist[[listName]] = gsub(".txt",paste("_",listName,".txt",sep=""),table)
             single_topGo(geneList,genome,gene2GO,allGenes,
                          pdflist[[listName]],tablelist[[listName]])
 	}
