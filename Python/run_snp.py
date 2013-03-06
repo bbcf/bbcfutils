@@ -21,9 +21,9 @@ class SNP_job:
                                               {'default': "/srv/snp/public/data/snp_minilims"}),
                      ("-f", "--fasta_path", "Path to a directory containing a fasta file for each chromosome",
                                               {'default':None}),
-                     ("--minsnp", "Minimum number of reads supporting an SNP at a position for it to be considered.",
+                     ("--mincov", "Minimum number of reads supporting an SNP at a position for it to be considered.",
                                               {'default':5}),
-                     ("--mincov", "Minimum percentage of reads supporting the SNP for it to be returned.",
+                     ("--minsnp", "Minimum percentage of reads supporting the SNP for it to be returned.",
                                               {'default':40}),
                     )
         self.name = "SNP job"
@@ -38,7 +38,9 @@ class SNP_job:
         logfile.write("Fetch bam and wig files.\n");logfile.flush()
         job = mapseq.get_bam_wig_files(ex, job, minilims=opt.mapseq_limspath, hts_url=mapseq_url,
                                        script_path=gl.get('script_path',''), via=opt.via)
-        snp.snp_workflow(ex,job,assembly,mincov=opt.mincov,minsnp=opt.minsnp,path_to_ref=opt.fasta_path,via=opt.via)
+        mincov = job.options.get('mincov') or opt.mincov
+        minsnp = job.options.get('minsnp') or opt.minsnp
+        snp.snp_workflow(ex,job,assembly,mincov=mincov,minsnp=minsnp,path_to_ref=opt.fasta_path,via=opt.via)
 
 if __name__ == '__main__':
     sys.exit(run(SNP_job()))
