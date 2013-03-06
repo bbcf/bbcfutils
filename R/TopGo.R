@@ -85,7 +85,7 @@ multi_topGo = function( filename, assembly_id,
                          pdflist[[listName]],tablelist[[listName]])
 	}
     }
-    c(pdflist,tablelist)
+    list(pdflist,tablelist)
 }
 
 
