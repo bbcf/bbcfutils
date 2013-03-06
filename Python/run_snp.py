@@ -38,7 +38,9 @@ class SNP_job:
         logfile.write("Fetch bam and wig files.\n");logfile.flush()
         job = mapseq.get_bam_wig_files(ex, job, minilims=opt.mapseq_limspath, hts_url=mapseq_url,
                                        script_path=gl.get('script_path',''), via=opt.via)
-        snp.snp_workflow(ex,job,assembly,mincov=opt.mincov,minsnp=opt.minsnp,path_to_ref=opt.fasta_path,via=opt.via)
+        mincov = job.options.get('mincov') or opt.mincov
+        minsnp = job.options.get('minsnp') or opt.minsnp
+        snp.snp_workflow(ex,job,assembly,mincov=mincov,minsnp=minsnp,path_to_ref=opt.fasta_path,via=opt.via)
 
 if __name__ == '__main__':
     sys.exit(run(SNP_job()))

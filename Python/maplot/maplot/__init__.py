@@ -106,8 +106,9 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
     and the name of a json containing enough information to reconstruct the plot using Javascript.
 
     :param dataset: (list or string) names of up to six text files.
-    :param cols: (list) indices of the two columns containing the numeric data to compare.
-    :param labels: (list) indices of the columns used as labels.
+    :param cols: (list or dict) 1-based indices of the two columns containing the numeric data to compare,
+        or column names, or a dict {1:[indices of group1], 2:[indices of group 2]}.
+    :param labels: (list) 1-based indices of the columns used as labels, or column names.
     :param annotate: (list) in ``normal`` mode, choose which for which datasets you want the
         points to be labeled. Enter 1 to annotate, 0 not to annotate, in the
         same order as datasets were entered. E.g. [0,0,1] to annotate only the third of 3
