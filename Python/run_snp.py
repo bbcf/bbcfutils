@@ -21,9 +21,9 @@ class SNP_job:
                                               {'default': "/srv/snp/public/data/snp_minilims"}),
                      ("-f", "--fasta_path", "Path to a directory containing a fasta file for each chromosome",
                                               {'default':None}),
-                     ("--minsnp", "Minimum number of reads supporting an SNP at a position for it to be considered.",
+                     ("--mincov", "Minimum number of reads supporting an SNP at a position for it to be considered.",
                                               {'default':5}),
-                     ("--mincov", "Minimum percentage of reads supporting the SNP for it to be returned.",
+                     ("--minsnp", "Minimum percentage of reads supporting the SNP for it to be returned.",
                                               {'default':40}),
                     )
         self.name = "SNP job"
