@@ -4,7 +4,7 @@ Top-level script for HTSstation.epfl.ch pipelines.
 
 """
 
-import optparse
+import optparse, sys
 from bbcflib.workflows import Workflow, Usage
 
 _module_list = ["demultiplexing","mapseq","chipseq","rnaseq","snp","4cseq"]
@@ -16,10 +16,8 @@ _mapseq_lims_opt = ("-m", "--mapseq_minilims",
 class DemulitplexWorkflow(Workflow):
 
     def __init__(self):
-        opts = (,)
-        usage = ""
         desc = "Demultiplexing routine for 4C-seq data."
-        Workflow.__init__(self,module="demultiplex",opts=opts,usage=usage,desc=desc)
+        Workflow.__init__(self,module="demultiplex",name="demultiplexing",desc=desc)
 
     def check_options(self):
         Workflow.check_options(self)
@@ -49,7 +47,7 @@ class MapseqWorkflow(Workflow):
                           "assembly": self.job.assembly,
                           "map_args": map_args,
                           "gl": self.globals,
-                          "via": self.opt.via,,
+                          "via": self.opt.via,
                           "debugfile": self.debugfile, 
                           "logfile": self.logfile}
 
@@ -100,10 +98,10 @@ class RnaseqWorkflow(Workflow):
         Workflow.__init__(self,module="rnaseq",opts=opts,usage=usage,desc=desc)
 
     def check_options(self):
-        def = {'discard_pcr_duplicates': (False,),
-               'find_junctions': (False,),
-               'unmapped': (False,)}
-        Workflow.check_option(self, def)
+        more_defs = {'discard_pcr_duplicates': (False,),
+                     'find_junctions': (False,),
+                     'unmapped': (False,)}
+        Workflow.check_option(self, more_defs)
         self.main_args = {"job": self.job, 
                           "pileup_level": opt.pileup_level.split(','),
                           "via": self.opt.via,
@@ -130,8 +128,8 @@ class SnpWorkflow(Workflow):
         Workflow.__init__(self,module="snp",opts=opts,usage=usage,desc=desc)
 
     def check_options(self):
-        def = {}
-        Workflow.check_option(self, def)
+        more_defs = {}
+        Workflow.check_option(self, more_defs)
         mincov = job.options.get('mincov') or opt.mincov
         minsnp = job.options.get('minsnp') or opt.minsnp
         self.main_args = {"job": self.job, 
@@ -149,10 +147,11 @@ class C4seqWorkflow(Workflow):
         opts = (_mapseq_lims_opt,)
         usage = "[-m mapseq_minilims]"
         desc = """A High-throughput 4C-seq analysis workflow."""
-        Workflow.__init__(self,module="c4seq",opts=opts,usage=usage,desc=desc)
+        Workflow.__init__(self,module="c4seq",name="4cseq",opts=opts,usage=usage,desc=desc)
 
     def check_options(self):
         Workflow.check_option(self)
+        self.suffix = ['merged']
         primers_dict = c4seq.loadPrimers(os.path.join(self.opt.wdir,'primers.fa'))
         self.main_args = {"job": self.job, 
                           "primers_dict": primers_dict,
@@ -165,6 +164,7 @@ class C4seqWorkflow(Workflow):
 
 ############################### MAIN ###############################
 def main():
+    parser = None
     try:
         module = None
         if len(sys.argv) > 1: module = sys.argv.pop(1)
@@ -196,6 +196,7 @@ def main():
     except Usage, err:
         print >>sys.stderr, err.msg
         if parser: parser.print_help()
+        else: print "run_htsstation.py %s [OPTIONS]" %str(_module_list)
         return 2
 
 if __name__ == '__main__':
