@@ -47,7 +47,7 @@ class MapseqWorkflow(Workflow):
                           "assembly": self.job.assembly,
                           "map_args": map_args,
                           "gl": self.globals,
-                          "via": self.opt.via,
+                          "via": self.opts.via,
                           "debugfile": self.debugfile, 
                           "logfile": self.logfile}
 
@@ -55,10 +55,10 @@ class MapseqWorkflow(Workflow):
 
     def init_files(self,ex):
         self.log_write("fetch fastq files.")
-        self.job = mapseq.get_fastq_files( ex, self.job, self.job.dafl )
-        if not self.opt.noqc: 
+        self.job = self.sysmod.get_fastq_files( ex, self.job, self.job.dafl )
+        if not self.opts.noqc: 
             self.log_write("Generate QC report.")
-            mapseq.run_fastqc( ex, job, via=self.opt.via )
+            self.sysmod.run_fastqc( ex, self.job, via=self.opts.via )
         return None
 
 ############################### ChipSeq ###############################
@@ -76,7 +76,7 @@ class ChipseqWorkflow(Workflow):
                           "assembly": self.job.assembly,
                           "script_path": self.globals.get('script_path',''),
                           "logfile": self.logfile, 
-                          "via": self.opt.via}
+                          "via": self.opts.via}
         return True
 
 ############################### RnaSeq ###############################
@@ -103,11 +103,11 @@ class RnaseqWorkflow(Workflow):
                      'unmapped': (False,)}
         Workflow.check_option(self, more_defs)
         self.main_args = {"job": self.job, 
-                          "pileup_level": opt.pileup_level.split(','),
-                          "via": self.opt.via,
+                          "pileup_level": self.opts.pileup_level.split(','),
+                          "via": self.opts.via,
                           "rpath": self.globals.get('script_path',''), 
-                          "junctions": job.options['find_junctions'], 
-                          "unmapped": job.options['unmapped'],
+                          "junctions": self.job.options['find_junctions'], 
+                          "unmapped": self.job.options['unmapped'],
                           "debugfile": self.debugfile, 
                           "logfile": self.logfile}
         return True
@@ -130,14 +130,14 @@ class SnpWorkflow(Workflow):
     def check_options(self):
         more_defs = {}
         Workflow.check_option(self, more_defs)
-        mincov = job.options.get('mincov') or opt.mincov
-        minsnp = job.options.get('minsnp') or opt.minsnp
+        mincov = self.job.options.get('mincov') or self.opts.mincov
+        minsnp = self.job.options.get('minsnp') or self.opts.minsnp
         self.main_args = {"job": self.job, 
                           "assembly": self.job.assembly,
                           "mincov": mincov,
                           "minsnp": minsnp,
-                          "path_to_ref": opt.fasta_path,
-                          "via": self.opt.via}
+                          "path_to_ref": self.opts.fasta_path,
+                          "via": self.opts.via}
         return True
 
 ############################### 4C-seq ###############################
@@ -152,14 +152,14 @@ class C4seqWorkflow(Workflow):
     def check_options(self):
         Workflow.check_option(self)
         self.suffix = ['merged']
-        primers_dict = c4seq.loadPrimers(os.path.join(self.opt.wdir,'primers.fa'))
+        primers_dict = c4seq.loadPrimers(os.path.join(self.opts.wdir,'primers.fa'))
         self.main_args = {"job": self.job, 
                           "primers_dict": primers_dict,
                           "assembly": self.job.assembly,
                           "c4_url": self.globals.get('hts_4cseq',{}).get('url'),
                           "script_path": self.globals.get('script_path',''),
                           "logfile": self.logfile, 
-                          "via": self.opt.via}
+                          "via": self.opts.via}
         return True
 
 ############################### MAIN ###############################
