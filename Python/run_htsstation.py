@@ -165,23 +165,23 @@ class C4seqWorkflow(Workflow):
 def main():
     parser = None
     try:
-        module = None
+        module = ''
         if len(sys.argv) > 1: module = sys.argv.pop(1)
-        if module not in _module_list:
+        if module[:4] == "demu":
+            WF = DemulitplexWorkflow()
+        elif module[:3] == "map":
+            WF = MapseqWorkflow()
+        elif module[:4] == "chip":
+            WF = ChipseqWorkflow()
+        elif module[:3] == "rna":
+            WF = RnaseqWorkflow()
+        elif module[:3] == "snp":
+            WF = SnpWorkflow()
+        elif module[:2] in ["c4","4c"]:
+            WF = C4seqWorkflow()
+        else:
             m = module and "No such operation: %s, choose one of %s." %(module,str(_module_list)) or ''
             raise Usage(m)
-        if module == "demultiplexing":
-            WF = DemulitplexWorkflow()
-        elif module == "mapseq":
-            WF = MapseqWorkflow()
-        elif module == "chipseq":
-            WF = ChipseqWorkflow()
-        elif module == "rnaseq":
-            WF = RnaseqWorkflow()
-        elif module == "snp":
-            WF = SnpWorkflow()
-        elif module == "4cseq":
-            WF = C4seqWorkflow()
 
         parser = optparse.OptionParser(usage=WF.usage, description=WF.desc)
         for opt in WF.opts:
