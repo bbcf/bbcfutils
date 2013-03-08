@@ -4,7 +4,7 @@ Top-level script for HTSstation.epfl.ch pipelines.
 
 """
 
-import optparse, sys
+import optparse, sys, os
 from bbcflib.workflows import Workflow, Usage
 
 _module_list = ["demultiplexing","mapseq","chipseq","rnaseq","snp","4cseq"]
@@ -71,8 +71,8 @@ class ChipseqWorkflow(Workflow):
         Workflow.__init__(self,module="chipseq",opts=opts,usage=usage,desc=desc)
 
     def check_options(self):
-        Workflow.check_option(self)
-        self.main_args = {"job": self.job,
+        Workflow.check_options(self)
+        self.main_args = {"job_or_dict": self.job,
                           "assembly": self.job.assembly,
                           "script_path": self.globals.get('script_path',''),
                           "logfile": self.logfile, 
@@ -101,7 +101,7 @@ class RnaseqWorkflow(Workflow):
         more_defs = {'discard_pcr_duplicates': (False,),
                      'find_junctions': (False,),
                      'unmapped': (False,)}
-        Workflow.check_option(self, more_defs)
+        Workflow.check_options(self, more_defs)
         self.main_args = {"job": self.job, 
                           "pileup_level": self.opts.pileup_level.split(','),
                           "via": self.opts.via,
@@ -129,7 +129,7 @@ class SnpWorkflow(Workflow):
 
     def check_options(self):
         more_defs = {}
-        Workflow.check_option(self, more_defs)
+        Workflow.check_options(self, more_defs)
         mincov = self.job.options.get('mincov') or self.opts.mincov
         minsnp = self.job.options.get('minsnp') or self.opts.minsnp
         self.main_args = {"job": self.job, 
@@ -150,13 +150,12 @@ class C4seqWorkflow(Workflow):
         Workflow.__init__(self,module="c4seq",name="4cseq",opts=opts,usage=usage,desc=desc)
 
     def check_options(self):
-        Workflow.check_option(self)
+        Workflow.check_options(self)
         self.suffix = ['merged']
-        primers_dict = c4seq.loadPrimers(os.path.join(self.opts.wdir,'primers.fa'))
+        primers_dict = self.sysmod.loadPrimers(os.path.join(self.opts.wdir,'primers.fa'))
         self.main_args = {"job": self.job, 
                           "primers_dict": primers_dict,
                           "assembly": self.job.assembly,
-                          "c4_url": self.globals.get('hts_4cseq',{}).get('url'),
                           "script_path": self.globals.get('script_path',''),
                           "logfile": self.logfile, 
                           "via": self.opts.via}
