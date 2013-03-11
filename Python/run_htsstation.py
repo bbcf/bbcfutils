@@ -193,7 +193,7 @@ def main():
         return WF(opt)
 
     except Usage, err:
-        print >>sys.stderr, err.msg
+        print >>sys.stderr, '\n',err.msg,'\n'
         if parser: parser.print_help()
         else: print "run_htsstation.py %s [OPTIONS]" %str(_module_list)
         return 2
