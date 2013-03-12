@@ -2,10 +2,10 @@
 
 import optparse, json, sys, os
 from bbcflib import btrack
-from bbcflib.bFlatMajor.stream import merge_scores, normalize
+from bbcflib.bFlatMajor.stream import merge_scores
 from bbcflib.bFlatMajor.numeric import correlation
 
-functions = ["convert","read","merge","norm"]
+functions = ["convert","read","merge"]
 usage = {'all': "track.py %s [OPTIONS]"}
 description = {'all': "Command-line interface to bbcflib.btrack functionalities."}
 opts = {'all':
