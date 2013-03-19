@@ -1,0 +1,11 @@
+#!/bin/sh
+# Output a GFF file from a VCF file the the stdout.
+# The 'source' & 'feature' parameters are set to dbSNP & SNP
+
+die () {
+    echo >&2 "$@"
+    exit 1
+}
+
+[ -f "$1" ] || die "Provide a VCF file as first argument."
+awk '{OFS="\t";FS="\t"; if (!/^#/){print $1,"dbSNP","SNP",$2-1,$2,".","+",".","name="$4"/"$5";ID="$3";"substr($0, index($0,$8))}}' $1
