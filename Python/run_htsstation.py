@@ -119,9 +119,9 @@ class SnpWorkflow(Workflow):
         opts = (_mapseq_lims_opt,
                 ("-f", "--fasta_path", "Path to a directory containing a fasta file for each chromosome",
                  {'default':None}),
-                ("--mincov", "Minimum number of reads supporting an SNP at a position for it to be considered.",
+                ("--mincov", "Minimum coverage to call the SNP.",
                  {'default':5}),
-                ("--minsnp", "Minimum percentage of reads supporting the SNP for it to be returned.",
+                ("--minsnp", "Minimum percentage of reads per allele to call the SNP.",
                  {'default':40}))
         usage = "[-m mapseq_minilims] [--mincov --minsnp]"
         desc = """Compares sequencing data to a reference assembly to detect SNPs."""
@@ -130,8 +130,8 @@ class SnpWorkflow(Workflow):
     def check_options(self):
         more_defs = {}
         Workflow.check_options(self, more_defs)
-        mincov = self.job.options.get('mincov') or self.opts.mincov
-        minsnp = self.job.options.get('minsnp') or self.opts.minsnp
+        mincov = int(self.job.options.get('mincov')) or self.opts.mincov
+        minsnp = int(self.job.options.get('minsnp')) or self.opts.minsnp
         self.main_args = {"job": self.job, 
                           "assembly": self.job.assembly,
                           "mincov": mincov,
