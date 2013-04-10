@@ -8,7 +8,7 @@ import optparse, sys, os
 from bbcflib.workflows import Workflow, Usage
 
 _module_list = ["demultiplexing","mapseq","chipseq","rnaseq","snp","4cseq"]
-_mapseq_lims_opt = ("-m", "--mapseq_minilims", 
+_mapseq_lims_opt = ("-m", "--mapseq_minilims",
                     "MiniLIMS where a previous Mapseq execution and files have been stored.",
                     {'default': None})
 
@@ -48,7 +48,7 @@ class MapseqWorkflow(Workflow):
                           "map_args": map_args,
                           "gl": self.globals,
                           "via": self.opts.via,
-                          "debugfile": self.debugfile, 
+                          "debugfile": self.debugfile,
                           "logfile": self.logfile}
 
         return True
@@ -56,7 +56,7 @@ class MapseqWorkflow(Workflow):
     def init_files(self,ex):
         self.log_write("fetch fastq files.")
         self.job = self.sysmod.get_fastq_files( ex, self.job, self.job.dafl )
-        if not self.opts.noqc: 
+        if not self.opts.noqc:
             self.log_write("Generate QC report.")
             self.sysmod.run_fastqc( ex, self.job, via=self.opts.via )
         return None
@@ -75,7 +75,7 @@ class ChipseqWorkflow(Workflow):
         self.main_args = {"job_or_dict": self.job,
                           "assembly": self.job.assembly,
                           "script_path": self.globals.get('script_path',''),
-                          "logfile": self.logfile, 
+                          "logfile": self.logfile,
                           "via": self.opts.via}
         return True
 
@@ -84,7 +84,7 @@ class RnaseqWorkflow(Workflow):
 
     def __init__(self):
         opts = (_mapseq_lims_opt,
-                ("-p", "--pileup_level", 
+                ("-p", "--pileup_level",
                  "Target features, inside of quotes, separated by commas. E.g. 'genes,exons,transcripts'",
                  {'default':"genes,exons,transcripts"}),
                 ("-j", "--junctions", "whether or not to search for splice junctions using soapsplice",
@@ -102,13 +102,13 @@ class RnaseqWorkflow(Workflow):
                      'find_junctions': (False,),
                      'unmapped': (False,)}
         Workflow.check_options(self, more_defs)
-        self.main_args = {"job": self.job, 
+        self.main_args = {"job": self.job,
                           "pileup_level": self.opts.pileup_level.split(','),
                           "via": self.opts.via,
-                          "rpath": self.globals.get('script_path',''), 
-                          "junctions": self.job.options['find_junctions'], 
+                          "rpath": self.globals.get('script_path',''),
+                          "junctions": self.job.options['find_junctions'],
                           "unmapped": self.job.options['unmapped'],
-                          "debugfile": self.debugfile, 
+                          "debugfile": self.debugfile,
                           "logfile": self.logfile}
         return True
 
@@ -132,7 +132,7 @@ class SnpWorkflow(Workflow):
         Workflow.check_options(self, more_defs)
         mincov = int(self.job.options.get('mincov')) or self.opts.mincov
         minsnp = int(self.job.options.get('minsnp')) or self.opts.minsnp
-        self.main_args = {"job": self.job, 
+        self.main_args = {"job": self.job,
                           "assembly": self.job.assembly,
                           "mincov": mincov,
                           "minsnp": minsnp,
@@ -153,11 +153,11 @@ class C4seqWorkflow(Workflow):
         Workflow.check_options(self)
         self.suffix = ['merged']
         primers_dict = self.sysmod.loadPrimers(os.path.join(self.opts.wdir,'primers.fa'))
-        self.main_args = {"job": self.job, 
+        self.main_args = {"job": self.job,
                           "primers_dict": primers_dict,
                           "assembly": self.job.assembly,
                           "script_path": self.globals.get('script_path',''),
-                          "logfile": self.logfile, 
+                          "logfile": self.logfile,
                           "via": self.opts.via}
         return True
 
@@ -180,7 +180,7 @@ def main():
         elif module[:2] in ["c4","4c"]:
             WF = C4seqWorkflow()
         else:
-            m = module and "No such operation: %s, choose one of %s." %(module,str(_module_list)) or ''
+            m = "No such operation: %s, choose one of %s." %(module,str(_module_list)) if module else ''
             raise Usage(m)
 
         parser = optparse.OptionParser(usage=WF.usage, description=WF.desc)
