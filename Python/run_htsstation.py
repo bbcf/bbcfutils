@@ -103,6 +103,7 @@ class RnaseqWorkflow(Workflow):
                      'unmapped': (False,)}
         Workflow.check_options(self, more_defs)
         self.main_args = {"job": self.job,
+                          "assembly": self.job.assembly,
                           "pileup_level": self.opts.pileup_level.split(','),
                           "via": self.opts.via,
                           "rpath": self.globals.get('script_path',''),
