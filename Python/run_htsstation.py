@@ -131,8 +131,10 @@ class SnpWorkflow(Workflow):
     def check_options(self):
         more_defs = {}
         Workflow.check_options(self, more_defs)
-        mincov = int(self.job.options.get('mincov')) or self.opts.mincov
-        minsnp = int(self.job.options.get('minsnp')) or self.opts.minsnp
+        mincov = self.job.options.get('mincov') or self.opts.mincov
+        minsnp = self.job.options.get('minsnp') or self.opts.minsnp
+        mincov = int(mincov)
+        minsnp = int(minsnp)
         self.main_args = {"job": self.job,
                           "assembly": self.job.assembly,
                           "mincov": mincov,
