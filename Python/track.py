@@ -5,7 +5,7 @@ from bbcflib import btrack
 from bbcflib.bFlatMajor.stream import merge_scores
 from bbcflib.bFlatMajor.numeric import correlation
 
-functions = ["convert","read","merge"]
+functions = ["convert","read","merge","stats"]
 usage = {'all': "track.py %s [OPTIONS]"}
 description = {'all': "Command-line interface to bbcflib.btrack functionalities."}
 opts = {'all':
@@ -84,7 +84,7 @@ def read(*args,**kw):
             if intrack.info:
                 fileinfo = ",".join(["%s=%s" %(k,v) for k,v in intrack.info.iteritems()])
             else: fileinfo = 'None'
-            chromlist = ",".join(sorted(intrack.chrmeta.keys()))
+            chromlist = ",".join(sorted(intrack.chrmeta.keys())) or "None"
             fields = ",".join(intrack.fields)
             output.write(\
 """# *****************************************
@@ -155,6 +155,56 @@ def merge(*args,**kw):
     tout.close()
     trev.close()
     tfwd.close()
+    return 0
+
+############## STATS ##############
+f = 'stats'
+usage[f] = usage['all'] %f +" file [file2 ...]"
+description[f] = 'Returns various stats from the scores and feature lengths.'
+opts[f] = (("-t", "--format", "File format if extension not explicit",{'default':None}),
+        ("-s", "--selection", """Selection or comma-separated list of chromosome names. Selection
+         can be a dictionary (json) or a string of the form `chr:start-end`.""",{'default':None}),
+        ("-f", "--fields", "Fields in output",{'default':None}), )
+
+def stats(*args,**kw):
+    if len(args) < 1: raise Usage("No input file provided")
+    if kw['selection']:
+        if kw['selection'].count("{"):
+            jsonargs = json.loads(kw['selection'])
+            for k,v in jsonargs.iteritems():
+                if isinstance(v,basestring): jsonargs[k] = str(v)
+            kw['selection'] = dict((str(k),v) for k,v in jsonargs.iteritems())
+        elif kw['selection'].count(":"):
+            chr,coord = kw['selection'].split(':')
+            start,end = coord.split('-')
+            kw['selection'] = {'chr':chr,'start':(start,end),'end':(start,end)}
+        else:
+            kw['selection'] = str(kw['selection']).split(",")
+    fields = None
+    if kw['fields']:
+        fields = str(kw['fields']).split(",")
+    if kw['output'] is None:
+        output = sys.stdout
+    else:
+        output = open(kw['output'],'w')
+    for infile in args:
+        intrack = btrack.track(infile,format=kw['format'],chrmeta=kw['assembly'])
+        if intrack.info:
+            fileinfo = ",".join(["%s=%s" %(k,v) for k,v in intrack.info.iteritems()])
+        else: fileinfo = 'None'
+        chromlist = ",".join(sorted(intrack.chrmeta.keys())) or "None"
+        fields = ",".join(intrack.fields)
+        output.write(\
+"""*****************************************
+File '%s' (%s):
+Infos: %s
+Chromosomes: %s
+Fields: %s
+*****************************************\n
+""" %(os.path.basename(infile), intrack.format, fileinfo, chromlist, fields))
+        btrack.stats(intrack,out=output,**kw)
+        intrack.close()
+    output.close()
     return 0
 
 ##################################
