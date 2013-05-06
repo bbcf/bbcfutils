@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import optparse, json
+import optparse, json, sys
 from bbcflib.bFlatMajor import run
 
 parser = optparse.OptionParser()
@@ -9,6 +9,10 @@ for k in ['operation','output','assembly','datatype','args']:
 options, args = parser.parse_args()
 
 kwargs = options.__dict__
+if not kwargs['operation']:
+    parser.print_help()
+    sys.exit(1)
+ 
 if options.args:
     jsonargs = json.loads(kwargs.pop('args'))
     for k,v in jsonargs.iteritems():
