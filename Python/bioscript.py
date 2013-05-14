@@ -15,7 +15,7 @@ import os
 import optparse
 
 usage = "bioscript [OPTIONS] <plugin>"
-plusage = lambda name: "bioscript {} [INPUTS]{}      {}".format(name, os.linesep, "inputs: input_id1: <values> input_id2: <values> ...")
+plusage = lambda name: "bioscript {} [PLUGIN PARAMETERS]".format(name)
 description = "Command line interface to use bsPlugins library"
 
 opts = (
