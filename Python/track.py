@@ -9,9 +9,11 @@ functions = ["convert","read","merge","stats"]
 usage = {'all': "track.py %s [OPTIONS]"}
 description = {'all': "Command-line interface to bbcflib.btrack functionalities."}
 opts = {'all':
-        (("-a", "--assembly", "Assembly name or id",{'default':None}),
-         ("-o", "--output", "Output file (default stdout)",{'default':None}),
-         ("-c", "--chrmeta", "Json-formatted chrmeta dictionary (if not an assembly)", {'default': None}))}
+        (("-a", "--assembly", "Assembly name or id.",{'default':None}),
+         ("-o", "--output", "Output file (default stdout).",{'default':None}),
+         ("-c", "--chrmeta", "(if not assembly specified) Json-formatted chrmeta dictionary, or \
+                              a tab-delimited file with two columns: <chromosome name> <size in bases> .",
+                            {'default': None}))}
 
 class Usage(Exception):
     def __init__(self,  msg):
@@ -36,7 +38,16 @@ def convert(*args,**kw):
     if kw['format2']:
         args[1] = (args[1],kw['format2'])
     if kw['chrmeta']:
-        chrmeta = json.loads(kw['chrmeta'])
+        if os.path.exists(kw['chrmeta']):
+            chrmeta = {}
+            with open(kw['chrmeta'],'r') as chr_sizes:
+                for line in chr_sizes:
+                    try:
+                        chrname,chrsize = line.split()
+                        chrmeta[chrname] = {'length':int(chrsize)}
+                    except ValueError: raise ValueError("Wrong line in chr.sizes file:\n%s." % line)
+        else:
+            chrmeta = json.loads(kw['chrmeta'])
     else:
         chrmeta = kw['assembly']
     if kw['datatype']:
