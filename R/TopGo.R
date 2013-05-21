@@ -9,13 +9,14 @@ filter_go = "with_go"
 def.pdf = "TopGO_plots.pdf"
 def.table = "TopGO_table.txt"
 def.nterms = 10
+def.pval = .05
 
 getIdsInTerm = function(x,subset,data,genome) {
     I = match(subset,unlist(genesInTerm(data,x)),nomatch=0)>0
     paste(sort(genome[subset[I],1]),collapse=', ')
 }
 
-single_topGo = function( geneList, genome, gene2GO, allGenes, pdf, table, nterms ) {
+single_topGo = function( geneList, genome, gene2GO, allGenes, pdf, table, nterms, pval ) {
     pdf(pdf,paper="a4",height=8,width=11)
     output = table
     tab = list()
@@ -28,8 +29,10 @@ single_topGo = function( geneList, genome, gene2GO, allGenes, pdf, table, nterms
           elimFisher=runTest(data, statistic="fisher", algo="elim"))
         tab = GenTable(data,
           classicFisher=result$classicFisher, elimFisher=result$elimFisher, 
-          orderBy="elimFisher", ranksOf="elimFisher", topNodes=nterms)
-        showSigOfNodes(data,score(result$elimFisher), first=nterms, useInfo="all")
+          orderBy="elimFisher", ranksOf="elimFisher",
+          topNodes=nterms, numChar=100)
+        tab = tab[tab$elimFisher<=pval,]
+        showSigOfNodes(data, score(result$elimFisher), first=nterms, useInfo="all")
         tab = cbind(tab,genes=sapply(tab$GO.ID, getIdsInTerm, subset, data, genome))
         write(c("",ontol,""),file=output,append=append)
         append = TRUE
@@ -39,7 +42,7 @@ single_topGo = function( geneList, genome, gene2GO, allGenes, pdf, table, nterms
 }
 
 
-multi_topGo = function( filename, assembly_id, pdf=def.pdf, table=def.table, nterms=def.nterms ) {
+multi_topGo = function( filename, assembly_id, pdf=def.pdf, table=def.table, nterms=def.nterms, pval=def.pval ) {
     ensembl = useMart(biomart,host=ensembl_url)
     lsds = listDatasets(ensembl)
     dataset = lsds$dataset[which(lsds$version == assembly_id)]
@@ -85,7 +88,7 @@ multi_topGo = function( filename, assembly_id, pdf=def.pdf, table=def.table, nte
             pdflist[[listName]] = gsub(".pdf",paste("_",listName,".pdf",sep=""),pdf)
             tablelist[[listName]] = gsub(".txt",paste("_",listName,".txt",sep=""),table)
             single_topGo(geneList,genome,gene2GO,allGenes,
-                         pdflist[[listName]],tablelist[[listName]],nterms)
+                         pdflist[[listName]],tablelist[[listName]],nterms,pval)
 	}
     }
     list(pdflist,tablelist)
