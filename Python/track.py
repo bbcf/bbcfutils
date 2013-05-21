@@ -62,8 +62,8 @@ f = 'read'
 usage[f] = usage['all'] %f +" file1 [file2 ...]"
 description[f] = 'A generic genomic track data reader.'
 opts[f] = (("-t", "--format", "File format if extension not explicit",{'default':None}),
-        ("-s", "--selection", """Selection or comma-separated list of chromosome names. Selection
-         can be a dictionary (json) or a string of the form `chr:start-end`.""",{'default':None}),
+        ("-s", "--selection", "Selection or comma-separated list of chromosome names. Selection \
+         can be a dictionary (json) or a string of the form `chr:start-end`.",{'default':None}),
         ("-f", "--fields", "Fields in output",{'default':None}),
         ("-d", "--description", "Only print a description of the file",{'action':"store_true"}))
 
@@ -173,8 +173,8 @@ f = 'stats'
 usage[f] = usage['all'] %f +" file [file2 ...]"
 description[f] = 'Returns various stats from the scores and feature lengths.'
 opts[f] = (("-t", "--format", "File format if extension not explicit",{'default':None}),
-        ("-s", "--selection", """Selection or comma-separated list of chromosome names. Selection
-         can be a dictionary (json) or a string of the form `chr:start-end`.""",{'default':None}),
+        ("-s", "--selection", "Selection or comma-separated list of chromosome names. Selection \
+         can be a dictionary (json) or a string of the form `chr:start-end`.",{'default':None}),
         ("-f", "--fields", "Fields in output",{'default':None}), )
 
 def stats(*args,**kw):
