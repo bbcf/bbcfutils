@@ -9,7 +9,7 @@ functions = ["convert","read","merge","stats"]
 usage = {'all': "track.py %s [OPTIONS]"}
 description = {'all': "Command-line interface to bbcflib.btrack functionalities."}
 opts = {'all':
-        (("-a", "--assembly", "Assembly name or id.",{'default':None}),
+        (("-a", "--assembly", "Assembly name or id. If not standard, use `-a guess`.",{'default':None}),
          ("-o", "--output", "Output file (default stdout).",{'default':None}),
          ("-c", "--chrmeta", "(if not assembly specified) Json-formatted chrmeta dictionary, or \
                               a tab-delimited file with two columns: <chromosome name> <size in bases> .",
@@ -199,7 +199,7 @@ def stats(*args,**kw):
     else:
         output = open(kw['output'],'w')
     for infile in args:
-        intrack = btrack.track(infile,format=kw['format'],chrmeta=kw.get('assembly') or "guess")
+        intrack = btrack.track(infile,format=kw['format'],chrmeta=kw.get('assembly'))
         if intrack.info:
             fileinfo = ",".join(["%s=%s" %(k,v) for k,v in intrack.info.iteritems()])
         else: fileinfo = 'None'
@@ -217,6 +217,39 @@ Fields: %s
         intrack.close()
     output.close()
     return 0
+
+############## CHECK ##############
+f = 'check'
+usage[f] = usage['all'] %f +" file1 [file2 ...]"
+description[f] = 'Checks that a track file is sorted and well-formatted.'
+opts[f] = (("-t", "--format", "File format if extension not explicit",{'default':None}),
+          )
+
+def check(*args,**kw):
+    if len(args) < 1: raise Usage("No input file provided")
+    for infile in args:
+        intrack = btrack.track(infile,format=kw['format'],chrmeta=kw['assembly'])
+        for x in intrack.read():
+            pass
+        intrack.close()
+    return 0
+
+############## SORT ##############
+f = 'sort'
+usage[f] = usage['all'] %f +" file1 [file2 ...]"
+description[f] = 'Sorts a track file. Warning: can use a lot of memory space, according to the file size.'
+opts[f] = (("-t", "--format", "File format if extension not explicit",{'default':None}),
+          )
+
+def sort(*args,**kw):
+    if len(args) < 1: raise Usage("No input file provided")
+    for infile in args:
+        intrack = btrack.track(infile,format=kw['format'],chrmeta=kw['assembly'])
+        for x in intrack.read():
+            pass
+        intrack.close()
+    return 0
+
 
 ##################################
 ############## MAIN ##############
