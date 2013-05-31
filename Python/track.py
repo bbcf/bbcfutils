@@ -2,10 +2,11 @@
 
 import optparse, json, sys, os
 from bbcflib import btrack
+from bbcflib.bFlatMajor.common import sorted_stream
 from bbcflib.bFlatMajor.stream import merge_scores
 from bbcflib.bFlatMajor.numeric import correlation
 
-functions = ["convert","read","merge","stats"]
+functions = ["convert","read","merge","stats","check","sort"]
 usage = {'all': "track.py %s [OPTIONS]"}
 description = {'all': "Command-line interface to bbcflib.btrack functionalities."}
 opts = {'all':
@@ -61,7 +62,7 @@ def convert(*args,**kw):
 f = 'read'
 usage[f] = usage['all'] %f +" file1 [file2 ...]"
 description[f] = 'A generic genomic track data reader.'
-opts[f] = (("-t", "--format", "File format if extension not explicit",{'default':None}),
+opts[f] = (("-t", "--format", "File format, if extension not explicit",{'default':None}),
         ("-s", "--selection", "Selection or comma-separated list of chromosome names. Selection \
          can be a dictionary (json) or a string of the form `chr:start-end`.",{'default':None}),
         ("-f", "--fields", "Fields in output",{'default':None}),
@@ -172,7 +173,7 @@ def merge(*args,**kw):
 f = 'stats'
 usage[f] = usage['all'] %f +" file [file2 ...]"
 description[f] = 'Returns various stats from the scores and feature lengths.'
-opts[f] = (("-t", "--format", "File format if extension not explicit",{'default':None}),
+opts[f] = (("-t", "--format", "File format, if extension not explicit",{'default':None}),
         ("-s", "--selection", "Selection or comma-separated list of chromosome names. Selection \
          can be a dictionary (json) or a string of the form `chr:start-end`.",{'default':None}),
         ("-f", "--fields", "Fields in output",{'default':None}), )
@@ -222,15 +223,18 @@ Fields: %s
 f = 'check'
 usage[f] = usage['all'] %f +" file1 [file2 ...]"
 description[f] = 'Checks that a track file is sorted and well-formatted.'
-opts[f] = (("-t", "--format", "File format if extension not explicit",{'default':None}),
-          )
+opts[f] = (("-t", "--format", "File format, if extension not explicit",{'default':None}),)
 
 def check(*args,**kw):
     if len(args) < 1: raise Usage("No input file provided")
+    if kw['output'] is None: output = sys.stdout
+    else: output = open(kw['output'],'w')
     for infile in args:
-        intrack = btrack.track(infile,format=kw['format'],chrmeta=kw['assembly'])
-        for x in intrack.read():
-            pass
+        intrack = btrack.track(infile, format=kw['format'], chrmeta=kw['assembly'])
+        cf = btrack.check_format(intrack, output)
+        if cf: output.write("Check format: %s: correct %s format.\n" % (infile,intrack.format))
+        co = btrack.check_ordered(intrack, output)
+        if co: output.write("Check order: %s: file is sorted.\n" % (infile,))
         intrack.close()
     return 0
 
@@ -238,15 +242,18 @@ def check(*args,**kw):
 f = 'sort'
 usage[f] = usage['all'] %f +" file1 [file2 ...]"
 description[f] = 'Sorts a track file. Warning: can use a lot of memory space, according to the file size.'
-opts[f] = (("-t", "--format", "File format if extension not explicit",{'default':None}),
-          )
+opts[f] = (("-t", "--format", "File format, if extension not explicit.",{'default':None}),
+           ("-x", "--chromosomes", "List of chromosomes in JSON format (to order them in a specific way).",{'default':'[]'}),)
 
 def sort(*args,**kw):
     if len(args) < 1: raise Usage("No input file provided")
     for infile in args:
         intrack = btrack.track(infile,format=kw['format'],chrmeta=kw['assembly'])
-        for x in intrack.read():
-            pass
+        outname = kw['output'] or intrack.name+'_sorted.'+intrack.format
+        outtrack = btrack.track(outname, chrmeta=intrack.chrmeta)
+        instream = intrack.read()
+        s = sorted_stream(instream, chrnames=json.loads(kw['chromosomes']))
+        outtrack.write(s)
         intrack.close()
     return 0
 
