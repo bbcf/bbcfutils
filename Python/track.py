@@ -199,7 +199,7 @@ def stats(*args,**kw):
     else:
         output = open(kw['output'],'w')
     for infile in args:
-        intrack = btrack.track(infile,format=kw['format'],chrmeta=kw['assembly'])
+        intrack = btrack.track(infile,format=kw['format'],chrmeta=kw.get('assembly') or "guess")
         if intrack.info:
             fileinfo = ",".join(["%s=%s" %(k,v) for k,v in intrack.info.iteritems()])
         else: fileinfo = 'None'
