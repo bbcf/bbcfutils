@@ -39,28 +39,30 @@ parser.add_option("-c", "--cols", default='2,3',
     help = ("The numbers or names of the two columns containing the numeric data to compare, "
             "separated by commas. E.g. --cols 3,5. One can also give it a set of columns (replicates) "
             "for each of the two samples, in json format. E.g. '{1:[2,3],2:[4,5]}' if group 1 consists "
-            "of columns 2 and 3, and group 2 of columns 4 and 5. Replicates will be averaged.")),
+            "of columns 2 and 3, and group 2 of columns 4 and 5. Replicates will be averaged."))
 parser.add_option("-l", "--labels", default='1',
     help = ("The numbers or names of the columns containing the labels of the points, separated by commas. "
             "The first element must contain unique labels; others will be concatenated. "
-            "E.g. --labels 1,6,7 may produce `Id | name | desc` labels.")),
+            "E.g. --labels 1,6,7 may produce `Id | name | desc` labels."))
+parser.add_option("-p", "--pvalues", default=None,
+    help = ("The number or name of the column containing the p-values, if any."))
 parser.add_option("-m", "--mode", default='normal',
     help = ("Display mode: 'normal' for static .pgn output, 'interactive' - clic to display gene names, "
-            "or 'json' - json output to stdout for Javascript web interface.")),
+            "or 'json' - json output to stdout for Javascript web interface."))
 parser.add_option("-f", "--format", default='counts',
-    help = ("Data type: 'counts' for raw count data (default), 'rpkm' for normalized data.")),
+    help = ("Data type: 'counts' for raw count data (default), 'rpkm' for normalized data."))
 parser.add_option("-s", "--sep", default=None,
     help = ("The character delimiting the columns of the file. If not specified, the program tries to detect it "
-            "automatically. Use 'C^V' or '\t' for a <tab> delimiter.")),
+            "automatically. Use 'C^V' or '\t' for a <tab> delimiter."))
 parser.add_option("-d", "--deg", default=4, type="int",
-    help = ("Degree of the interpolant percentile splines.")),
+    help = ("Degree of the interpolant percentile splines."))
 parser.add_option("-b", "--bins", default=30, type="int",
-    help = ("Number of divisions of the x axis to calculate percentiles.")),
+    help = ("Number of divisions of the x axis to calculate percentiles."))
 parser.add_option("-a", "--assembly", default=None,
     help = ("Identifier for the Genrep assembly (e.g. 'hg19' or 7) used to add more information "
-            "about features into the json output. Requires the 'bbcflib' package")),
+            "about features into the json output. Requires the 'bbcflib' package"))
 parser.add_option("-q", "--noquantiles", default=True, action="store_false",
-    help = ("Don't draw quantile splines. This may improve speed and lisibility in some cases.")),
+    help = ("Don't draw quantile splines. This may improve speed and lisibility in some cases."))
 parser.add_option("--normalize", default=None,
     help= ("Normalize data: 'tags' to divide by the sum of all scores in each sample,"
            "'sf' to use DESeq-like size factors."))
@@ -69,21 +71,21 @@ parser.add_option("--annotate", default=None,
             "Must be a string of binary values separated by commas, of the same lenght as the number of datasets, "
             "1 indicating to annotate the corresponding set, 0 not to annotate. "
             "E.g. For a list of datasets d1,d2,d3, if you want to annotate only d3 "
-            "type --annotate 0,0,1. It is advised to annotate only very small secondary datasets.")),
+            "type --annotate 0,0,1. It is advised to annotate only very small secondary datasets."))
 parser.add_option("--xmin", default=None, type="float",
-    help = ("Minimum x value to be displayed on the output graph.")),
+    help = ("Minimum x value to be displayed on the output graph."))
 parser.add_option("--xmax", default=None, type="float",
-    help = ("Maximum x value to be displayed on the output graph.")),
+    help = ("Maximum x value to be displayed on the output graph."))
 parser.add_option("--ymin", default=None, type="float",
-    help = ("Minimum y value to be displayed on the output graph.")),
+    help = ("Minimum y value to be displayed on the output graph."))
 parser.add_option("--ymax", default=None, type="float",
-    help = ("Maximum y value to be displayed on the output graph.")),
+    help = ("Maximum y value to be displayed on the output graph."))
 parser.add_option("--smin", default=None, type="float",
-    help = ("Left bound to draw splines.")),
+    help = ("Left bound to draw splines."))
 parser.add_option("--smax", default=None, type="float",
-    help = ("Right bound to draw splines.")),
+    help = ("Right bound to draw splines."))
 parser.add_option("-t","--title", default="MA-plot",
-    help = ("Adds a title to the figure")),
+    help = ("Adds a title to the figure"))
 parser.add_option("-e","--extremes", default=False, type="int",
     help = ("Create an output file containing features for which ratios were outside the specified "
             "percentile (two-sided). For the moment, must be 1 or 5. The file is named *extreme_ratios_xxxxx* ."))
@@ -116,7 +118,7 @@ if opt.normalize and opt.normalize not in ["tags","sf"]:
     parser.error("--normalize must be one of 'tags' or 'sf' (got %s.\n)" % opt.normalize)
 
 
-MAplot(args, cols=cols, labels=labels, mode=opt.mode, data_format=opt.format, sep=opt.sep,
+MAplot(args, cols=cols, labels=labels, pvalues=opt.pvalues, mode=opt.mode, data_format=opt.format, sep=opt.sep,
         limits=limits, slimits=slimits,deg=opt.deg, bins=opt.bins, assembly_id=opt.assembly,
         normalize=opt.normalize, annotate=annotate, quantiles=opt.noquantiles, title=opt.title,
         extremes=opt.extremes)

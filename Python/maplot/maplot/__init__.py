@@ -45,6 +45,7 @@ def _name_or_index(cols, dialect, header):
     """Given an array *cols*, detect if elements are indices of *header* or elements of *header*.
     Returns a dictionary of Python indices of the form {1:[2,3],2:[4,5]} if group 1 is made of
     runs (columns) 2 and 3, and group 2 of runs 4 and 5."""
+    if cols[0] is None: return None
     cols = eval(str(cols))
     if isinstance(cols, dict):
         for k,v in cols.iteritems(): cols[k] = [x-1 for x in v]
@@ -54,12 +55,12 @@ def _name_or_index(cols, dialect, header):
     else:
         try: cols = [[int(c)-1] for c in cols]
         except ValueError:
-            print "\nError: --cols must contain column names or indices (got %s)." % cols
-            print "Detected header: %s" % header
+            raise ValueError("Argument must contain column names or indices (got %s). \
+                              Detected header: \n%s" % (cols,header))
     cols = dict(zip(range(1,len(cols)+1),cols))
     return cols
 
-def read_data(filename,sep,cols,labels,lower):
+def read_data(filename,sep,cols,labels,pvalues,lower):
     names=[]; counts=[]; pvals=[]
     with open(filename,'r') as f:
         # Guess file format & extract columns indexes
@@ -68,7 +69,9 @@ def read_data(filename,sep,cols,labels,lower):
         except TypeError: csvreader = csv.reader(f, dialect='excel-tab', quoting=csv.QUOTE_NONE)
         pycols = _name_or_index(cols, dialect, header)
         pylabels = _name_or_index(labels, dialect, header)
+        pypvals = _name_or_index([pvalues], dialect, header)
         pylabels = [x[0] for x in pylabels.values()]
+        if pypvals: pypvals = pypvals.values()[0][0]
         # Read the file
         for row in csvreader:
             try:
@@ -81,7 +84,8 @@ def read_data(filename,sep,cols,labels,lower):
                 label = '|'.join([row[x] for x in pylabels])
                 counts.append((c1,c2))
                 names.append(label)
-            pvals.append(None) # future p-values, not used yet
+            if pypvals: pvals.append(row[pypvals])
+            else: pvals.append(None)
     counts = asarray(counts)
     return counts, names, pvals
 
@@ -97,7 +101,7 @@ def _normalize(counts,mode):
         res = counts / sf
     return res, sf
 
-def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_format="counts",
+def MAplot(dataset, cols=['2','3'], labels=['1'], pvalues=None, annotate=None, mode="normal", data_format="counts",
            sep=None, limits=[None,None,None,None], slimits=[None,None], deg=3, bins=30,
            assembly_id=None, normalize="sf", quantiles=True, title="MA-plot", extremes=False, prefix=None):
     """
@@ -106,9 +110,10 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
     and the name of a json containing enough information to reconstruct the plot using Javascript.
 
     :param dataset: (list or string) names of up to six text files.
-    :param cols: (list or dict) 1-based indices of the two columns containing the numeric data to compare,
-        or column names, or a dict {1:[indices of group1], 2:[indices of group 2]}.
-    :param labels: (list) 1-based indices of the columns used as labels, or column names.
+    :param cols: (list or dict) 1-based indices of the two columns containing the numeric data to compare (e.g. `[1,2]`),
+        or column names (e.g. `['g1','g2']`), or a dict (e.g. `{1:[`indices of group1`], 2:[`indices of group 2`]}`).
+    :param labels: (int or list) 1-based indices of the columns used as labels, or column names.
+    :param pvalues: (int) 1-based index of the column containing the p-values.
     :param annotate: (list) in ``normal`` mode, choose which for which datasets you want the
         points to be labeled. Enter 1 to annotate, 0 not to annotate, in the
         same order as datasets were entered. E.g. [0,0,1] to annotate only the third of 3
@@ -150,10 +155,11 @@ def MAplot(dataset, cols=[2,3], labels=[1], annotate=None, mode="normal", data_f
 
     # Extract data from CSV
     if isinstance(dataset,str): dataset = [dataset]
+    if isinstance(labels,int): labels = [labels]
     allnames=[]; allmeans=[]; allratios=[]; allpvals=[]; points=[]
     groups={}; counts={}
     for data in dataset:
-        cnts,names,pvals = read_data(data,sep,cols,labels,lower)
+        cnts,names,pvals = read_data(data,sep,cols,labels,pvalues,lower)
         cnts = asarray(cnts, dtype=float_)
         cnts = cnts[nonzero(cnts[:,0]*cnts[:,1])] # none of the counts is zero
         if normalize: cnts,sf = _normalize(cnts,mode=normalize)
