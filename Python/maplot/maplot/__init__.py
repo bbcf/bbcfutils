@@ -60,8 +60,8 @@ def _name_or_index(cols, dialect, header):
     cols = dict(zip(range(1,len(cols)+1),cols))
     return cols
 
-def read_data(filename,sep,cols,labels,pvalues,lower):
-    names=[]; counts=[]; pvals=[]
+def read_data(filename,sep,cols,labels,lower):
+    names=[]; counts=[]
     with open(filename,'r') as f:
         # Guess file format & extract columns indexes
         dialect,header = guess_file_format(f,sep)
@@ -69,9 +69,7 @@ def read_data(filename,sep,cols,labels,pvalues,lower):
         except TypeError: csvreader = csv.reader(f, dialect='excel-tab', quoting=csv.QUOTE_NONE)
         pycols = _name_or_index(cols, dialect, header)
         pylabels = _name_or_index(labels, dialect, header)
-        pypvals = _name_or_index([pvalues], dialect, header)
         pylabels = [x[0] for x in pylabels.values()]
-        if pypvals: pypvals = pypvals.values()[0][0]
         # Read the file
         for row in csvreader:
             try:
@@ -84,10 +82,8 @@ def read_data(filename,sep,cols,labels,pvalues,lower):
                 label = '|'.join([row[x] for x in pylabels])
                 counts.append((c1,c2))
                 names.append(label)
-            if pypvals: pvals.append(row[pypvals])
-            else: pvals.append(None)
     counts = asarray(counts)
-    return counts, names, pvals
+    return counts, names
 
 def _normalize(counts,mode):
     if mode == 'tags':
@@ -101,7 +97,7 @@ def _normalize(counts,mode):
         res = counts / sf
     return res, sf
 
-def MAplot(dataset, cols=['2','3'], labels=['1'], pvalues=None, annotate=None, mode="normal", data_format="counts",
+def MAplot(dataset, cols=['2','3'], labels=['1'], annotate=None, mode="normal", data_format="counts",
            sep=None, limits=[None,None,None,None], slimits=[None,None], deg=3, bins=30,
            assembly_id=None, normalize="sf", quantiles=True, title="MA-plot", extremes=False, prefix=None):
     """
@@ -113,7 +109,6 @@ def MAplot(dataset, cols=['2','3'], labels=['1'], pvalues=None, annotate=None, m
     :param cols: (list or dict) 1-based indices of the two columns containing the numeric data to compare (e.g. `[1,2]`),
         or column names (e.g. `['g1','g2']`), or a dict (e.g. `{1:[`indices of group1`], 2:[`indices of group 2`]}`).
     :param labels: (int or list) 1-based indices of the columns used as labels, or column names.
-    :param pvalues: (int) 1-based index of the column containing the p-values.
     :param annotate: (list) in ``normal`` mode, choose which for which datasets you want the
         points to be labeled. Enter 1 to annotate, 0 not to annotate, in the
         same order as datasets were entered. E.g. [0,0,1] to annotate only the third of 3
@@ -156,20 +151,20 @@ def MAplot(dataset, cols=['2','3'], labels=['1'], pvalues=None, annotate=None, m
     # Extract data from CSV
     if isinstance(dataset,str): dataset = [dataset]
     if isinstance(labels,int): labels = [labels]
-    allnames=[]; allmeans=[]; allratios=[]; allpvals=[]; points=[]
+    allnames=[]; allmeans=[]; allratios=[]; points=[]
     groups={}; counts={}
     for data in dataset:
-        cnts,names,pvals = read_data(data,sep,cols,labels,pvalues,lower)
+        cnts,names = read_data(data,sep,cols,labels,lower)
         cnts = asarray(cnts, dtype=float_)
         cnts = cnts[nonzero(cnts[:,0]*cnts[:,1])] # none of the counts is zero
         if normalize: cnts,sf = _normalize(cnts,mode=normalize)
         means = log10(sqrt(cnts[:,0]*cnts[:,1]))
         ratios = log2(cnts[:,0]/cnts[:,1])
-        groups[data] = zip(names, means, ratios, pvals)
+        groups[data] = zip(names, means, ratios)
         counts[data] = dict(zip(names,cnts))
-        allnames.extend(names); allmeans.extend(means); allratios.extend(ratios); allpvals.extend(pvals)
+        allnames.extend(names); allmeans.extend(means); allratios.extend(ratios)
 
-    points = zip(allnames, allmeans, allratios, allpvals)
+    points = zip(allnames, allmeans, allratios)
     try: xmin = min(allmeans); xmax = max(allmeans); ymin = min(allratios); ymax = max(allratios)
     except ValueError:
         raise ValueError("\nError: non-numeric columns selected. Try to specify more suitable columns with [-c].\n")
@@ -290,14 +285,12 @@ def MAplot(dataset, cols=['2','3'], labels=['1'], pvalues=None, annotate=None, m
         # - data points
         for data in dataset:
             gdata = zip(*groups[data])
-            pvals = gdata[3]
             datapts = zip(*gdata[1:3])
             jsdata.append({"label": "Data points",
                            "data": datapts,
                            "labels": annotes.get(data),
                            "points": {"symbol":"circle", "show":True},
-                           "color": datacolors[data],
-                           "pvals": pvals})
+                           "color": datacolors[data]})
         # - median (bold line)
         jsdata.append({"label": "Mean", "data": spline_coords[50],
                        "lines": {"show":True}, "color": rgb_to_hex((255,0,255)) })

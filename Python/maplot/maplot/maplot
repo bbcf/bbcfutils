@@ -44,8 +44,6 @@ parser.add_option("-l", "--labels", default='1',
     help = ("The numbers or names of the columns containing the labels of the points, separated by commas. "
             "The first element must contain unique labels; others will be concatenated. "
             "E.g. --labels 1,6,7 may produce `Id | name | desc` labels."))
-parser.add_option("-p", "--pvalues", default=None,
-    help = ("The number or name of the column containing the p-values, if any."))
 parser.add_option("-m", "--mode", default='normal',
     help = ("Display mode: 'normal' for static .pgn output, 'interactive' - clic to display gene names, "
             "or 'json' - json output to stdout for Javascript web interface."))
@@ -118,7 +116,7 @@ if opt.normalize and opt.normalize not in ["tags","sf"]:
     parser.error("--normalize must be one of 'tags' or 'sf' (got %s.\n)" % opt.normalize)
 
 
-MAplot(args, cols=cols, labels=labels, pvalues=opt.pvalues, mode=opt.mode, data_format=opt.format, sep=opt.sep,
+MAplot(args, cols=cols, labels=labels, mode=opt.mode, data_format=opt.format, sep=opt.sep,
         limits=limits, slimits=slimits,deg=opt.deg, bins=opt.bins, assembly_id=opt.assembly,
         normalize=opt.normalize, annotate=annotate, quantiles=opt.noquantiles, title=opt.title,
         extremes=opt.extremes)
