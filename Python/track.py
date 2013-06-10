@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 
 import optparse, json, sys, os
-from bbcflib import btrack
+from bbcflib import track
 from bbcflib.bFlatMajor.common import sorted_stream
 from bbcflib.bFlatMajor.stream import merge_scores
 from bbcflib.bFlatMajor.numeric import correlation
 
 functions = ["convert","read","merge","stats","check","sort"]
 usage = {'all': "track.py %s [OPTIONS]"}
-description = {'all': "Command-line interface to bbcflib.btrack functionalities."}
+description = {'all': "Command-line interface to bbcflib.track functionalities."}
 opts = {'all':
         (("-a", "--assembly", "Assembly name or id. If not standard, use `-a guess`.",{'default':None}),
          ("-o", "--output", "Output file (default stdout).",{'default':None}),
@@ -55,7 +55,7 @@ def convert(*args,**kw):
         info = {'datatype': str(kw['datatype'])}
     else:
         info = None
-    btrack.convert(*args, chrmeta=chrmeta, info=info)
+    track.convert(*args, chrmeta=chrmeta, info=info)
     return 0
 
 ############## READ ##############
@@ -91,7 +91,7 @@ def read(*args,**kw):
     else:
         output = open(kw['output'],'w')
     for infile in args:
-        intrack = btrack.track(infile,format=kw['format'],chrmeta=kw['assembly'])
+        intrack = track.track(infile,format=kw['format'],chrmeta=kw['assembly'])
         if kw['description']:
             if intrack.info:
                 fileinfo = ",".join(["%s=%s" %(k,v) for k,v in intrack.info.iteritems()])
@@ -137,11 +137,11 @@ def merge(*args,**kw):
         i2 = max(istart,iend)
         def _apply_shift(x):
             return x[:i1]+(x[i1]+shift,)+x[i1+1:i2]+(x[i2]+shift,)+x[i2+1:]
-        return btrack.FeatureStream((_apply_shift(x) for x in stream),
+        return track.FeatureStream((_apply_shift(x) for x in stream),
                                     fields=stream.fields)
     fields = ['chr','start','end','score']
-    tfwd = btrack.track(kw['forward'],format=kw['formatf'],chrmeta=kw['assembly'])
-    trev = btrack.track(kw['reverse'],format=kw['formatr'],chrmeta=kw['assembly'])
+    tfwd = track.track(kw['forward'],format=kw['formatf'],chrmeta=kw['assembly'])
+    trev = track.track(kw['reverse'],format=kw['formatr'],chrmeta=kw['assembly'])
     if tfwd.chrmeta:
         chrmeta = tfwd.chrmeta
     elif trev.chrmeta:
@@ -157,7 +157,7 @@ def merge(*args,**kw):
         shiftval = (xcor.argmax()-slim-1)/2
         print "Autocorrelation shift=%i, correlation is %f." %(shiftval,xcor.max())
 
-    tout = btrack.track(kw['output'],fields=fields,chrmeta=chrmeta,info={'datatype': 'quantitative'})
+    tout = track.track(kw['output'],fields=fields,chrmeta=chrmeta,info={'datatype': 'quantitative'})
     mode = 'write'
     for chrom in chrmeta.keys():
         tout.write(merge_scores([_shift(tfwd.read(chrom), shiftval),
@@ -200,7 +200,7 @@ def stats(*args,**kw):
     else:
         output = open(kw['output'],'w')
     for infile in args:
-        intrack = btrack.track(infile,format=kw['format'],chrmeta=kw.get('assembly'))
+        intrack = track.track(infile,format=kw['format'],chrmeta=kw.get('assembly'))
         if intrack.info:
             fileinfo = ",".join(["%s=%s" %(k,v) for k,v in intrack.info.iteritems()])
         else: fileinfo = 'None'
@@ -214,7 +214,7 @@ Chromosomes: %s
 Fields: %s
 *****************************************\n
 """ %(os.path.basename(infile), intrack.format, fileinfo, chromlist, fields))
-        btrack.stats(intrack,out=output,**kw)
+        track.stats(intrack,out=output,**kw)
         intrack.close()
     output.close()
     return 0
@@ -230,10 +230,10 @@ def check(*args,**kw):
     if kw['output'] is None: output = sys.stdout
     else: output = open(kw['output'],'w')
     for infile in args:
-        intrack = btrack.track(infile, format=kw['format'], chrmeta=kw['assembly'])
-        cf = btrack.check_format(intrack, output)
+        intrack = track.track(infile, format=kw['format'], chrmeta=kw['assembly'])
+        cf = track.check_format(intrack, output)
         if cf: output.write("Check format: %s: correct %s format.\n" % (infile,intrack.format))
-        co = btrack.check_ordered(intrack, output)
+        co = track.check_ordered(intrack, output)
         if co: output.write("Check order: %s: file is sorted.\n" % (infile,))
         intrack.close()
     return 0
@@ -248,9 +248,9 @@ opts[f] = (("-t", "--format", "File format, if extension not explicit.",{'defaul
 def sort(*args,**kw):
     if len(args) < 1: raise Usage("No input file provided")
     for infile in args:
-        intrack = btrack.track(infile,format=kw['format'],chrmeta=kw['assembly'])
+        intrack = track.track(infile,format=kw['format'],chrmeta=kw['assembly'])
         outname = kw['output'] or intrack.name+'_sorted.'+intrack.format
-        outtrack = btrack.track(outname, chrmeta=intrack.chrmeta)
+        outtrack = track.track(outname, chrmeta=intrack.chrmeta)
         instream = intrack.read()
         s = sorted_stream(instream, chrnames=json.loads(kw['chromosomes']))
         outtrack.write(s)

@@ -67,7 +67,7 @@ def main(argv=None):
                 tags = dict(x.split("=") for x in tags)
             elif tags[0].count(":"):
                 tags = dict(x.split(":") for x in tags)
-        if options.gdv: 
+        if options.gdv:
             if tags: tags['type'] = 'sql'
             else: tags = {'type': 'sql'}
         if options.programs:
@@ -105,7 +105,7 @@ def main(argv=None):
             if not(options.output): options.output = "./"
             if not(os.path.isdir(options.output)):
                 options.output, fprefix = os.path.split(options.output)
-        if options.gdv: 
+        if options.gdv:
             gdvpaths = []
             gdvnames = []
         for t in sorted(files.keys()):
@@ -123,7 +123,7 @@ def main(argv=None):
                 if options.list: outfile.write("\t".join([t,par_dict.get('groupId',''),fname,fpath,comment])+"\n")
                 if options.copy: shutil.copy(fpath, os.path.join(options.output,fname))
                 if options.symlink: os.symlink(fpath, os.path.join(options.output,fname))
-                if options.gdv: 
+                if options.gdv:
                     gdvpaths.append(fpath)
                     gdvnames.append(re.sub('\.sql.*','',str(fname)))
         if options.list and options.output: outfile.close()

@@ -6,7 +6,7 @@ Need a list of peaks and a density file in input.
 
 """
 
-from bbcflib.btrack import track
+from bbcflib.track import track
 from bbcflib import genrep
 from bbcflib.bFlatMajor.common import sorted_stream
 import rpy2.robjects as robjects
@@ -52,7 +52,7 @@ def main(argv = None):
         if not(opt.reverse and os.path.exists(opt.reverse)):
             parser.print_help()
             raise Usage("Specify a valid reverse strand density file with -r.")
-####        
+####
         if opt.chromosome and opt.length: chrmeta = {opt.chromosome: {'length': opt.length}}
         else: chrmeta = opt.genome
         peak_track = track(opt.peaks,chrmeta=chrmeta)

@@ -12,7 +12,7 @@ kwargs = options.__dict__
 if not kwargs['operation']:
     parser.print_help()
     sys.exit(1)
- 
+
 if options.args:
     jsonargs = json.loads(kwargs.pop('args'))
     for k,v in jsonargs.iteritems():
