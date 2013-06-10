@@ -8,7 +8,7 @@ Need a list of peaks and a density file in input.
 
 from bbcflib.track import track
 from bbcflib import genrep
-from bbcflib.bFlatMajor.common import sorted_stream
+from bbcflib.gfminer.common import sorted_stream
 import rpy2.robjects as robjects
 import sys, optparse, os
 

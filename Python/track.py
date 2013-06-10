@@ -2,9 +2,9 @@
 
 import optparse, json, sys, os
 from bbcflib import track
-from bbcflib.bFlatMajor.common import sorted_stream
-from bbcflib.bFlatMajor.stream import merge_scores
-from bbcflib.bFlatMajor.numeric import correlation
+from bbcflib.gfminer.common import sorted_stream
+from bbcflib.gfminer.stream import merge_scores
+from bbcflib.gfminer.numeric import correlation
 
 functions = ["convert","read","merge","stats","check","sort"]
 usage = {'all': "track.py %s [OPTIONS]"}
