@@ -41,12 +41,12 @@ if (sep=='tab') sep='\t'
 #options(error = quote({dump.frames(to.file=TRUE); q()})) # creates an error log file `last.dump.rda`
 
 main <- function(data_file, sep="\t", output_file=''){
-    data = read.table(data_file, header=T, row.names=1, sep=sep, quote="")
+    data = read.table(data_file, header=T, row.names=1, sep=sep, quote="", check.names=F)
     header = colnames(data)
     counts = grep("counts",header,fixed=T)
     data = round(data[,counts])
     samples = header[counts]
-    conds = unlist(lapply(strsplit(samples,".",fixed=T), "[[", 2))
+    conds = sapply(strsplit(samples,'.',fixed=T),function(x){l=length(x);paste(x[2:(l-1)],collapse='.')})
 
     # Still need to check that replicates are not identical - lfproc would fail
     if (any(table(conds)>1)){ method = 'normal' # if replicates
