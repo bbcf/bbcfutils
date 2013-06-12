@@ -139,6 +139,8 @@ def merge(*args,**kw):
         raise Usage("Specify a valid forward strand density file with -f.")
     if not(kw['reverse'] and os.path.exists(kw['reverse'])):
         raise Usage("Specify a valid reverse strand density file with -r.")
+    if not(kw['output']):
+        raise Usage("Specify the output file name.")
 
     def _shift(stream,shift):
         istart = stream.fields.index('start')
