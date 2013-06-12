@@ -302,7 +302,7 @@ inline static int accumulate( const samtools::bam1_t *b, void *d ) {
 	for ( uint32_t j = 0; j < b->core.n_cigar; j++ ) {
 	    int op = bam1_cigar(b)[j]&BAM_CIGAR_MASK,
 		shift = bam1_cigar(b)[j]>>BAM_CIGAR_SHIFT;
-	    if (op == 0) {
+	    if (op == BAM_CMATCH) {
 		int ri0 = std::max(st0,start), ri1 = start+shift;
 		if (opts.merge > -1) {
 		    ri0 -= opts.merge;
@@ -314,11 +314,13 @@ inline static int accumulate( const samtools::bam1_t *b, void *d ) {
 // ****************** ref is the target set (therefore current set is the control),
 // ****************** only record at positions present in ref
 		for ( int i = ri0; i < ri1; i++ ) 
-		    if (!data->scounts || data->scounts->count(i)) data->counts[i]+=weight;
+		    if (!data->scounts || data->scounts->count(i)) 
+                        data->counts[i] += weight;
 	    }
-	    if (op != 1) start += shift;
-	    if (op == 1) st0 += shift;
-	    if (op == 2 || op == 3) stop += shift;
+	    if (op == BAM_CINS || op == BAM_CHARD_CLIP || op == BAM_CSOFT_CLIP) 
+                st0 += shift;
+	    else
+                start += shift;
 	}
 	if (opts.cut > 0) {
 	    int ri0 = st0, ri1 = b->core.pos+1;
@@ -337,18 +339,21 @@ inline static int accumulate( const samtools::bam1_t *b, void *d ) {
 	for ( uint32_t j = 0; j < b->core.n_cigar; j++ ) {
 	    int op = bam1_cigar(b)[j]&BAM_CIGAR_MASK,
 		shift = bam1_cigar(b)[j]>>BAM_CIGAR_SHIFT;
-	    if (op == 0) {
+	    if (op == BAM_CMATCH) {
 		int ri0 = start, ri1 = std::min(start+shift, stop);
 		if (opts.merge > -1) {
 		    ri0 += opts.merge;
 		    ri1 += opts.merge;
 		}
 		for ( int i = ri0; i < ri1; i++ ) 
-		    if (!data->scounts || data->scounts->count(i)) data->counts[i]+=weight;
+		    if (!data->scounts || data->scounts->count(i)) 
+                        data->counts[i] += weight;
 	    }
-	    if (op != 1) start += shift;
-	    if (op == 1) stop -= shift;
-	    if (op == 2 || op == 3) stop += shift;
+	    if (op == BAM_CINS || op == BAM_CHARD_CLIP || op == BAM_CSOFT_CLIP)
+                stop -= shift;
+            else
+                start += shift;
+	    if (op == BAM_CDEL || op == BAM_CREF_SKIP) stop += shift;
 	}
 	if (opts.cut > 0) {
 	    int ri0 = start, ri1 = stop;
@@ -459,7 +464,8 @@ int main( int argc, char **argv )
 	    return 12;
 	}
 	opts.end = std::min( (int)_fs->header->target_len[opts.chid], opts.end );
-	chr_region cr = { opts.chr, opts.start, opts.end };
+	chr_region cr = { std::string(_fs->header->target_name[opts.chid]),
+                          opts.start, opts.end };
 	chr_list[opts.chid] = cr;
     }
     samtools::bam_index_t *_in = samtools::bam_index_load( opts.sfile.c_str() );
