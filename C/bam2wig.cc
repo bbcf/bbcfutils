@@ -317,9 +317,9 @@ inline static int accumulate( const samtools::bam1_t *b, void *d ) {
 		    if (!data->scounts || data->scounts->count(i)) 
                         data->counts[i] += weight;
 	    }
-	    if (op == BAM_CINS || op == BAM_CHARD_CLIP || op == BAM_CSOFT_CLIP) 
+	    if (op == BAM_CINS || op == BAM_CSOFT_CLIP) 
                 st0 += shift;
-	    else
+	    else if (op != BAM_CHARD_CLIP)
                 start += shift;
 	}
 	if (opts.cut > 0) {
@@ -349,9 +349,9 @@ inline static int accumulate( const samtools::bam1_t *b, void *d ) {
 		    if (!data->scounts || data->scounts->count(i)) 
                         data->counts[i] += weight;
 	    }
-	    if (op == BAM_CINS || op == BAM_CHARD_CLIP || op == BAM_CSOFT_CLIP)
+	    if (op == BAM_CINS || op == BAM_CSOFT_CLIP)
                 stop -= shift;
-            else
+            else if (op != BAM_CHARD_CLIP)
                 start += shift;
 	    if (op == BAM_CDEL || op == BAM_CREF_SKIP) stop += shift;
 	}
