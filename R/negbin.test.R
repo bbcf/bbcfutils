@@ -77,7 +77,7 @@ DES <- function(data, conds, method='normal', output_file=FALSE){  ## DESeq ##
     result = list()
     cds <- newCountDataSet(data, conds)
     cds <- estimateSizeFactors(cds)
-    cds <- estimateVarianceFunctions(cds, method=method)
+    cds <- estimateDispersions(cds, method=method)
     couples = combn(groups,2)
     for (i in 1:dim(couples)[2]){
         res <- nbinomTest(cds, couples[1,i], couples[2,i])
