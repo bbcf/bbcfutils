@@ -49,7 +49,7 @@ main <- function(data_file, sep="\t", output_file=''){
     conds = sapply(strsplit(samples,'.',fixed=T),function(x){l=length(x);paste(x[2:(l-1)],collapse='.')})
 
     # Still need to check that replicates are not identical - lfproc would fail
-    if (any(table(conds)>1)){ method = 'normal' # if replicates
+    if (any(table(conds)>1)){ method = 'pooled' # if replicates
     } else { method = 'blind' }
 
     if (nrow(data)>3){
@@ -98,4 +98,5 @@ main(data_file,sep=sep,output_file)
 # http://bbcf.epfl.ch/                                 #
 # webmaster.bbcf@epfl.ch                               #
 #------------------------------------------------------#
+
 
