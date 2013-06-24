@@ -209,19 +209,19 @@ plotSelectedBRICKS <- function(coordBRICKS,data,myLim=0,myTitle="",imgFile="")
 	abline(h=0)
 
         if(myLim==0){
-		plot(c(0,0),col="white",xlim=c(min(coordBRICKS[,1]),max(coordBRICKS[,2])),ylim=c(1.2*min(-log10(coordBRICKS[k,4])),1.2*max(-log10(coordBRICKS[,4]))),xlab="",ylab="-log10(p-val)",main="pval of selected BRICKS")
+		plot(c(0,0),col="white",xlim=c(min(coordBRICKS[k,1]),max(coordBRICKS[k,2])),ylim=c(1.2*min(-log10(coordBRICKS[k,4])),1.2*max(-log10(coordBRICKS[k,4]))),xlab="",ylab="-log10(p-val)",main="pval of selected BRICKS")
 	}
 	else{
-		plot(c(0,0),col="white",xlim=c(min(coordBRICKS[,1]),min(coordBRICKS[,2])+myLim),ylim=c(0,1.2*max(-log10(coordBRICKS[,4]))),xlab="",ylab="-log10(p-val)",main="pval of selected BRICKS")
+		plot(c(0,0),col="white",xlim=c(min(coordBRICKS[k,1]),min(coordBRICKS[k,2])+myLim),ylim=c(0,1.2*max(-log10(coordBRICKS[k,4]))),xlab="",ylab="-log10(p-val)",main="pval of selected BRICKS")
 
 	}
 	rect(coordBRICKS[k,1],-log10(coordBRICKS[k,4]),coordBRICKS[k,2],-log10(coordBRICKS[k,4])+0.2,col=colToUse,border=colToUse)
 	
 	if(myLim==0){
-                plot(c(0,0),col="white",xlim=c(min(coordBRICKS[,1]),max(coordBRICKS[,2])),ylim=c(min(coordBRICKS[k,3])-1,max(coordBRICKS[,3])),xlab="",ylab="segment length",main="length of selected BRICKS",axes=TRUE)
+                plot(c(0,0),col="white",xlim=c(min(coordBRICKS[k,1]),max(coordBRICKS[k,2])),ylim=c(min(coordBRICKS[k,3])-1,max(coordBRICKS[k,3])),xlab="",ylab="segment length",main="length of selected BRICKS",axes=TRUE)
         }
         else{
-                plot(c(0,0),col="white",xlim=c(min(coordBRICKS[,1]),min(coordBRICKS[,2])+myLim),ylim=c(0,max(coordBRICKS[,3])+1),xlab="",ylab="segment length",main="length of selected BRICKS")
+                plot(c(0,0),col="white",xlim=c(min(coordBRICKS[k,1]),min(coordBRICKS[k,2])+myLim),ylim=c(0,max(coordBRICKS[k,3])+1),xlab="",ylab="segment length",main="length of selected BRICKS")
 
         }
         rect(coordBRICKS[k,1],coordBRICKS[k,3],coordBRICKS[k,2],coordBRICKS[k,3]+0.2,col=colToUse,border=colToUse)

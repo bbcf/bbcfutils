@@ -21,8 +21,8 @@ print(paste("skip=",nskip))
 if(is.na(wmaxDomainograms)){wmaxDomainograms=500}
 if(is.na(wmax_BRICKS)){wmax_BRICKS=50}
 
-
-data <- read.delim(as.character(infile),skip=nskip,header=F,stringsAsFactors=F)
+f = gzfile(as.character(infile)) #in case the file is gzipped
+data <- read.delim(f,skip=nskip,header=F,stringsAsFactors=F)
 if(ncol(data)<4)
 {
 	data <- read.delim(as.character(infile),skip=nskip,header=F,stringsAsFactors=F,sep="\t")
