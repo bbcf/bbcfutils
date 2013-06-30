@@ -43,29 +43,31 @@ if (sep=='tab') sep='\t'
 main <- function(data_file, sep="\t", output_file=''){
     data = read.table(data_file, header=T, row.names=1, sep=sep, quote="", check.names=F)
     header = colnames(data)
-    counts = grep("rpk",header,fixed=T) # dangerous, to fix
+    counts = grep("^rpk[.]",header)
     data = round(data[,counts])
     samples = header[counts]
     conds = sapply(strsplit(samples,'.',fixed=T),function(x){l=length(x);paste(x[2:(l-1)],collapse='.')})
 
     # Still need to check that replicates are not identical - lfproc would fail
-    if (any(table(conds)>1)){
-        method = 'pooled' # if replicates
-        sharingMode = 'maximum'
-    } else if (all(table(conds)>3)){
-        method = 'per-condition'
-        sharingMode = 'gene-est-only'
-    } else {
-        method = 'blind'
-        sharingMode='fit-only'
+    if (all(table(conds)>3)){        # if >3 replicates in all conditions
+        method = 'per-condition'        # for each group estimate the variance from its replicates
+        sharingMode = 'gene-est-only'   # use the per-gene variance estimates only
+    } else if (any(table(conds)>1)){ # if few replicates
+        method = 'pooled'               # use all groups with replicates to estimate the variance
+        sharingMode = 'maximum'         # use the max of the GLM fit and the estimated variance
+    } else {                         # if no replicates
+        method = 'blind'                # pools all groups together to estimate the variance
+        sharingMode='fit-only'          # use only the GLM fit across the pooled variance
     }
 
     if (nrow(data)>3){
-    DES(data, conds, method, output_file) }
+    DES(data, conds, method, sharingMode, output_file) }
 }
 
 
-DES <- function(data, conds, method='normal', output_file=FALSE){  ## DESeq ##
+# Run DESeq on *data*, the counts matrix
+# Tests all possible 2-by-2 combinations of groups
+DES <- function(data, conds, method, sharingMode, output_file=FALSE){
     library(DESeq)
     groups = unique(conds)
 
@@ -94,6 +96,7 @@ DES <- function(data, conds, method='normal', output_file=FALSE){  ## DESeq ##
 }
 
 
+# Write an output table for each of the comparisons made
 write_result <- function(output_file, res_list, sep='\t'){
     if (length(output_file) == 0){
         print(res_list)
