@@ -73,14 +73,14 @@ DES <- function(data, conds, method='normal', output_file=FALSE){  ## DESeq ##
     cds <- newCountDataSet(data, conds)
     cds <- estimateSizeFactors(cds)
     test = try({
-        cds <- estimateVarianceFunctions(cds, method=method, silent=TRUE)
-    })
+        cds <- estimateVarianceFunctions(cds, method=method)
+    }, silent=TRUE)
     if(class(test) == "try-error") {
         test2 = try({
             cds <- estimateDispersions(cds, method=method, fitType='parametric', sharingMode=sharingMode)
         })
         if(class(test) == "try-error") {
-            cds <- estimateDispersions(cds, method=method, fitType='local')
+            cds <- estimateDispersions(cds, method=method, fitType='local', sharingMode=sharingMode)
         }
     }
     couples = combn(groups,2)
