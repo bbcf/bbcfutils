@@ -13,8 +13,7 @@ opts = {'all':
         (("-a", "--assembly", "Assembly name or id. If not standard, use `-a guess` \
                              (text formats only).", {'default':None}),
          ("-o", "--output", "Output file (default stdout).", {'default':None}),
-         ("-c", "--chrmeta", "(if not assembly specified) Json-formatted chrmeta dictionary, or \
-                              a tab-delimited file with two columns: <chromosome name> <size in bases> .",
+         ("-c", "--chrmeta", "(if not assembly specified) Json-formatted chrmeta dictionary, or a tab-delimited file with two columns: <chromosome name> <size in bases>.",
                             {'default': None}))}
 
 class Usage(Exception):

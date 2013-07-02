@@ -146,8 +146,8 @@ def main(argv = None):
     for (n in names(counts)) {
       I = which(sol$sol[[n]]$prob>cutoff*sum(sol$sol[[n]]$prob))
       wig = rbind(wig,data.frame(
-      pos=as.integer(counts[[n]]$pos[I]),
-      score=as.numeric(sol$sol[[n]]$prob[I])))
+      pos = as.integer(counts[[n]]$pos[I]),
+      score = as.numeric(sol$sol[[n]]$prob[I])))
     }
     """)
             nrow = robjects.r("nrow(bed)")[0]
