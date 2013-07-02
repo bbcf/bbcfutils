@@ -88,7 +88,7 @@ DES <- function(data, conds, method, sharingMode, output_file=FALSE){
     couples = combn(groups,2)
     for (i in 1:dim(couples)[2]){
         res <- nbinomTest(cds, couples[1,i], couples[2,i])
-        res = res[order(res[,8]),] # sort w.r.t. adjusted p-value
+        res = res[order(res['padj']),] # sort w.r.t. adjusted p-value
         comp = paste(couples[1,i],"-",couples[2,i])
         result[[comp]] = res
     }
