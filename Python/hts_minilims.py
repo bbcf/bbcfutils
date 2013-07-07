@@ -86,12 +86,11 @@ def main(argv=None):
                 pargs = prog['arguments']
                 if tags and all([t not in x for x in pargs for t in tags]):
                     continue
-                stout = prog['stdout']
-                sterr = prog['stderr']
+                stout = prog['stdout'].encode('ascii','ignore')
+                sterr = prog['stderr'].encode('ascii','ignore')
                 if pargs[0] == 'bsub': pargs = str(pargs[-1])
                 else: pargs = str(" ".join(pargs))
-                outfile.write("\n".join([pargs,stout,'',sterr]))
-                outfile.write("\n"+''.join(['-']*40)+"\n")
+                outfile.write("\n".join([pargs,stout,'',sterr,'','-'*40,'']))
             outfile.close()
             return 0
         files = get_files(options.execution,M,select_param=tags)
