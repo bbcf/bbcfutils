@@ -43,7 +43,7 @@ if (sep=='tab') sep='\t'
 main <- function(data_file, sep="\t", output_file=''){
     data = read.table(data_file, header=T, row.names=1, sep=sep, quote="", check.names=F)
     header = colnames(data)
-    counts = grep("^rpk[.]",header)
+    counts = grep("^counts[.]",header)
     data = round(data[,counts])
     samples = header[counts]
     conds = sapply(strsplit(samples,'.',fixed=T),function(x){l=length(x);paste(x[2:(l-1)],collapse='.')})
