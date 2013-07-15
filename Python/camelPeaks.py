@@ -104,22 +104,22 @@ def main(argv = None):
     par(cex=1.5,lwd=1.5)
     ccf = cross.correlate(counts,threshold=.5)
     plot(ccf$lag,ccf$acf,t='l',ylim=c(0,1),
-    xlab='Lag',ylab='Cross-correlation',
-    main=paste('Strand cross-correlation',chr.name))
-    cut.ccf=ccf$acf
-    cut.ccf[which(ccf$lag<mu)]=0
-    lambda=ccf$lag[which.max(cut.ccf)]
+         xlab='Lag',ylab='Cross-correlation',
+         main=paste('Strand cross-correlation',chr.name))
+    cut.ccf = ccf$acf
+    cut.ccf[which(ccf$lag<mu)] = 0
+    lambda = ccf$lag[which.max(cut.ccf)]
     sol = inverse.solve(counts,mu=mu,lambda=lambda,len=read.length,regul=1e-3,optimize=TRUE,ktype=ktype)
-    col='red'
-    lab=paste('lambda=',sol$par$lambda,sep='')
+    col = 'red'
+    lab = paste('lambda=',sol$par$lambda,sep='')
     abline(v=sol$par$lambda,col=col)
     text(sol$par$lambda,0,lab,col=col,pos=4)
-    col='blue'
-    lab=paste('mu=',sol$par$mu,sep='')
+    col = 'blue'
+    lab = paste('mu=',sol$par$mu,sep='')
     abline(v=sol$par$mu,col=col)
     text(sol$par$mu,0.3,lab,col=col,pos=4)
-    col='darkgreen'
-    lab=paste('l=',read.length,sep='')
+    col = 'darkgreen'
+    lab = paste('l=',read.length,sep='')
     abline(v=read.length,col=col)
     text(read.length,0.6,lab,col=col,pos=4)
     par(mfrow=c(4,2))
@@ -146,8 +146,8 @@ def main(argv = None):
     for (n in names(counts)) {
       I = which(sol$sol[[n]]$prob>cutoff*sum(sol$sol[[n]]$prob))
       wig = rbind(wig,data.frame(
-      pos=as.integer(counts[[n]]$pos[I]),
-      score=as.numeric(sol$sol[[n]]$prob[I])))
+      pos = as.integer(counts[[n]]$pos[I]),
+      score = as.numeric(sol$sol[[n]]$prob[I])))
     }
     """)
             nrow = robjects.r("nrow(bed)")[0]
@@ -166,6 +166,8 @@ def main(argv = None):
         print "\n".join([opt.output+".pdf",
                          opt.output+"_peaks.bed",
                          opt.output+"_deconv.bedgraph"])
+        print "************PARAMETERS**********"
+        print "lambda=%f|mu=%f|len=%f" %(robjects.r("sol$par$lambda")[0],robjects.r("sol$par$mu")[0],robjects.r("read.length")[0])
         sys.exit(0)
     except Usage, err:
         print >>sys.stderr, err.msg
