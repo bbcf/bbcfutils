@@ -31,7 +31,7 @@
 
 library(MASS)
 
-args=commandArgs(trailingOnly = TRUE)
+args = commandArgs(trailingOnly = TRUE)
 
 data_file = args[1]
 sep = args[grep("-s",args)+1]
@@ -81,7 +81,7 @@ DES <- function(data, conds, method, sharingMode, output_file=FALSE){
         test2 = try({
             cds <- estimateDispersions(cds, method=method, fitType='parametric', sharingMode=sharingMode)
         })
-        if(class(test) == "try-error") {
+        if(class(test2) == "try-error") {
             cds <- estimateDispersions(cds, method=method, fitType='local', sharingMode=sharingMode)
         }
     }
