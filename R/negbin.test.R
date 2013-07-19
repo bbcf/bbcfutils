@@ -49,7 +49,7 @@ main <- function(data_file, sep="\t", output_file=''){
     conds = sapply(strsplit(samples,'.',fixed=T),function(x){l=length(x);paste(x[2:(l-1)],collapse='.')})
 
     # Still need to check that replicates are not identical - lfproc would fail
-    if (all(table(conds)>3)){        # if >3 replicates in all conditions
+    if (all(table(conds)>=3)){        # if >3 replicates in all conditions
         method = 'per-condition'        # for each group estimate the variance from its replicates
         sharingMode = 'gene-est-only'   # use the per-gene variance estimates only
     } else if (any(table(conds)>1)){ # if few replicates
