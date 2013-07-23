@@ -10,10 +10,11 @@ functions = ["convert","read","merge","stats","check","sort"]
 usage = {'all': "track.py %s [OPTIONS]"}
 description = {'all': "Command-line interface to bbcflib.track functionalities."}
 opts = {'all':
-        (("-a", "--assembly", "Assembly name or id. If not standard, use `-a guess` \
-                             (text formats only).", {'default':None}),
+        (("-a", "--assembly", "Assembly name or id. If not standard, use `-a guess` "
+                              "(text formats only).", {'default':None}),
          ("-o", "--output", "Output file (default stdout).", {'default':None}),
-         ("-c", "--chrmeta", "(if not assembly specified) Json-formatted chrmeta dictionary, or a tab-delimited file with two columns: <chromosome name> <size in bases>.",
+         ("-c", "--chrmeta", ("(if not assembly specified) Json-formatted chrmeta dictionary, "
+                              "or a tab-delimited file with two columns: <chromosome name> <size in bases>."),
                             {'default': None}))}
 
 class Usage(Exception):
@@ -46,8 +47,8 @@ description[f] = 'Converts between file types.'
 opts[f] = (("-1", "--format1", "File format of first input file if extension not explicit",{'default':None}),
            ("-2", "--format2", "File format of second input file if extension not explicit",{'default':None}),
            ("-d", "--datatype", "Datatype info in output track", {}),
-           ("-w", "--overwrite", "Overwrite any existing file at the current locations with the same name \
-            as the output file.", {'action':"store_true"}))
+           ("-w", "--overwrite", ("Overwrite any existing file at the current locations with the same name "
+                                  "as the output file."), {'action':"store_true"}))
 
 def convert(*args,**kw):
     if len(args) != 2:
@@ -76,8 +77,9 @@ f = 'read'
 usage[f] = usage['all'] %f +" file1 [file2 ...]"
 description[f] = 'A generic genomic track data reader.'
 opts[f] = (("-t", "--format", "File format, if extension not explicit", {'default':None}),
-        ("-s", "--selection", "Selection or comma-separated list of chromosome names. Selection \
-         can be a dictionary (json) or a string of the form `chr:start-end`.", {'default':None}),
+        ("-s", "--selection", ("Selection or comma-separated list of chromosome names. Selection "
+                               "can be a dictionary (json) or a string of the form `chr:start-end`."),
+                              {'default':None}),
         ("-f", "--fields", "Fields in output", {'default':None}),
         ("-d", "--description", "Only print a description of the file", {'action':"store_true"}))
 
@@ -136,8 +138,8 @@ opts[f] = (("-f", "--forward", "A bedgraph-like file with ChIP density on the fo
         ("-r", "--reverse", "A bedgraph-like file with ChIP density on the reverse strand", {}),
         ("-1","--formatf", "Format of the forward track.", {}),
         ("-2","--formatr", "Format of the reverse track.", {}),
-        ("-p", "--shift", "Shift positions downstream. If <0 will compute an optimal shift \
-                           using autocorrelation.", {'default':0, 'action':"store", 'type':int}))
+        ("-p", "--shift", ("Shift positions downstream. If <0 will compute an optimal shift "
+                           "using autocorrelation."), {'default':0, 'action':"store", 'type':int}))
 
 def merge(*args,**kw):
     if not(kw['forward'] and os.path.exists(kw['forward'])):
@@ -192,8 +194,9 @@ f = 'stats'
 usage[f] = usage['all'] %f +" file [file2 ...]"
 description[f] = 'Returns various stats from the scores and feature lengths.'
 opts[f] = (("-t", "--format", "File format, if extension not explicit", {'default':None}),
-        ("-s", "--selection", "Selection or comma-separated list of chromosome names. Selection \
-         can be a dictionary (json) or a string of the form `chr:start-end`.", {'default':None}),
+        ("-s", "--selection", ("Selection or comma-separated list of chromosome names. Selection "
+                               "can be a dictionary (json) or a string of the form `chr:start-end`."),
+                              {'default':None}),
         ("-f", "--fields", "Fields in output", {'default':None}), )
 
 def stats(*args,**kw):
@@ -263,8 +266,8 @@ f = 'sort'
 usage[f] = usage['all'] %f +" file1 [file2 ...]"
 description[f] = 'Sorts a track file. Warning: can use a lot of memory space, according to the file size.'
 opts[f] = (("-t", "--format", "File format, if extension not explicit.", {'default':None}),
-           ("-x", "--chromosomes", "List of chromosomes in JSON format \
-                                    (to order them in a specific way).", {'default':'[]'}),)
+           ("-x", "--chromosomes", ("List of chromosomes in JSON format "
+                                    "(to order them in a specific way)."), {'default':'[]'}),)
 
 def sort(*args,**kw):
     if len(args) < 1: raise Usage("No input file provided")
