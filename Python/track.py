@@ -45,7 +45,9 @@ usage[f] = usage['all'] %f +" file_in file_out"
 description[f] = 'Converts between file types.'
 opts[f] = (("-1", "--format1", "File format of first input file if extension not explicit",{'default':None}),
            ("-2", "--format2", "File format of second input file if extension not explicit",{'default':None}),
-           ("-d", "--datatype", "Datatype info in output track", {}))
+           ("-d", "--datatype", "Datatype info in output track", {}),
+           ("-w", "--overwrite", "Overwrite any existing file at the current locations with the same name \
+            as the output file.", {'action':"store_true"}))
 
 def convert(*args,**kw):
     if len(args) != 2:
@@ -62,7 +64,11 @@ def convert(*args,**kw):
         info = {'datatype': str(kw['datatype'])}
     else:
         info = None
-    track.convert(*args, chrmeta=chrmeta, info=info)
+    if kw['overwrite']:
+        mode = 'overwrite'
+    else:
+        mode = 'write'
+    track.convert(*args, chrmeta=chrmeta, info=info, mode=mode)
     return 0
 
 ############## READ ##############
