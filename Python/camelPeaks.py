@@ -167,7 +167,7 @@ def main(argv = None):
                          opt.output+"_peaks.bed",
                          opt.output+"_deconv.bedgraph"])
         print "************PARAMETERS**********"
-        print "lambda=%f|mu=%f|len=%f" %(robjects.r("sol$par$lambda")[0],robjects.r("sol$par$mu")[0],robjects.r("read.length")[0])
+        print "lambda=%f|mu=%f|len=%i" %(robjects.r("sol$par$lambda")[0],robjects.r("sol$par$mu")[0],robjects.r("read.length")[0])
         sys.exit(0)
     except Usage, err:
         print >>sys.stderr, err.msg
