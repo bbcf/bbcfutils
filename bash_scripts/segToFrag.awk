@@ -33,8 +33,8 @@ else
 tot=tot+$5;
 #print "$5="$5"=>tot="tot
 }
-if(frag[$1":"a[2]]){frag[$1":"a[2]]=frag[$1":"a[2]]"\t"a[n]"\t"$5}
-else{frag[$1":"a[2]]=a[3]"\t"a[5]"\t"a[n]"\t"$5;nFrags++;} #!! $5 => score in bed format
+if(frag[$1":"a[2]]){if(a[1]~/endSegment/){endSeg[$1":"a[2]]=a[n]"\t"$5;}else{startSeg[$1":"a[2]]=a[n]"\t"$5;};frag[$1":"a[2]]=frag[$1":"a[2]]"\t"startSeg[$1":"a[2]]"\t"endSeg[$1":"a[2]]}
+else{frag[$1":"a[2]]=a[3]"\t"a[5]; if(a[1]~/endSegment/){endSeg[$1":"a[2]]=a[n]"\t"$5;}else{startSeg[$1":"a[2]]=a[n]"\t"$5;};nFrags++;} #!! $5 => score in bed format
 } 
 
 END{
