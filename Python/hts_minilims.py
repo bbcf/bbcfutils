@@ -37,6 +37,7 @@ opts = (("-m", "--minilims", "path to personal minilims, or name of an HTSstatio
         ("-c", "--copy", "copy files to local path", {'action':"store_true",'default':False}),
         ("-s", "--symlink", "create symlinks to files in local path", {'action':"store_true",'default':False}),
         ("-p", "--programs", "list execution's program arguments and outputs", {'action':"store_true",'default':False}),
+        ("", "--admin","Include 'admin' files",{'action':"store_true",'default':False}),
         ("-g", "--gdv", "key of a gdv project to send sql files to", {'default':None}),
         ("", "--basepath","HTS basepath",{'default':"/archive/epfl/bbcf/data/htsstation"}),
         ("", "--gdvurl","GDV base url",{'default':None}),
@@ -118,7 +119,7 @@ def main(argv=None):
                     vv = vv[0].split("]")
                     par_dict = dict(x.split(":") for x in vv.pop(0).split(","))
                     if vv: comment = vv[0].strip().strip("()")
-                if par_dict.get('view') == 'admin': continue
+                if not(options.admin) and par_dict.get('view') == 'admin': continue
                 if options.list: outfile.write("\t".join([t,par_dict.get('groupId',''),fname,fpath,comment])+"\n")
                 if options.copy: shutil.copy(fpath, os.path.join(options.output,fname))
                 if options.symlink: os.symlink(fpath, os.path.join(options.output,fname))

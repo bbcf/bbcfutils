@@ -31,7 +31,7 @@
 
 library(MASS)
 
-args=commandArgs(trailingOnly = TRUE)
+args = commandArgs(trailingOnly = TRUE)
 
 data_file = args[1]
 sep = args[grep("-s",args)+1]
@@ -43,13 +43,13 @@ if (sep=='tab') sep='\t'
 main <- function(data_file, sep="\t", output_file=''){
     data = read.table(data_file, header=T, row.names=1, sep=sep, quote="", check.names=F)
     header = colnames(data)
-    counts = grep("^rpk[.]",header)
+    counts = grep("^counts[.]",header)
     data = round(data[,counts])
     samples = header[counts]
     conds = sapply(strsplit(samples,'.',fixed=T),function(x){l=length(x);paste(x[2:(l-1)],collapse='.')})
 
     # Still need to check that replicates are not identical - lfproc would fail
-    if (all(table(conds)>3)){        # if >3 replicates in all conditions
+    if (all(table(conds)>=3)){        # if >3 replicates in all conditions
         method = 'per-condition'        # for each group estimate the variance from its replicates
         sharingMode = 'gene-est-only'   # use the per-gene variance estimates only
     } else if (any(table(conds)>1)){ # if few replicates
@@ -81,7 +81,7 @@ DES <- function(data, conds, method, sharingMode, output_file=FALSE){
         test2 = try({
             cds <- estimateDispersions(cds, method=method, fitType='parametric', sharingMode=sharingMode)
         })
-        if(class(test) == "try-error") {
+        if(class(test2) == "try-error") {
             cds <- estimateDispersions(cds, method=method, fitType='local', sharingMode=sharingMode)
         }
     }
