@@ -9,15 +9,13 @@ The Samtools program is available as a precompiled binary for OS X, but we need 
 
 Download the source code tarball from `http://sourceforge.net/projects/samtools/files/` . Unpack into a working directory.
 
-If you'll be working with 64-bit executables (likely), edit the `Makefile` to un-comment out the `-m64` on the line containing `CLFAGS`. This ensures the program will compile as a 64-bit executable.
-
 Compile by running `make`. Also compile razip by executing `make razip`.
 
 To make samtools generally accessible to all the users on the machine, move the samtools folder to `/usr/local/`. Since samtools is under continuous development, I'll append the version number to the folder name. Then, to make navigation easier, I'll create a symbolic link to the latest version directory to a general name. For example,
 
-     sudo cp ./samtools /usr/local/samtools-v0.1.18
+     sudo cp ../samtools /usr/local/samtools-v0.1.19
      cd /usr/local/
-     sudo ln -s samtools-v0.1.18 samtools
+     sudo ln -s samtools-v0.1.19 samtools
 
 Now I can always reference `/usr/local/samtools/` and it will point to the latest version directory. When a new version comes out, I install it side by side in `/usr/local/`, and then simply update the /usr/local/samtools symlink.
 
@@ -43,7 +41,7 @@ Build bamstat.cc and bam2wig.cc
 
 go to `bbcfutils/C/` and build the .cc :
 
-    make SQLITEINCLUDE=/opt/local/include SQLITELIBDIR=/opt/local/lib TCLAPINCLUDE=./tclap-1.2.1/include/ SAMINCLUDE=/usr/local/include SAMLIBDIR=/usr/local/lib/
+    make PREFIX=/usr/local/bin SAMLIBDIR=/usr/local/lib/samtools/ SAMINCLUDE=/usr/local/include/samtools/ TCLAPINCLUDE=./tclap-1.2.1/include/ SQLITELIBDIR=/usr/local/lib SQLITEINCLUDE=/usr/local/include/
 
 move the newly created apps `bam2wig` and `bamstat` to `/usr/local/bin`
 
