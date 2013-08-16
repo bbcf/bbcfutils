@@ -1,5 +1,7 @@
 library(biomaRt)
 library(topGO)
+options(stringsAsFactors=F)
+
 ensembl_url = "sep2011.archive.ensembl.org"
 biomart = "ENSEMBL_MART_ENSEMBL"
 attribute_go = "go_id"
