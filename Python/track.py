@@ -135,11 +135,13 @@ f = 'merge'
 usage[f] = usage['all'] %f +" -f fwd_file -r rev_file"
 description[f] = 'Merges two signal tracks after shifting each in downstream direction.'
 opts[f] = (("-f", "--forward", "A bedgraph-like file with ChIP density on the forward strand", {}),
-        ("-r", "--reverse", "A bedgraph-like file with ChIP density on the reverse strand", {}),
-        ("-1","--formatf", "Format of the forward track.", {}),
-        ("-2","--formatr", "Format of the reverse track.", {}),
-        ("-p", "--shift", ("Shift positions downstream. If <0 will compute an optimal shift "
-                           "using autocorrelation."), {'default':0, 'action':"store", 'type':int}))
+           ("-r", "--reverse", "A bedgraph-like file with ChIP density on the reverse strand", {}),
+           ("-1","--formatf", "Format of the forward track.", {}),
+           ("-2","--formatr", "Format of the reverse track.", {}),
+           ("-p", "--shift", ("Shift positions downstream. If <0 will compute an optimal shift "
+                              "using autocorrelation."), {'default':0, 'action':"store", 'type':int}),
+           ("-m", "--method", ("How to combine scores: mean (default), min, max, geometric (mean), median."),
+            {'default': 'mean'}))
 
 def merge(*args,**kw):
     if not(kw['forward'] and os.path.exists(kw['forward'])):
@@ -158,6 +160,7 @@ def merge(*args,**kw):
             return x[:i1]+(x[i1]+shift,)+x[i1+1:i2]+(x[i2]+shift,)+x[i2+1:]
         return track.FeatureStream((_apply_shift(x) for x in stream),
                                     fields=stream.fields)
+
     fields = ['chr','start','end','score']
     chrmeta = _get_chrmeta(**kw)
     tfwd = track.track(kw['forward'],format=kw['formatf'],chrmeta=chrmeta)
@@ -172,16 +175,21 @@ def merge(*args,**kw):
     shiftval = int(kw['shift'])
     if shiftval < 0:
         slim = 300
-        chrsize,chrom = sorted([(v['length'],k) for k,v in chrmeta.iteritems()],reverse=True)[0]
-        xcor = correlation([tfwd.read(chrom),trev.read(chrom)],(1,chrsize),limits=(-slim,slim))
+        chrsize,chrom = sorted([(v['length'],k)
+                                for k,v in chrmeta.iteritems()],reverse=True)[0]
+        xcor = correlation([tfwd.read(chrom),trev.read(chrom)],
+                           (1,chrsize),limits=(-slim,slim))
         shiftval = (xcor.argmax()-slim-1)/2
         print "Autocorrelation shift=%i, correlation is %f." %(shiftval,xcor.max())
 
-    tout = track.track(kw['output'],fields=fields,chrmeta=chrmeta,info={'datatype':'quantitative'})
+    tout = track.track(kw['output'],fields=fields,
+                       chrmeta=chrmeta,info={'datatype':'quantitative'})
     mode = 'write'
+    method = kw.get("method","mean")
     for chrom in chrmeta.keys():
         tout.write(merge_scores([_shift(tfwd.read(chrom), shiftval),
-                                 _shift(trev.read(chrom),-shiftval)]),
+                                 _shift(trev.read(chrom),-shiftval)],
+                                method=method),
                    chrom=chrom,mode=mode,clip=True)
         mode = 'append'
     tout.close()
