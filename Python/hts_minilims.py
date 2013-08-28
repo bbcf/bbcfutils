@@ -39,7 +39,7 @@ opts = (("-m", "--minilims", "path to personal minilims, or name of an HTSstatio
         ("-p", "--programs", "list execution's program arguments and outputs", {'action':"store_true",'default':False}),
         ("", "--admin","Include 'admin' files",{'action':"store_true",'default':False}),
         ("-g", "--gdv", "key of a gdv project to send sql files to", {'default':None}),
-        ("", "--basepath","HTS basepath",{'default':"/archive/epfl/bbcf/data/htsstation"}),
+        ("", "--basepath","HTS basepath",{'default':"/data/epfl/bbcf/htsstation/data"}),
         ("", "--gdvurl","GDV base url",{'default':None}),
         ("", "--email","GDV user email",{'default':""}),
         ("", "--key","GDV user key",{'default':""}))
