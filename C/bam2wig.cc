@@ -360,7 +360,7 @@ inline static int accumulate( const samtools::bam1_t *b, void *d ) {
 	    int ri0 = start, ri1 = stop;
 	    if (opts.merge > 0) {
 		ri0 += opts.merge;
-                if (b->core.flag&BAM_FPROPER_PAIR == 0) ri1 += opts.merge;
+                if ((b->core.flag&BAM_FPROPER_PAIR) == 0) ri1 += opts.merge;
 	    }
 	    for ( int i = ri0; i < ri1; i++ ) 
 		if (!data->scounts || data->scounts->count(i)) data->counts[i]+=weight;
