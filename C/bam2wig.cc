@@ -8,6 +8,7 @@
 /*************** Cmd Line parser ***************/
 #include <tclap/CmdLine.h>
 /************** samtools: own namespace *******************/
+typedef unsigned int uint32_t;
 namespace samtools {
 #include "samtools/sam.h"
 }

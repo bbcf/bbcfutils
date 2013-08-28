@@ -140,7 +140,7 @@ opts[f] = (("-f", "--forward", "A bedgraph-like file with ChIP density on the fo
            ("-2","--formatr", "Format of the reverse track.", {}),
            ("-p", "--shift", ("Shift positions downstream. If <0 will compute an optimal shift "
                               "using autocorrelation."), {'default':0, 'action':"store", 'type':int}),
-           ("-m", "--method", ("How to combine scores: mean (default), min, max, geometric (mean), median."),
+           ("-m", "--method", ("How to combine scores: mean (default), min, max, geometric (mean), median, sum."),
             {'default': 'mean'}))
 
 def merge(*args,**kw):

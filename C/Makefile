@@ -1,9 +1,10 @@
-PREFIX = /mnt/common/epfl/bin 
-SAMLIBDIR = /mnt/common/epfl/lib
-SAMINCLUDE = /mnt/common/epfl/include
-TCLAPINCLUDE = /mnt/common/epfl/include
-SQLITELIBDIR = /mnt/common/DevTools/install/Linux/x86_64/sqlite/sqlite-3.7.3/lib 
-SQLITEINCLUDE = /mnt/common/DevTools/install/Linux/x86_64/sqlite/sqlite-3.7.3/include/
+BASE = /mnt/common/epfl
+PREFIX = $(BASE)/bin
+SAMLIBDIR = $(BASE)/lib
+SAMINCLUDE = $(BASE)/include
+TCLAPINCLUDE = $(BASE)/include
+SQLITELIBDIR = /software/lib64/  
+SQLITEINCLUDE = /software/include
 CXXFLAGS = -O3 -Wall -I$(SAMINCLUDE) -I$(TCLAPINCLUDE) -I$(SQLITEINCLUDE)
 LOADLIBES = -L$(SAMLIBDIR) -L$(SQLITELIBDIR)
 LDLIBS = -lsqlite3 -lbam -lz
