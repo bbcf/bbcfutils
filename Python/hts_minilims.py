@@ -3,6 +3,7 @@
 import optparse, sys, os, shutil, re
 from bein import MiniLIMS
 from bbcflib.common import get_files
+from bbcflib.workflows import _basepath
 
 #hts_minilims.py -m mapseq -e vwEfIK6vG8iD64kZm5m6 -l -t type=pdf
 
@@ -39,7 +40,7 @@ opts = (("-m", "--minilims", "path to personal minilims, or name of an HTSstatio
         ("-p", "--programs", "list execution's program arguments and outputs", {'action':"store_true",'default':False}),
         ("", "--admin","Include 'admin' files",{'action':"store_true",'default':False}),
         ("-g", "--gdv", "key of a gdv project to send sql files to", {'default':None}),
-        ("", "--basepath","HTS basepath",{'default':"/data/epfl/bbcf/htsstation/data"}),
+        ("", "--basepath","HTS basepath",{'default':_basepath}),
         ("", "--gdvurl","GDV base url",{'default':None}),
         ("", "--email","GDV user email",{'default':""}),
         ("", "--key","GDV user key",{'default':""}))
