@@ -27,7 +27,7 @@ class DemulitplexWorkflow(Workflow):
     def init_files(self,ex):
         from bbcflib.mapseq import get_fastq_files
         self.log_write("fetch fastq files.")
-        self.job = get_fastq_files( ex, self.job, self.job.dafl )
+        self.job = get_fastq_files( ex, self.job )
         return None
 
 ############################### MapSeq ###############################
@@ -55,7 +55,7 @@ class MapseqWorkflow(Workflow):
 
     def init_files(self,ex):
         self.log_write("fetch fastq files.")
-        self.job = self.sysmod.get_fastq_files( ex, self.job, self.job.dafl )
+        self.job = self.sysmod.get_fastq_files( ex, self.job )
         if not self.opts.noqc:
             self.log_write("Generate QC report.")
             self.sysmod.run_fastqc( ex, self.job, via=self.opts.via )
