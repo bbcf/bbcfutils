@@ -40,13 +40,14 @@ class MapseqWorkflow(Workflow):
         Workflow.__init__(self,module="mapseq",opts=opts,usage=usage,desc=desc)
 
     def check_options(self):
-        Workflow.check_options(self)
+        Workflow.check_options(self,{'bowtie2': (True,)})
         map_args = self.job.options.get('map_args',{})
         self.job.options['create_gdv_project'] &= self.job.options['compute_densities']
         self.main_args = {"job": self.job,
                           "assembly": self.job.assembly,
                           "map_args": map_args,
                           "gl": self.globals,
+                          "bowtie2": self.job.options['bowtie2'],
                           "via": self.opts.via,
                           "debugfile": self.debugfile,
                           "logfile": self.logfile}
