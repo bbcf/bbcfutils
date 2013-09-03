@@ -15,6 +15,7 @@ opts = (("-l", "--list", "list available assemblies, or a chromosome table if an
          {'action': "store_true", 'default': False}),
         ("-f", "--fasta", "get path to fasta", {'action': "store_true", 'default': False}),
         ("-b", "--bowtie", "get path prefix to bowtie indexes", {'action': "store_true", 'default': False}),
+        ("-B", "--bowtie2", "get path prefix to bowtie2 indexes", {'action': "store_true", 'default': False}),
         ("-d", "--db", "get path to sqlite database", {'action': "store_true", 'default': False}),
         ("-s", "--stats", "genome stats", {'action': "store_true", 'default': False}),
         ("-i", "--intype", "0 for genome (default), 1 for exonome, 2 for transcriptome", {'type': "int", 'default': 0}),
@@ -78,6 +79,9 @@ def main():
         if opt.bowtie:
             fout.write(">"+str(assembly.id)+":"+assembly.name+" bowtie index prefix\n")
             fout.write(assembly.index_path+"\n")
+        if opt.bowtie2:
+            fout.write(">"+str(assembly.id)+":"+assembly.name+" bowtie2 index prefix\n")
+            fout.write(re.sub(r'bowtie/','bowtie2/',assembly.index_path)+"\n")
         if opt.fasta:
             fout.write(">"+str(assembly.id)+":"+assembly.name+" fasta file\n")
             fout.write(assembly.fasta_path()+"\n")
