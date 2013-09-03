@@ -130,7 +130,7 @@ class SnpWorkflow(Workflow):
         Workflow.__init__(self,module="snp",opts=opts,usage=usage,desc=desc)
 
     def check_options(self):
-        more_defs = {}
+        more_defs = {'bowtie2': (True,)}
         Workflow.check_options(self, more_defs)
         mincov = int(self.job.options.get('mincov') or self.opts.mincov)
         minsnp = int(self.job.options.get('minsnp') or self.opts.minsnp)
