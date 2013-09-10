@@ -14,7 +14,7 @@ __version__ = '1.0.3'
 import sys, os, json, math, csv, random, string
 import numpy
 from scipy import stats
-import matplotlib.pyplot as plt
+import matplotlib
 from numpy import asarray,log,log10,log2,exp,sqrt,mean,median,float_,round,nonzero
 
 
@@ -132,6 +132,9 @@ def MAplot(dataset, cols=['2','3'], labels=['1'], annotate=None, mode="normal", 
     :param extremes: (int) create an output file containing features for which ratios are outside the specified
         percentile (two-sided). The file is named *extreme_ratios_xxxxx* .
     """
+    if not mode == "interactive":
+        matplotlib.use("Agg")
+    from matplotlib import pyplot as plt
     # Constants:
     if data_format == "counts":
         lower = 1 #lower bound on scores
