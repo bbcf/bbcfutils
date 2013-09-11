@@ -246,17 +246,18 @@ def MAplot(dataset, cols=['2','3'], labels=['1'], annotate=None, mode="normal", 
                 ax.annotate(str(sa[0])+"%", xy=(sa[1],sa[2]), xytext=(-33,-5), textcoords='offset points',
                             bbox=dict(facecolor="white",edgecolor=None,boxstyle="square,pad=.4"))
 
-            # Decoration
-            ax.set_xlabel("Log10 of sqrt(x1*x2)")
-            ax.set_ylabel("Log2 of x1/x2")
-            ax.set_title(title)
-            if limits[0] is not None: xmin = limits[0]
-            if limits[1] is not None: xmax = limits[1]
-            if limits[2] is not None: ymin = limits[2]
-            if limits[3] is not None: ymax = limits[3]
-            xlen = abs(xmax-xmin); ylen = abs(ymax-ymin)
-            plt.xlim([xmin-0.1*xlen,xmax+0.1*xlen])
-            plt.ylim([ymin-0.1*ylen,ymax+0.1*ylen])
+    if ax:
+        # Decoration
+        ax.set_xlabel("Log10 of sqrt(x1*x2)")
+        ax.set_ylabel("Log2 of x1/x2")
+        ax.set_title(title)
+        if limits[0] is not None: xmin = limits[0]
+        if limits[1] is not None: xmax = limits[1]
+        if limits[2] is not None: ymin = limits[2]
+        if limits[3] is not None: ymax = limits[3]
+        xlen = abs(xmax-xmin); ylen = abs(ymax-ymin)
+        plt.xlim([xmin-0.1*xlen,xmax+0.1*xlen])
+        plt.ylim([ymin-0.1*ylen,ymax+0.1*ylen])
 
     # Annotation of points, draw
     annotes={}
