@@ -14,7 +14,6 @@ __version__ = '1.0.3'
 import sys, os, json, math, csv, random, string
 import numpy
 from scipy import stats
-import matplotlib
 from numpy import asarray,log,log10,log2,exp,sqrt,mean,median,float_,round,nonzero
 
 
@@ -132,9 +131,6 @@ def MAplot(dataset, cols=['2','3'], labels=['1'], annotate=None, mode="normal", 
     :param extremes: (int) create an output file containing features for which ratios are outside the specified
         percentile (two-sided). The file is named *extreme_ratios_xxxxx* .
     """
-    if not mode == "interactive":
-        matplotlib.use("Agg")
-    from matplotlib import pyplot as plt
     # Constants:
     if data_format == "counts":
         lower = 1 #lower bound on scores
@@ -173,17 +169,22 @@ def MAplot(dataset, cols=['2','3'], labels=['1'], annotate=None, mode="normal", 
         raise ValueError("\nError: non-numeric columns selected. Try to specify more suitable columns with [-c].\n")
 
     # Figure initialization
-    fig = plt.figure(figsize=[14,9])
-    ax = fig.add_subplot(111)
-    fig.subplots_adjust(left=0.08, right=0.98, bottom=0.08, top=0.95)
-
-    # Points
     colors = iter(["black","red","green","cyan","magenta","yellow"])
-    datacolors = {}
+    datacolors = dict((data,colors.next()) for data in dataset)
+    ax = None
+    if not mode == "json":
+        if not mode == "interactive":
+            import matplotlib
+            matplotlib.use("Agg")
+        from matplotlib import pyplot as plt
+        fig = plt.figure(figsize=[14,9])
+        ax = fig.add_subplot(111)
+        fig.subplots_adjust(left=0.08, right=0.98, bottom=0.08, top=0.95)
+
+        # Points
     for data in dataset:
         pts = zip(*groups[data])
-        datacolors[data] = colors.next()
-        ax.plot(pts[1], pts[2], ".", color=datacolors[data])
+        if ax: ax.plot(pts[1], pts[2], ".", color=datacolors[data])
 
     # Lines (best fit of percentiles)
     if quantiles:
@@ -220,7 +221,7 @@ def MAplot(dataset, cols=['2','3'], labels=['1'], annotate=None, mode="normal", 
                 x_spline = numpy.array(numpy.linspace(smin, smax, 10*bins))
                 y_spline = numpy.polyval(coeffs, x_spline)
 
-                ax.plot(x_spline, y_spline, "-", color="blue")
+                if ax: ax.plot(x_spline, y_spline, "-", color="blue")
                 #ax.plot(x, h, "o", color="blue") # testing
                 spline_annotes.append((k,x_spline[0],y_spline[0])) #quantile percentages
                 spline_coords[k] = zip(x_spline,y_spline)
@@ -240,21 +241,22 @@ def MAplot(dataset, cols=['2','3'], labels=['1'], annotate=None, mode="normal", 
             print "Ratios r < %s %s < r : %s" % (extremes,100-extremes,extremes_filename)
 
         # Annotation of splines (percentage)
-        for sa in spline_annotes:
-            ax.annotate(str(sa[0])+"%", xy=(sa[1],sa[2]), xytext=(-33,-5), textcoords='offset points',
-                    bbox=dict(facecolor="white",edgecolor=None,boxstyle="square,pad=.4"))
+        if ax: 
+            for sa in spline_annotes:
+                ax.annotate(str(sa[0])+"%", xy=(sa[1],sa[2]), xytext=(-33,-5), textcoords='offset points',
+                            bbox=dict(facecolor="white",edgecolor=None,boxstyle="square,pad=.4"))
 
-    # Decoration
-    ax.set_xlabel("Log10 of sqrt(x1*x2)")
-    ax.set_ylabel("Log2 of x1/x2")
-    ax.set_title(title)
-    if limits[0] is not None: xmin = limits[0]
-    if limits[1] is not None: xmax = limits[1]
-    if limits[2] is not None: ymin = limits[2]
-    if limits[3] is not None: ymax = limits[3]
-    xlen = abs(xmax-xmin); ylen = abs(ymax-ymin)
-    plt.xlim([xmin-0.1*xlen,xmax+0.1*xlen])
-    plt.ylim([ymin-0.1*ylen,ymax+0.1*ylen])
+            # Decoration
+            ax.set_xlabel("Log10 of sqrt(x1*x2)")
+            ax.set_ylabel("Log2 of x1/x2")
+            ax.set_title(title)
+            if limits[0] is not None: xmin = limits[0]
+            if limits[1] is not None: xmax = limits[1]
+            if limits[2] is not None: ymin = limits[2]
+            if limits[3] is not None: ymax = limits[3]
+            xlen = abs(xmax-xmin); ylen = abs(ymax-ymin)
+            plt.xlim([xmin-0.1*xlen,xmax+0.1*xlen])
+            plt.ylim([ymin-0.1*ylen,ymax+0.1*ylen])
 
     # Annotation of points, draw
     annotes={}
@@ -271,7 +273,7 @@ def MAplot(dataset, cols=['2','3'], labels=['1'], annotate=None, mode="normal", 
             if annote==1:
                 annotes[data] = []
                 for p in groups[data]:
-                    ax.annotate(p[0], xy=(p[1],p[2]))
+                    if ax: ax.annotate(p[0], xy=(p[1],p[2]))
                     annotes[data].append(p[0])
 
     if mode == "normal":
