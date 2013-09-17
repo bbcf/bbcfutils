@@ -21,7 +21,11 @@ class DemulitplexWorkflow(Workflow):
 
     def check_options(self):
         Workflow.check_options(self)
-        self.main_args = {"job": self.job,"gl": self.globals}
+        self.main_args = {"job": self.job,
+                          "gl": self.globals,
+                          "via": self.opts.via,
+                          "debugfile": self.debugfile,
+                          "logfile": self.logfile}
         return True
 
     def init_files(self,ex):
