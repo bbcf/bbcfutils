@@ -39,7 +39,7 @@ static const std::string bed_plus("track type=bedGraph visibility=2 name=strand+
 static const std::string bed_minus("track type=bedGraph visibility=2 name=strand- color=200,10,0 windowingFunction=maximum\n");
 
 static struct global_options {
-    bool regress, noratio, six, sql, nohds;
+    bool regress, noratio, six, sql, nohds, fragcen;
     long wtpm;
     int mincover, maxhits, maxcnt, cut, cut_ct, chid, start, end, merge;
     std::string ofile, sfile, cfile, chr, chrn;
@@ -290,7 +290,8 @@ inline static int accumulate( const samtools::bam1_t *b, void *d ) {
     float weight = 1.0/nh;
 // ****************** if cut > 0, set tag size = cut even if longer than read 
     if (opts.cut < 0) read_cut = b->core.l_qseq;
-    if (opts.merge > -1 && (b->core.flag&BAM_FPROPER_PAIR)) {
+    if ((b->core.flag&BAM_FPAIRED) && !(b->core.flag&BAM_FPROPER_PAIR)) return 1;
+    if (opts.merge > -1 && (b->core.flag&BAM_FPROPER_PAIR) && !opts.fragcen) {
 	read_cut = b->core.isize-opts.merge;
 	opts.cut = 1;
 	if (read_cut < 1 || bam1_strand(b)) return 1;
@@ -337,6 +338,10 @@ inline static int accumulate( const samtools::bam1_t *b, void *d ) {
 	}
     } else if ((!bam1_strand(b)) && dstr >= 0) { // ********* forward strand *********
 	int start = b->core.pos+1, stop = start+read_cut;
+	if (opts.fragcen) {
+	    start = b->core.pos+b->core.isize/2-read_cut/2+1;
+	    stop = start+read_cut;
+	}
 	for ( uint32_t j = 0; j < b->core.n_cigar; j++ ) {
 	    int op = bam1_cigar(b)[j]&BAM_CIGAR_MASK,
 		shift = bam1_cigar(b)[j]>>BAM_CIGAR_SHIFT;
@@ -407,6 +412,8 @@ int main( int argc, char **argv )
 	cmd.add( sql );
 	TCLAP::SwitchArg nohds( "u", "noheaders", "Without bed headers", false );
 	cmd.add( nohds );
+	TCLAP::SwitchArg fcen( "f", "fragcenter", "For paired-end only: center on fragment midpoint", false );
+	cmd.add( fcen );
 
 	cmd.parse( argc, argv );
 	global_options o = {
@@ -415,6 +422,7 @@ int main( int argc, char **argv )
 	    sixc.getValue(),
 	    sql.getValue(),
 	    nohds.getValue(),
+	    fcen.getValue(),
 	    wtpm.getValue(),
 	    std::max(0,mincv.getValue()),
 	    maxh.getValue(),
@@ -442,6 +450,7 @@ int main( int argc, char **argv )
 	    std::cerr << "Need a control file for regression\n";
 	    return 11;
 	}
+	if (opts.fragcen) opts.merge = 0;
     } catch( TCLAP::ArgException &e ) {
 	std::cerr << "Error: " << e.error() << " " << e.argId() << "\n";
 	return 10;
