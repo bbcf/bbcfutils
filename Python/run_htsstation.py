@@ -94,9 +94,9 @@ class RnaseqWorkflow(Workflow):
                  {'default':"genes,exons,transcripts"}),
                 ("-j", "--junctions", "whether or not to search for splice junctions using soapsplice",
                  {'action':"store_true", 'default':False}),
-                ("-u", "--unmapped", "whether or not to use unmapped reads from a previous mapping job, if available",
+                ("--no_unmapped", "Do not to use unmapped reads from a previous mapping job",
                  {'action':"store_true", 'default':False}))
-        usage = "[-m mapseq_minilims] [-p -j -u]"
+        usage = "[-m mapseq_minilims] [-p -j --no_unmapped]"
         desc = """A High-throughput RNA-seq analysis workflow. It returns text files containing
                   read counts for exons, genes and transcripts for each given BAM file, and the result
                   of a DESeq run (differential expression analysis) for every pair of groups. """
@@ -105,15 +105,15 @@ class RnaseqWorkflow(Workflow):
     def check_options(self):
         more_defs = {'discard_pcr_duplicates': (False,),
                      'find_junctions': (False,),
-                     'unmapped': (False,)}
+                     'unmapped': (True,)}
         Workflow.check_options(self, more_defs)
         self.main_args = {"job": self.job,
                           "assembly": self.job.assembly,
                           "pileup_level": self.opts.pileup_level.split(','),
                           "via": self.opts.via,
                           "rpath": self.globals.get('script_path',''),
-                          "junctions": self.job.options['find_junctions'],
-                          "unmapped": self.job.options['unmapped'],
+                          "junctions": self.job.options['find_junctions'] or self.opts.junctions,
+                          "unmapped": self.job.options['unmapped'] and not self.opts.no_unmapped,
                           "debugfile": self.debugfile,
                           "logfile": self.logfile}
         return True
