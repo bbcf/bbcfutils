@@ -20,8 +20,8 @@ typedef std::map< int, float > posh;
 typedef posh::const_iterator poshcit;
 typedef posh::iterator poshit;
 typedef struct {
-    int ntags;
     int strand;
+    size_t ntags;
     posh counts;
     posh *scounts;
 } samdata;
@@ -45,11 +45,21 @@ static struct global_options {
     std::string ofile, sfile, cfile, chr, chrn;
 } opts;
 
-inline double weight_per_tag( const int ntags, 
+static inline int counttags( const samtools::bam1_t *b, void *data )
+{
+    size_t i = 0;
+    if ((b->core.flag & BAM_FUNMAP) == 0) {
+	i = samtools::bam_aux2i(bam_aux_get(b,"NH"));
+	if (i==0) i=1;
+	(*(std::map< int, size_t >*)data)[i]++;
+    }
+    return 0;
+}
+
+inline double weight_per_tag( const size_t ntags, 
 			      const posh *_cnts=0, const posh *_ctrl=0 ) {
     double weight = 1.0;
-//************** 1/[(ntags/10k)/(2*chr size/1Mb)] __average per strand__
-    if (opts.wtpm == 0L) weight = 2.0e-2*(opts.end-opts.start)/ntags;
+    if (opts.wtpm == 0L) weight = 1e7/(double)ntags;
     if (opts.wtpm >  0L) weight = 1e7/(double)opts.wtpm;
     if (opts.regress && _ctrl && _ctrl->size()) {
 	double scalprod = 0, norm2 = 0;
@@ -296,7 +306,7 @@ inline static int accumulate( const samtools::bam1_t *b, void *d ) {
 	opts.cut = 1;
 	if (read_cut < 1 || bam1_strand(b)) return 1;
     }
-    data->ntags++;
+//    data->ntags++;
     if (bam1_strand(b) && dstr <= 0) { // ********* reverse strand *********
 // ****************** BAM is 0-based, but our array will be 1-based
 	int start = b->core.pos+1, stop = start+b->core.l_qseq;
@@ -455,6 +465,7 @@ int main( int argc, char **argv )
 	std::cerr << "Error: " << e.error() << " " << e.argId() << "\n";
 	return 10;
     }
+/*************** TEST BAM FILE ************/
     samtools::samfile_t *_fs = samtools::samopen( opts.sfile.c_str(), "rb", 0 );
     if ( !_fs ) {
 	std::cerr << "Could not open " << opts.sfile << "\n";
@@ -484,8 +495,23 @@ int main( int argc, char **argv )
 	samtools::bam_index_build( opts.sfile.c_str() );
 	_in = samtools::bam_index_load( opts.sfile.c_str() );
     }
+    samdata s_data;
+    s_data.ntags = 0;
+    if (opts.wtpm == 0L) {
+	std::map< int, size_t > _ntags;
+	samtools::bam1_t *b = ((samtools::bam1_t*)calloc(1, sizeof(samtools::bam1_t)));
+	while ( samtools::bam_read1( _fs->x.bam, b ) > 0 ) 
+	    counttags( b, &_ntags );
+	for ( std::map< int, size_t >::const_iterator I = _ntags.begin(); 
+	      I != _ntags.end();
+	      I++ )
+	    s_data.ntags += I->second/I->first;
+    }
+/*************** CONTROL BAM FILE ************/
     samtools::samfile_t *_cfs = 0;
     samtools::bam_index_t *_cin = 0;
+    samdata c_data;
+    c_data.ntags = 0;
     if ( opts.cfile.size() ) {
 	_cfs = samtools::samopen( opts.cfile.c_str(), "rb", 0 );
 	if ( !_cfs ) {
@@ -497,6 +523,16 @@ int main( int argc, char **argv )
 	    std::cerr << "Building index of " << opts.cfile << "\n";
 	    samtools::bam_index_build( opts.cfile.c_str() );
 	    _cin = samtools::bam_index_load( opts.cfile.c_str() );
+	}
+	if (opts.wtpm == 0L) {
+	    std::map< int, size_t > _ntags;
+	    samtools::bam1_t *b = ((samtools::bam1_t*)calloc(1, sizeof(samtools::bam1_t)));
+	    while ( samtools::bam_read1( _cfs->x.bam, b ) > 0 ) 
+		counttags( b, &_ntags );
+	    for ( std::map< int, size_t >::const_iterator I = _ntags.begin(); 
+		  I != _ntags.end();
+		  I++ )
+		c_data.ntags += I->second/I->first;
 	}
     }
     std::ios_base::openmode mode = std::ios_base::out;
@@ -517,15 +553,13 @@ int main( int argc, char **argv )
             if (chrn_empty) opts.chrn = opts.chr;
             opts.start = I->second.start;
             opts.end = I->second.end;
-            samdata s_data;
             s_data.counts.clear();
             s_data.scounts = 0; // just making sure...
-            s_data.ntags = 0;
+//            s_data.ntags = 0;
             s_data.strand = *Istr;
-            samdata c_data;
             c_data.counts.clear();
             c_data.scounts = &s_data.counts;
-            c_data.ntags = 0;
+//            c_data.ntags = 0;
             c_data.strand = *Istr;
 
             samtools::bam_fetch( _fs->x.bam, _in, opts.chid, opts.start, opts.end, 
