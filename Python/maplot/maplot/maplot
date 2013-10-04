@@ -110,7 +110,7 @@ if not cols.startswith("{"):
 labels = opt.labels.split(",")
 if opt.mode not in ["normal","interactive","json"]:
     parser.error("--mode must be one of 'normal','interactive', or 'json' (got %s).\n" % opt.mode)
-if opt.format not in ["counts","rpkm"]:
+if opt.format not in ["counts","rpk","rpkm"]:
     parser.error("--format must be one of 'counts' or 'rpkm' (got %s).\n" % opt.format)
 if opt.normalize and opt.normalize not in ["tags","sf"]:
     parser.error("--normalize must be one of 'tags' or 'sf' (got %s.\n)" % opt.normalize)

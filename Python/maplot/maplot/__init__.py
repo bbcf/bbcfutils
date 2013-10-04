@@ -139,7 +139,7 @@ def MAplot(dataset, cols=['2','3'], labels=['1'], annotate=None, mode="normal", 
         spline_xmax = None
         #bounds of the section of the splines that is displayed
         slimits[0] = slimits[0] or 0.8
-    elif data_format == "rpkm":
+    elif data_format in ["rpkm","rpk"]:
         lower = 0
         spline_xmin = math.log10(0.1)
         spline_xmax = None
@@ -241,7 +241,7 @@ def MAplot(dataset, cols=['2','3'], labels=['1'], annotate=None, mode="normal", 
             print "Ratios r < %s %s < r : %s" % (extremes,100-extremes,extremes_filename)
 
         # Annotation of splines (percentage)
-        if ax: 
+        if ax:
             for sa in spline_annotes:
                 ax.annotate(str(sa[0])+"%", xy=(sa[1],sa[2]), xytext=(-33,-5), textcoords='offset points',
                             bbox=dict(facecolor="white",edgecolor=None,boxstyle="square,pad=.4"))
