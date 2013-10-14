@@ -352,6 +352,7 @@ class AnnoteFinder:
     self.xtol = xtol
     self.ytol = ytol
     if axis is None:
+      from matplotlib import pyplot as plt
       self.axis = plt.gca()
     else:
       self.axis= axis

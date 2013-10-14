@@ -95,7 +95,7 @@ def read(*args,**kw):
         elif kw['selection'].count(":"):
             chr,coord = kw['selection'].split(':')
             start,end = coord.split('-')
-            selection = {'chr':chr,'start':(start,end),'end':(start,end)}
+            selection = {'chr':chr,'start':(int(start),int(end)),'end':(int(start),int(end))}
         else:
             selection = str(kw['selection']).split(",")
     fields = None
