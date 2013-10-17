@@ -111,9 +111,12 @@ plotDomainogram_vJ <- function(dataToTreat,domainogram.m,wmax,lensc,myCols,imgFi
         print("Will not plot the resulting domainogram")
     } else {
         if(nchar(imgFile)>0){
+            if (substr(imgFile,nchar(imgFile)-3,nchar(imgFile)) != ".pdf") {
+              imgFile = paste(imgFile,"pdf",sep=".")
+            }
             print("Will plot the resulting domainogram in file:")
             print(imgFile)
-            plotLegend(paste(imgFile,"_legend.pdf",sep=""))
+            plotLegend(sub(".pdf","_legend.pdf",imgFile))
             pdf(imgFile,width = 7, height = 5.5, pointsize = 8)
         } else {
             X11(width = 12, height = 9)
