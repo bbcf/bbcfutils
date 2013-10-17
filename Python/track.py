@@ -53,7 +53,7 @@ opts[f] = (("-1", "--format1", "File format of first input file if extension not
 def convert(*args,**kw):
     if len(args) != 2:
         if len(args) == 1 and kw['output']:
-            args += (,kw['output'])
+            args += (kw['output'],)
         else:
             raise Usage("Please specify SOURCE and DESTINATION files")
     if kw['format1']:
