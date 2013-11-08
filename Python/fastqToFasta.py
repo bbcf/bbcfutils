@@ -57,7 +57,6 @@ with open(fqFile,"r") as f:
                     qual=s
                     output.write(">line"+str(i)+"_"+allSeq+"_"+qual+"\n"+seq+"\n")
                     nextIsQual=0
-                        nextIsQual=0
 #	output.write(">line"+str(i)+"_"+allSeq+"_"+qual+"\n"+seq+"\n")
 
 #return faFile
