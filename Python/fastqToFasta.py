@@ -41,18 +41,22 @@ with open(fqFile,"r") as f:
 	for s in f:
         	s=s.strip('\n')
                 i=i+1
-                if re.search(r'^@',s) and len(s)<read_length:
-                	nextIsSeq=1
-                if re.search(r'^\+',s) and len(s)<read_length:
-                	nextIsQual=1
-                        nextIsSeq=0
+                if re.search(r'^@',s) and nextIsSeq == 0: #to avoid situations where the quality starts with either "@" or "+"
+                    nextIsSeq=1
+                    continue
+                if re.search(r'^\+',s) and nextIsQual == 0: #to avoid situations where the quality starts with either "@" or "+"
+                    nextIsQual=1
+                    nextIsSeq=0
+                    continue
                 if len(s)>=read_length and nextIsSeq>0:
-                	seq="".join(s.split('\t')[0][(n-1):(n+x-1)])
-                        allSeq=s
-                        nextIsSeq=0
+                    seq="".join(s.split('\t')[0][(n-1):(n+x-1)])
+                    allSeq=s
+                    nextIsSeq=0
+                    continue
                 if len(s)>=read_length and nextIsQual>0:
-                	qual=s
-                        output.write(">line"+str(i)+"_"+allSeq+"_"+qual+"\n"+seq+"\n")
+                    qual=s
+                    output.write(">line"+str(i)+"_"+allSeq+"_"+qual+"\n"+seq+"\n")
+                    nextIsQual=0
                         nextIsQual=0
 #	output.write(">line"+str(i)+"_"+allSeq+"_"+qual+"\n"+seq+"\n")
 
