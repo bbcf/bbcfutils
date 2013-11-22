@@ -16,7 +16,7 @@ def parse_plugin(plugin,name,sub=None):
         else:
             allsubs = []
             for k,v in plugin.__dict__.iteritems():
-                if hasattr(v, 'bs_plugin'):
+                if getattr(v, 'bs_plugin', '') == 'bs-operation':
                     allsubs.append(k[:-6])
             if len(allsubs) == 1:
                 fname = allsubs[0]
