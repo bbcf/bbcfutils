@@ -253,19 +253,22 @@ Fields: %s
 f = 'check'
 usage[f] = usage['all'] %f +" file1 [file2 ...]"
 description[f] = 'Checks that a track file is sorted and well-formatted.'
-opts[f] = (("-t", "--format", "File format, if extension not explicit", {'default':None}),)
+opts[f] = (("-t", "--format", "File format, if extension not explicit", {'default':None}),
+           ("", "--co", "Check sorted", {'action':"store_true"}),
+           ("", "--cd", "Check duplicates", {'action':"store_true"}),
+           ("", "--cz", "Check zero size", {'action':"store_true"}),
+          )
 
 def check(*args,**kw):
     if len(args) < 1: raise Usage("No input file provided")
     if kw['output'] is None: output = sys.stdout
     else: output = open(kw['output'],'w')
+    kw_check = dict((k,kw[k]) for k in ('co','cd','cz'))
     chrmeta = _get_chrmeta(**kw)
     for infile in args:
         intrack = track.track(infile, format=kw['format'], chrmeta=chrmeta)
-        cf = track.check_format(intrack, output)
-        if cf: output.write("Check format: %s: correct %s format.\n" % (infile,intrack.format))
-        co = track.check_ordered(intrack, output)
-        if co: output.write("Check order: %s: file is sorted.\n" % (infile,))
+        cf = track.check(intrack, output, **kw_check)
+        if cf: output.write("File %s: file is correctly formatted.\n" % (infile,))
         intrack.close()
     return 0
 
