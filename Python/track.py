@@ -263,7 +263,7 @@ def check(*args,**kw):
     if len(args) < 1: raise Usage("No input file provided")
     if kw['output'] is None: output = sys.stdout
     else: output = open(kw['output'],'w')
-    kw_check = dict((k,kw[k]) for k in ('co','cd','cz'))
+    kw_check = dict((k,kw[k]) for k in ('cs','cd','cz'))
     chrmeta = _get_chrmeta(**kw)
     for infile in args:
         intrack = track.track(infile, format=kw['format'], chrmeta=chrmeta)
