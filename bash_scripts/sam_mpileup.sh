@@ -2,7 +2,7 @@
 
 if [ $# -lt 3 ]
 then
-  echo "Usage: `` fasta depth bam [samheader]"
+  echo "Usage: $0 fasta depth bam [samheader]"
   exit
 fi
 
