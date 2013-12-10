@@ -254,11 +254,11 @@ f = 'check'
 usage[f] = usage['all'] %f +" file1 [file2 ...]"
 description[f] = 'Checks that a track file is sorted and well-formatted.'
 opts[f] = (("-t", "--format", "File format, if extension not explicit.", {'default':None}),
-           ("", "--cs", "Check that the file is sorted (by chr,start,end).",
+           ("-s", "--sorted", "Check that the file is sorted (by chr,start,end).",
                         {'action':"store_true", 'default':False}),
-           ("", "--cd", "Check that there are no lines duplicated.",
+           ("-d", "--duplicated", "Check that there are no lines duplicated.",
                         {'action':"store_true", 'default':False}),
-           ("", "--cz", "Check that no region has size zero (start==end).",
+           ("-z", "--negative", "Check that no region has negative size (start >= end).",
                         {'action':"store_true", 'default':False}),
           )
 
@@ -266,11 +266,13 @@ def check(*args,**kw):
     if len(args) < 1: raise Usage("No input file provided")
     if kw['output'] is None: output = sys.stdout
     else: output = open(kw['output'],'w')
-    kw_check = {'check_sorted':kw['cs'],'check_duplicates':kw['cd'],'check_zerosize':kw['cz']}
     chrmeta = _get_chrmeta(**kw)
     for infile in args:
         intrack = track.track(infile, format=kw['format'], chrmeta=chrmeta)
-        cf = track.check(intrack, output, **kw_check)
+        cf = track.check(intrack, output, 
+                         check_sorted=kw['sorted'],
+                         check_duplicates=kw['duplicated'], 
+                         check_zerosize=kw['negative'])
         if cf: output.write("File %s: file is correctly formatted.\n" % (infile,))
         intrack.close()
     return 0
