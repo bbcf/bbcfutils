@@ -254,9 +254,12 @@ f = 'check'
 usage[f] = usage['all'] %f +" file1 [file2 ...]"
 description[f] = 'Checks that a track file is sorted and well-formatted.'
 opts[f] = (("-t", "--format", "File format, if extension not explicit.", {'default':None}),
-           ("", "--cs", "Check that the file is sorted (by chr,start,end).", {'action':"store_true"}),
-           ("", "--cd", "Check that there are no lines duplicated.", {'action':"store_true"}),
-           ("", "--cz", "Check that no region has size zero (start==end).", {'action':"store_true"}),
+           ("", "--cs", "Check that the file is sorted (by chr,start,end).",
+                        {'action':"store_true", 'default':False}),
+           ("", "--cd", "Check that there are no lines duplicated.",
+                        {'action':"store_true", 'default':False}),
+           ("", "--cz", "Check that no region has size zero (start==end).",
+                        {'action':"store_true", 'default':False}),
           )
 
 def check(*args,**kw):
