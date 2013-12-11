@@ -256,9 +256,11 @@ description[f] = 'Checks that a track file is sorted and well-formatted.'
 opts[f] = (("-t", "--format", "File format, if extension not explicit.", {'default':None}),
            ("-s", "--sorted", "Check that the file is sorted (by chr,start,end).",
                         {'action':"store_true", 'default':False}),
-           ("-u", "--unique", "Check that no line is duplicated.",
+           ("-d", "--no-duplicates", "Check that no line is duplicated.",
                         {'action':"store_true", 'default':False}),
            ("-p", "--positive", "Check that all regions have positive size (start < end).",
+                        {'action':"store_true", 'default':False}),
+           ("-v", "--no-overlaps", "Check that intervals never overlap (requires --sorted).",
                         {'action':"store_true", 'default':False}),
           )
 
@@ -267,12 +269,15 @@ def check(*args,**kw):
     if kw['output'] is None: output = sys.stdout
     else: output = open(kw['output'],'w')
     chrmeta = _get_chrmeta(**kw)
+    if kw['no_overlaps'] and not kw['sorted']:
+        output.write("--disjoint option was ignored: --sorted is required.\n")
     for infile in args:
         intrack = track.track(infile, format=kw['format'], chrmeta=chrmeta)
-        cf = track.check(intrack, output, 
+        cf = track.check(intrack, output,
                          check_sorted=kw['sorted'],
-                         check_duplicates=kw['unique'], 
-                         check_zerosize=kw['positive'])
+                         check_noduplicates=kw['no_duplicates'],
+                         check_positive=kw['positive'],
+                         check_nooverlaps=kw['no_overlaps'])
         if cf: output.write("File %s: file is correctly formatted.\n" % (infile,))
         intrack.close()
     return 0
