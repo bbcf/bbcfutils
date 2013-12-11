@@ -256,9 +256,9 @@ description[f] = 'Checks that a track file is sorted and well-formatted.'
 opts[f] = (("-t", "--format", "File format, if extension not explicit.", {'default':None}),
            ("-s", "--sorted", "Check that the file is sorted (by chr,start,end).",
                         {'action':"store_true", 'default':False}),
-           ("-d", "--duplicated", "Check that there are no lines duplicated.",
+           ("-u", "--unique", "Check that no line is duplicated.",
                         {'action':"store_true", 'default':False}),
-           ("-z", "--negative", "Check that no region has negative size (start >= end).",
+           ("-p", "--positive", "Check that all regions have positive size (start < end).",
                         {'action':"store_true", 'default':False}),
           )
 
@@ -271,8 +271,8 @@ def check(*args,**kw):
         intrack = track.track(infile, format=kw['format'], chrmeta=chrmeta)
         cf = track.check(intrack, output, 
                          check_sorted=kw['sorted'],
-                         check_duplicates=kw['duplicated'], 
-                         check_zerosize=kw['negative'])
+                         check_duplicates=kw['unique'], 
+                         check_zerosize=kw['positive'])
         if cf: output.write("File %s: file is correctly formatted.\n" % (infile,))
         intrack.close()
     return 0
