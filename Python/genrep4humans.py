@@ -24,7 +24,7 @@ opts = (("-l", "--list", "list available assemblies, or a chromosome table if an
         ("-o", "--output", "output file (default: standard output)", {'default': None}),
         ("-r", "--root", "genrep root directory (default: '/db/genrep/')", {'default': '/db/genrep/'}),
         ("-u", "--url", "url to genrep (default: 'http://bbcf-serv01.epfl.ch/genrep/')",{'default': 'http://bbcf-serv01.epfl.ch/genrep/'}),
-        ("-g", "--genes", "extract coordinates for a comma-separated list of Ensembl ids",{}),
+        ("-g", "--genes", "extract coordinates for a list of Ensembl ids, specified as a comma-separated list or a filename (gene id must be the first word of each line in the file)",{}),
         ("-z", "--all", "extract coordinates of all genes/transcripts/exons (depending on the 'intype')",{'action': "store_true", 'default': False}),
         ("-c", "--convert", "convert bam headers to natural chromosome names",{}))
 
