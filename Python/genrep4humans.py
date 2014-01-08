@@ -32,6 +32,13 @@ class Usage(Exception):
     def __init__(self,  msg):
         self.msg = msg
 
+def _parse_list(filename):
+    with open(filename) as fin:
+        for row in fin:
+            gid = re.search(r'\S+',row)
+            if gid:
+                yield gid.group()
+
 def main():
     try:
         # Parse args
@@ -89,7 +96,11 @@ def main():
             fout.write(">"+str(assembly.id)+":"+assembly.name+" sqlite file\n")
             fout.write(assembly.sqlite_path()+"\n")
         if opt.genes:
-            for gcoord in assembly.gene_coordinates(opt.genes.split(",")):
+            if os.path.exists(opt.genes):
+                glist = _parse_list(opt.genes)
+            else:
+                glist = opt.genes.split(",")
+            for gcoord in assembly.gene_coordinates(glist):
                 fout.write("\t".join([str(x) for x in gcoord])+"\n")
         if opt.all:
             if opt.intype == 1:
