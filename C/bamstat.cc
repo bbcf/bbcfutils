@@ -89,7 +89,7 @@ int main( int argc, char **argv )
     std::cout << "Read length " << read_length << "\n";
     std::cout << "Genome size " << genome_size << "\n";
     std::cout << "Nb positions " << stats[-1] << "\n";    
-    int ntag = 0, nali = 0;
+    long ntag = 0, nali = 0;
     std::cout << "Hits Reads\n";
     for ( std::map< int, size_t >::const_iterator I = stats.upper_bound(0); 
 	  I != stats.end(); 
@@ -100,8 +100,8 @@ int main( int argc, char **argv )
 	nali += I->second;
     }
     std::cout << "Total " << ntag << "\n";
-    int nfwd = (nali+stats[-2])/2,
-	nrev = (nali-stats[-2])/2;
+    long nfwd = (nali+stats[-2])/2,
+	 nrev = (nali-stats[-2])/2;
     std::cout << "Alignments " << nali
 	      << " (fwd: " << nfwd << "/rev: " 
 	      << nrev << ")\n";
@@ -121,8 +121,7 @@ int main( int argc, char **argv )
     for ( std::map< int, size_t >::const_iterator I = stats.upper_bound(-3); 
 	  I != stats.begin(); ) {
 	I--;
-	int r = I->second;
-	std::cout << -I->first-3 << " " << r << "\n";
+	std::cout << -I->first-3 << " " << I->second << "\n";
     }
     return 0;
 }
