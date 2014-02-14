@@ -49,9 +49,9 @@ main <- function(data_file, sep="\t", output_file=''){
     conds = sapply(strsplit(samples,'.',fixed=T),function(x){l=length(x);paste(x[2:(l-1)],collapse='.')})
 
     # Still need to check that replicates are not identical - lfproc would fail
-    if (all(table(conds)>=3)){        # if >3 replicates in all conditions
+    if (all(table(conds)>=3)){       # if >3 replicates in all conditions
         method = 'per-condition'        # for each group estimate the variance from its replicates
-        sharingMode = 'gene-est-only'   # use the per-gene variance estimates only
+        sharingMode = 'maximum'         # use the per-gene variance estimates only
     } else if (any(table(conds)>1)){ # if few replicates
         method = 'pooled'               # use all groups with replicates to estimate the variance
         sharingMode = 'maximum'         # use the max of the GLM fit and the estimated variance
@@ -79,10 +79,10 @@ DES <- function(data, conds, method, sharingMode, output_file=FALSE){
     }, silent=TRUE)
     if(class(test) == "try-error") {
         test2 = try({
-            cds <- estimateDispersions(cds, method=method, fitType='parametric', sharingMode=sharingMode)
+            cds <- estimateDispersions(cds, method=method, fitType='local', sharingMode=sharingMode)
         })
         if(class(test2) == "try-error") {
-            cds <- estimateDispersions(cds, method=method, fitType='local', sharingMode=sharingMode)
+            cds <- estimateDispersions(cds, method=method, fitType='parametric', sharingMode=sharingMode)
         }
     }
     couples = combn(groups,2)
