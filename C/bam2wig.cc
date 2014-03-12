@@ -301,7 +301,7 @@ inline static int accumulate( const samtools::bam1_t *b, void *d ) {
 // ****************** if cut > 0, set tag size = cut even if longer than read 
     if (opts.cut < 0) read_cut = b->core.l_qseq;
     if ((b->core.flag&BAM_FPAIRED) && !(b->core.flag&BAM_FPROPER_PAIR)) return 1;
-    if ((b->core.flag&BAM_FPROPER_PAIR) && (bam1_strand(b) ^ b->core.isize<0))
+    if ((b->core.flag&BAM_FPROPER_PAIR) && (bam1_strand(b) ^ (b->core.isize<0)))
         return 1;
     if (opts.merge > -1 && (b->core.flag&BAM_FPROPER_PAIR) && !opts.fragcen) {
 	read_cut = b->core.isize-opts.merge;

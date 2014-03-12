@@ -94,7 +94,7 @@ def main():
             fout.write(assembly.fasta_path()+"\n")
         if opt.db:
             fout.write(">"+str(assembly.id)+":"+assembly.name+" sqlite file\n")
-            fout.write(assembly.sqlite_path()+"\n")
+            fout.write(assembly.sqlite_path+"\n")
         if opt.genes:
             if os.path.exists(opt.genes):
                 glist = _parse_list(opt.genes)
