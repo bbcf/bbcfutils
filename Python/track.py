@@ -17,6 +17,9 @@ opts = {'all':
                               "or a tab-delimited file with two columns: <chromosome name> <size in bases>."),
                             {'default': None}))}
 
+from signal import signal, SIGPIPE, SIG_DFL
+signal(SIGPIPE,SIG_DFL)
+
 class Usage(Exception):
     def __init__(self,  msg):
         self.msg = msg
