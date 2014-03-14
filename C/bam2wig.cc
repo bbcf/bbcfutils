@@ -300,15 +300,19 @@ inline static int accumulate( const samtools::bam1_t *b, void *d ) {
     float weight = 1.0/nh;
 // ****************** if cut > 0, set tag size = cut even if longer than read 
     if (opts.cut < 0) read_cut = b->core.l_qseq;
-    if ((b->core.flag&BAM_FPAIRED) && !(b->core.flag&BAM_FPROPER_PAIR)) return 1;
-    if ((b->core.flag&BAM_FPROPER_PAIR) && (bam1_strand(b) ^ (b->core.isize<0)))
-        return 1;
+    if (opts.merge > -1) {
+	if ((b->core.flag&BAM_FPAIRED) && !(b->core.flag&BAM_FPROPER_PAIR))
+	    return 1;
+	if ((b->core.flag&BAM_FPROPER_PAIR) && (bam1_strand(b) ^ (b->core.isize<0)))
+	    return 1;
+    }
     if (opts.merge > -1 && (b->core.flag&BAM_FPROPER_PAIR) && !opts.fragcen) {
 	read_cut = b->core.isize-opts.merge;
 	opts.cut = 1;
-	if (read_cut < 1 || bam1_strand(b)) return 1;
+	if (read_cut < 1 || bam1_strand(b)) 
+	    return 1;
     }
-//    data->ntags++;
+//-----    data->ntags++;
     if (bam1_strand(b) && dstr <= 0) { // ********* reverse strand *********
 // ****************** BAM is 0-based, but our array will be 1-based
 	int start = b->core.pos+1, stop = start+b->core.l_qseq;
