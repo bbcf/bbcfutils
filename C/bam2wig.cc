@@ -303,14 +303,16 @@ inline static int accumulate( const samtools::bam1_t *b, void *d ) {
     if (opts.merge > -1) {
 	if ((b->core.flag&BAM_FPAIRED) && !(b->core.flag&BAM_FPROPER_PAIR))
 	    return 1;
-	if ((b->core.flag&BAM_FPROPER_PAIR) && (bam1_strand(b) ^ (b->core.isize<0)))
-	    return 1;
-    }
-    if (opts.merge > -1 && (b->core.flag&BAM_FPROPER_PAIR) && !opts.fragcen) {
-	read_cut = b->core.isize-opts.merge;
-	opts.cut = 1;
-	if (read_cut < 1 || bam1_strand(b)) 
-	    return 1;
+	if (b->core.flag&BAM_FPROPER_PAIR) {
+            if (bam1_strand(b) ^ (b->core.isize<0))  
+                return 1;
+            if (!opts.fragcen) {
+                read_cut = b->core.isize-opts.merge;
+                opts.cut = 1;
+                if (read_cut < 1 || bam1_strand(b)) 
+                    return 1;
+            }
+        }
     }
 //-----    data->ntags++;
     if (bam1_strand(b) && dstr <= 0) { // ********* reverse strand *********
