@@ -94,12 +94,10 @@ class RnaseqWorkflow(Workflow):
                  {'default':"genes,exons,transcripts"}),
                 ("-j", "--junctions", "Whether or not to search for splice junctions using soapsplice.",
                  {'action':"store_true", 'default':False}),
-                ("--no_unmapped", "Do not to use unmapped reads from a previous mapping job.",
-                 {'action':"store_true", 'default':False}),
                 ("--stranded", "To indicate that the protocol was strand-specific.",
                  {'action':"store_true", 'default':False}),
                )
-        usage = "[-m mapseq_minilims] [-p -j --no_unmapped --stranded]"
+        usage = "[-m mapseq_minilims] [-p -j --stranded]"
         desc = """A High-throughput RNA-seq analysis workflow. It returns text files containing
                   read counts for exons, genes and transcripts for each given BAM file, and the result
                   of a DESeq run (differential expression analysis) for every pair of groups. """
@@ -108,7 +106,6 @@ class RnaseqWorkflow(Workflow):
     def check_options(self):
         more_defs = {'discard_pcr_duplicates': (False,),
                      'find_junctions': (False,),
-                     'unmapped': (True,),
                      'stranded': (False,)}
         Workflow.check_options(self, more_defs)
         self.main_args = {"job": self.job,
@@ -117,7 +114,6 @@ class RnaseqWorkflow(Workflow):
                           "via": self.opts.via,
                           "rpath": self.globals.get('script_path',''),
                           "junctions": self.job.options['find_junctions'] or self.opts.junctions,
-                          "unmapped": self.job.options['unmapped'] and not self.opts.no_unmapped,
                           "stranded": self.job.options['stranded'] and not self.opts.stranded,
                           "debugfile": self.debugfile,
                           "logfile": self.logfile}
