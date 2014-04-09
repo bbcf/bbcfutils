@@ -13,6 +13,10 @@ typedef unsigned int uint32_t;
 namespace samtools {
 #include <samtools/sam.h>
 }
+/**************** non-negative least-squares ***************/
+#include <libtsnnls/tsnnls.h>
+#undef max
+#undef min
 
 typedef struct { int start; int end; std::vector< int > tmap; bool revstrand; } exon;
     

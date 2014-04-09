@@ -60,27 +60,47 @@ inline int mapreads( const samtools::bam1_t *b, void *_d )
 }
 
 
-
-/**************** non-negative least-squares ***************/
-#include <libtsnnls/tsnnls.h>
 int exon_list::nnls_solve( std::string filename, 
 			   std::ios_base::openmode mode=std::ios_base::out ) {
 /***** dim = #exons, cols = #transcripts *****/
-    double norm = 1e3/(double)reads_total;  // normalize to RPKM *= 10^6/rtotal/10^3
     int dim = size(), cols = txids.size();
-    double *Avals = (double *)(calloc(dim*cols,sizeof(double)));
+    taucs_logfile((char*)"TAUCS.err");
+    int nnz = 0;
+    std::vector< int > txcounts(cols);
+    for ( int n = 0; n < dim; n++ ) {
+	nnz += (*this)[n].tmap.size();
+	for ( std::vector< int >::iterator I = (*this)[n].tmap.begin();
+	      I != (*this)[n].tmap.end();
+	      I++ )
+	    txcounts[*I]++;
+    }
+    taucs_ccs_matrix *Avals = taucs_dccs_create(dim, cols, nnz);
+    int ncol = 0;
+    for ( int n = 0; n < cols; n++ ) {
+	Avals->colptr[n] = ncol;
+	ncol += txcounts[n];
+	txcounts[n] = 0;
+    }
+    Avals->colptr[cols+1] = nnz;
+    Avals->flags = TAUCS_DOUBLE;
+    double norm = 1e3/(double)reads_total;  // normalize to RPKM *= 10^6/rtotal/10^3
     double *bvals = (double *)(calloc(dim,sizeof(double)));
     for ( int n = 0; n < dim; n++ ) {
 	double exlen = (double)((*this)[n].end-(*this)[n].start);
 	bvals[n] = norm*counts_antisense[n];
 	for ( std::vector< int >::iterator I = (*this)[n].tmap.begin();
 	      I != (*this)[n].tmap.end();
-	      I++ )
-	    Avals[*I+n*cols] = exlen;
+	      I++ ) {
+	    int pos = txcounts[*I]+Avals->colptr[*I];
+	    Avals->rowind[pos] = n;
+// should remove 1/2 fragment size (opts) from first and last exon of each transcript 
+	    Avals->values.d[pos] = exlen;
+	    txcounts[*I]++;
+	}
     }
-    taucs_ccs_matrix *A = taucs_construct_sorted_ccs_matrix(Avals, cols, dim);
-    free(Avals);
-    double *xvals = t_lsqr(A, bvals);
+    double *xvals, *residual;
+    xvals = t_snnls(Avals, bvals, residual, 0.0, 0);
+    taucs_ccs_free(Avals);
     if ( xvals > 0 ) {
 	print( filename, xvals, mode );
 	free(xvals);
