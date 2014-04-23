@@ -1,11 +1,13 @@
 /***************** STL *************************/
 #include <map>
+#include <set>
 #include <vector>
 #include <string>
 #include <iostream>
 #include <fstream>
 #include <cmath>
 #include <cstdio>
+#include <limits>
 /*************** Cmd Line parser ***************/
 #include <tclap/CmdLine.h>
 /************** samtools: own namespace *******************/
@@ -13,19 +15,84 @@ typedef unsigned int uint32_t;
 namespace samtools {
 #include <samtools/sam.h>
 }
-/**************** non-negative least-squares ***************/
-#include <libtsnnls/tsnnls.h>
-#undef max
-#undef min
+
+#define __FLEN__ 350
+/*********************** Command-line options ******************/
+
+class options {
+
+public:
+    options( int, char**, int* );
+    bool stranded;
+    int fraglen, normal;
+    std::string bamfile, bedfile, outfile;
+    std::set< std::string > chroms;
+
+};
+
+options::options( int argc, char **argv, int *err ) {
+/********
+option : write exon-level (bed) output
+ ********/
+    try {
+	TCLAP::CmdLine cmd( "Count reads on transcripts from a genome-level bam file and a non-overlapping set of exons." );
+	TCLAP::ValueArg< std::string > of( "o", "outptut", "Output file (default stdout)", false, "", "string" );
+	cmd.add( of ); 
+	TCLAP::ValueArg< std::string > bf( "b", "bamfile", "Bam file", true, "", "string" );
+	cmd.add( bf ); 
+	TCLAP::ValueArg< std::string > ef( "e", "exonfile", "Exon bed file", true, "", "string" );
+	cmd.add( ef ); 
+	TCLAP::MultiArg< std::string > ch( "c", "chromosome", "Chromosome names", false, "string" );
+	cmd.add( ch );
+	TCLAP::SwitchArg st( "s", "stranded", "Compute sense and antisense reads separately (false)",  false );
+	cmd.add( st );
+	char buffer [35];
+	sprintf(buffer,"Average fragment length (%i)",__FLEN__);
+	TCLAP::ValueArg< int > fl( "l", "fraglength", buffer, false, __FLEN__, "int" );
+	cmd.add( fl ); 
+	TCLAP::ValueArg< int > nm( "n", "normalize", "Normalization constant (total number of reads)", 
+				   false, -1, "int" );
+	cmd.add( nm ); 
+
+	cmd.parse( argc, argv );
+
+	stranded = st.getValue();
+	fraglen = fl.getValue();
+	normal = nm.getValue();
+	bamfile = bf.getValue();
+	bedfile = ef.getValue();
+	outfile = of.getValue();
+	std::vector< std::string > _chs = ch.getValue();
+	chroms.insert(_chs.begin(), _chs.end());
+	*err = 0;
+    } catch( TCLAP::ArgException &e ) {
+	std::cerr << "Error: " << e.error() << " " << e.argId() << "\n";
+	*err = 10;
+    }
+}
+
+/**************************************************************************************
+ exon_list: a list of exons = (start, end, transcipt_set, strand)
+            built from parsing a bed-like file:
+1       13334   13714   AT1G01030.1     -
+1       23145   23415   AT1G01040.1     +
+1       23415   24451   AT1G01040.1|AT1G01040.2 +
+1       24541   24655   AT1G01040.1|AT1G01040.2 +
+ 
+    The "mapreads" function will be passed to samtools::bam_fetch and call the "increment"
+    member function and fills the counts_* vectors.
+    "nnls_solve" solves the problem exon_counts = transcript_mapping * transcript_expression
+    by least-squares. 
+ **************************************************************************************/
 
 typedef struct { int start; int end; std::vector< int > tmap; bool revstrand; } exon;
     
 class exon_list : public std::vector< exon > {
 
 public:
-// ------ constructor: initialize member vars
+    exon_list( const options* );
     void update_total( std::map< int, size_t >* );
-    bool append( std::string, std::string );
+    bool append( std::string, std::set< std::string > );
     void increment( double, size_type, bool );
     void reset() {
 	counts_sense.clear(); counts_antisense.clear(); counts_both.clear();
@@ -35,10 +102,12 @@ public:
 	current_pos = 0;
     }
     void next();
-    int nnls_solve( std::string, std::ios_base::openmode );
+    void nnls_solve( std::string, std::ios_base::openmode, int* );
     void print( std::string, double*, std::ios_base::openmode );
-    size_type current_pos;
+
     bool stranded;
+    size_type current_pos;
+    int fraglen;
     std::string chrom;
 
 private:
@@ -52,6 +121,21 @@ private:
 
 };
 
+exon_list::exon_list( const options *o ) {
+    stranded = o->stranded;
+    fraglen = o->fraglen > -1 ? o->fraglen : __FLEN__;
+    reads_total = o->normal > -1 ? o->normal : 0;
+    chrom = std::string("");
+    current_pos = 0;
+/*        // DEBUG
+	stranded = true;
+	bamfile = "/scratch/cluster/monthly/jrougemo/test_rnaQ/Cviwt1_filtered.bam";
+	bedfile = "/scratch/cluster/monthly/jrougemo/test_rnaQ/counter/TAIR10_unique_exons_clean.txt";
+	outfile = "/scratch/cluster/monthly/jrougemo/test_rnaQ/counter/test_out.txt";
+	chroms.insert("1");
+*/
+}
+
 inline void exon_list::update_total( std::map< int, size_t > *_n ) {
     for ( std::map< int, size_t >::const_iterator I = _n->begin(); 
 	  I != _n->end();
@@ -60,7 +144,6 @@ inline void exon_list::update_total( std::map< int, size_t > *_n ) {
 }
 
 inline void exon_list::increment( double x, size_type index, bool read_rev ) {
-/* DEBUG   x = 1; */
     if (stranded) {
 // ----------- read/exon strand mismatch:
 	if (read_rev ^ (*this)[index].revstrand)
@@ -70,12 +153,13 @@ inline void exon_list::increment( double x, size_type index, bool read_rev ) {
     } else counts_both[index] += x;
 }
 
-inline bool exon_list::append( std::string line, std::string chr_select ) {
+inline bool exon_list::append( std::string line, std::set< std::string > chr_select ) {
+    if (line.empty() && chr_select.count(chrom) > 0) return true;
     exon parsed;
     std::string dummy, name, _chr;
     std::stringstream ss(line);
-    getline(ss, _chr, '\t');
-    if (_chr.compare(chr_select) != 0) return false;
+    getline(ss, _chr, '\t');    
+    if (chr_select.count(_chr) == 0) return false;
     getline(ss, dummy, '\t');
     parsed.start = atoi(dummy.c_str());
     getline(ss, dummy, '\t');
@@ -135,51 +219,4 @@ inline void exon_list::print( std::string filename, double *x,
     if (outfile.is_open()) outfile.close();
 }
 
-/*********************** Command-line options ******************/
 
-class options {
-
-public:
-    options( int, char**, int* );
-    bool stranded;
-    std::string bamfile, bedfile, outfile, chrom;
-
-};
-
-options::options( int argc, char **argv, int *err ) {
-/********
-Add multiple chromosomes (or all), 
-write exon-level (bed) output
- ********/
-    try {
-	TCLAP::CmdLine cmd( "Count reads on transcripts from a genome-level bam file and a non-overlapping set of exons." );
-	TCLAP::ValueArg< std::string > of( "o", "outptut", "Output file (default stdout)", false, "", "string" );
-	cmd.add( of ); 
-	TCLAP::ValueArg< std::string > bf( "b", "bamfile", "Bam file", true, "", "string" );
-	cmd.add( bf ); 
-	TCLAP::ValueArg< std::string > ef( "e", "exonfile", "Exon bed file", false, "", "string" );
-	cmd.add( ef ); 
-	TCLAP::ValueArg< std::string > ch( "c", "chromosome", "Chromosome name", false, "", "string" );
-	cmd.add( ch );
-	TCLAP::SwitchArg st( "s", "stranded", "Compute sense and antisense reads separately",  false );
-	cmd.add( st );
-
-	cmd.parse( argc, argv );
-
-	stranded = st.getValue();
-	bamfile = bf.getValue();
-	bedfile = ef.getValue();
-	outfile = of.getValue();
-	chrom = ch.getValue();
-// DEBUG
-	stranded = true;
-	bamfile = "/scratch/cluster/monthly/jrougemo/test_rnaQ/Cviwt1_filtered.bam";
-	bedfile = "/scratch/cluster/monthly/jrougemo/test_rnaQ/counter/TAIR10_unique_exons.txt";
-	outfile = "/scratch/cluster/monthly/jrougemo/test_rnaQ/counter/test_out.txt";
-	chrom = "1";
-	*err = 0;
-    } catch( TCLAP::ArgException &e ) {
-	std::cerr << "Error: " << e.error() << " " << e.argId() << "\n";
-	*err = 10;
-    }
-}
