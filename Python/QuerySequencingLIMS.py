@@ -22,7 +22,7 @@ def query(*args,**kwargs):
 
     try: 
         info = dafl[facility]._lanedesc(*args)
-        print json.dumps(info)
+        print json.dumps(info,ensure_ascii=False)
     except ValueError as e:
         if len(args) > 4: 
             msg = "Access not granted to data [%s: %s-%i/%i/%s]" %args
