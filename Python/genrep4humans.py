@@ -121,7 +121,7 @@ def main():
             if not(opt.output):
                 raise Usage("Need an output file name.")
             import pysam
-            infile = pysam.Samfile( opt.convert, 'rb' )
+            infile = pysam.Samfile( opt.convert )
             header = infile.header
             chromosomes = dict((v['ac'],k) for k,v in assembly.chrmeta.iteritems())
             for h in header["SQ"]:
