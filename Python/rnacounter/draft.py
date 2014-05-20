@@ -400,14 +400,13 @@ if __name__ == '__main__':
     else: args['--chromosomes'] = args['--chromosomes'].split(',')
 
     # Type: one can actually give both as "-t genes,transcripts" but they
-    # will be mixed in the output stream
-    args['--type'] = args['--type'].split(',')
-    assert all(x.lower() in ["genes","transcripts"] for x in args['--type']), \
+    # will be mixed in the output stream - just use "grep ENST" afterwards, for instance.
+    args['--type'] = [x.lower() for x in args['--type'].split(',')]
+    assert all(x in ["genes","transcripts"] for x in args['--type']), \
         "TYPE must be one of 'genes' or 'transcripts'"
 
     options = dict((k.lstrip('-'),v) for k,v in args.iteritems())
     rnacounter_main(bamname,annotname, **options)
 
     args['--output'].close()
-
 
