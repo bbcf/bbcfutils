@@ -5,16 +5,18 @@ The GTF is assumed to be sorted at least w.r.t. chromosome name,
 and the chromosome identifiers in the GTF must be the same as the BAM references.
 
 Usage:
-   rnacounter  [-n <int>] [-l <int>] [-s] [-m] [-c <string>] [-o <string>] BAM GTF
+   rnacounter  [-t TYPE] [-n <int>] [-l <int>] [-s] [-m] [-c CHROMS] [-o OUTPUT] BAM GTF
                [--version] [-h]
 
 Options:
+   -t TYPE, --type TYPE                 Type of genomic feature to count on: 'genes' or 'transcripts'
+                                        [default: genes].
    -n <int>, --normalize <int>          Normalization constant [default: total number of reads].
    -l <int>, --fraglength <int>         Average fragment length [default: 350].
    -s, --stranded                       Compute sense and antisense reads separately [default: False].
    -m, --multiple                       Divide count by NH flag for multiply mapping reads [default: False].
-   -c <string>, --chromosomes <string>  Chromosome names (comma-separated list).
-   -o <string>, --output <string>       Output file to redirect stdout.
+   -c CHROMS, --chromosomes CHROMS      Chromosome names (comma-separated list).
+   -o OUTPUT, --output OUTPUT           Output file to redirect stdout.
    -v, --version                        Displays version information and exits.
    -h, --help                           Displays usage information and exits.
 """
@@ -169,7 +171,7 @@ def cobble(exons, multiple=False):
 ######################################################################
 
 
-def process_chrexons(chrexons, sam,chrom, multiple, stranded):
+def process_chrexons(chrexons, sam,chrom, **options):
     # Process chunks of overlapping exons / exons of the same gene
     lastend = chrexons[0].end
     lastgeneid = ''
@@ -180,14 +182,14 @@ def process_chrexons(chrexons, sam,chrom, multiple, stranded):
             ckexons.append(exon)
         # Process the stored chunk of exons
         else:
-            ckgenes,cktranscripts = process_chunk(ckexons, sam, chrom, lastend, multiple, stranded)
+            process_chunk(ckexons, sam, chrom, lastend, **options)
             ckexons = [exon]
         lastend = max(exon.end,lastend)
         lastgeneid = exon.gene_id
-    ckgenes,cktranscripts = process_chunk(ckexons, sam, chrom, lastend, multiple,stranded)
+    process_chunk(ckexons, sam, chrom, lastend, **options)
 
 
-def process_chunk(ckexons, sam, chrom, lastend, multiple, stranded):
+def process_chunk(ckexons, sam, chrom, lastend, **options):
     """Distribute counts across transcripts and genes of a chunk *ckexons*
     of non-overlapping exons."""
 
@@ -244,7 +246,7 @@ def process_chunk(ckexons, sam, chrom, lastend, multiple, stranded):
         Deals with indels, junctions etc.
         :param multiple: divide the count by the NH tag.
         :param standed: for strand-specific protocols, use the strand information."""
-        current_pos = 0   # exon_list.current_pos -- must be a pointer
+        current_pos = 0
         for alignment in ckreads:
             if current_pos > len(exons): return 0
             exon_end = exons[current_pos].end
@@ -266,7 +268,7 @@ def process_chunk(ckexons, sam, chrom, lastend, multiple, stranded):
                     # If read crosses exon right bound, maybe next exon(s)
                     while ali_pos+shift >= exon_end:
                         if op == 0: ali_len += exon_end - ali_pos
-                        exons[pos2].increment(float(ali_len)/float(read_len), alignment, multiple, stranded)
+                        exons[pos2].increment(float(ali_len)/float(read_len), alignment, multiple,stranded)
                         shift -= exon_end-ali_pos  # remaining part of the read
                         ali_pos = exon_end
                         ali_len = 0
@@ -282,9 +284,9 @@ def process_chunk(ckexons, sam, chrom, lastend, multiple, stranded):
                 elif op == 1:  # BAM_CINS
                     ali_len += shift;
             if ali_len < 1: return 0;
-            exons[pos2].increment(float(ali_len)/float(read_len), alignment, multiple, stranded)
+            exons[pos2].increment(float(ali_len)/float(read_len), alignment, multiple,stranded)
 
-    count_reads(pieces,ckreads,multiple,stranded)
+    count_reads(pieces,ckreads,options['multiple'],options['stranded'])
     #--- Calculate RPK
     for p in pieces:
         p.rpk = toRPK(p.count,p.length)
@@ -321,27 +323,28 @@ def process_chunk(ckexons, sam, chrom, lastend, multiple, stranded):
     genes = estimate_expression(Gene, pieces, gene_ids)
     transcripts = estimate_expression(Transcript, pieces, transcript_ids)
 
-    # Test
-    if _TEST_ and exons[0].gene_name == "Gapdh":
-        print "Transcripts:"
-        for t in transcripts: print t,t.count,t.rpk
-        print "Gene:"
-        for g in genes: print g,g.count,g.rpk
-        print "Pieces:"
-        for p in pieces:print p,p.rpk
+
+    #--- Print output
+    if options['type'].lower() == 'genes': feats = genes
+    elif options['type'].lower() == 'transcripts': feats = transcripts
+    for f in feats:
+        towrite = [str(x) for x in [f.name,f.count,f.rpk,f.chrom,f.start,f.end,f.gene_id,f.gene_name]]
+        options['output'].write('\t'.join(towrite)+'\n')
 
     return genes,transcripts
 
 
-def rnacounter_main(bamname, annotname, multiple=False, stranded=False, output=sys.stdout,
-                  normalize=False, chromosomes=[], fraglength=0):
-
+def rnacounter_main(bamname, annotname, **options):
     sam = pysam.Samfile(bamname, "rb")
     annot = open(annotname, "r")
 
-    if len(chromosomes) > 0: chromosomes = [c for c in sam.references if c in chromosomes]
-    else: chromosomes = sam.references
+    # Cross 'chromosomes' option with available BAM headers
+    if len(options['chromosomes']) > 0:
+        chromosomes = [c for c in sam.references if c in options['chromosomes']]
+    else:
+        chromosomes = sam.references
 
+    # Initialize
     chrom = ''
     while chrom not in chromosomes:
         exon = None
@@ -351,8 +354,8 @@ def rnacounter_main(bamname, annotname, multiple=False, stranded=False, output=s
         chrom = exon.chrom
     lastchrom = chrom
 
+    # Process together all exons of one chromosome at a time
     while row:
-        # Load all GTF exons of a chromosome in memory, sort and process
         chrexons = []
         print ">> Chromosome", chrom
         while chrom == lastchrom:
@@ -367,7 +370,7 @@ def rnacounter_main(bamname, annotname, multiple=False, stranded=False, output=s
             chrom = exon.chrom
         if len(chrexons) > 0:
             chrexons.sort(key=lambda x: (x.start,x.end))
-            process_chrexons(chrexons,sam,lastchrom, multiple,stranded)
+            process_chrexons(chrexons,sam,lastchrom, **options)
         lastchrom = chrom
 
     annot.close()
@@ -383,15 +386,17 @@ if __name__ == '__main__':
     args = docopt(__doc__, version='0.1')
     bamname = os.path.abspath(args['BAM'])
     annotname = os.path.abspath(args['GTF'])
-    if args['--output'] is None: output = sys.stdout
-    if args['--chromosomes'] is None: chromosomes = []
-    else: chromosomes = args['--chromosomes'].split(',')
+    if args['--output'] is None: args['--output'] = sys.stdout
+    else: args['--output'] = open(args['--output'], "wb")
+    if args['--chromosomes'] is None: args['--chromosomes'] = []
+    else: args['--chromosomes'] = args['--chromosomes'].split(',')
+    assert args['--type'].lower() in ["genes","transcripts"], \
+        "TYPE must be one of 'genes' or 'transcripts'"
+    options = dict((k.lstrip('-'),v) for k,v in args.iteritems())
 
-    rnacounter_main(bamname,annotname,
-                  multiple=args['--multiple'], stranded=args['--stranded'],
-                  output=args['--output'], normalize=args['--normalize'],
-                  chromosomes=chromosomes, fraglength=args['--fraglength'])
+    rnacounter_main(bamname,annotname, **options)
 
+    args['--output'].close()
 
 
 
