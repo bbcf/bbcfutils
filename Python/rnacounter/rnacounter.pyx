@@ -9,16 +9,15 @@ Usage:
                [--version] [-h]
 
 Options:
-   -t TYPE, --type TYPE                 Type of genomic feature to count on: 'genes' or 'transcripts'
-                                        [default: genes].
-   -n <int>, --normalize <int>          Normalization constant. Default: (total number of mapped reads)/10^6.
-   -l <int>, --fraglength <int>         Average fragment length [default: 350].
-   -s, --stranded                       Compute sense and antisense reads separately [default: False].
-   -m, --multiple                       Divide count by NH flag for multiply mapping reads [default: False].
-   -c CHROMS, --chromosomes CHROMS      Chromosome names (comma-separated list).
-   -o OUTPUT, --output OUTPUT           Output file to redirect stdout.
-   -v, --version                        Displays version information and exits.
-   -h, --help                           Displays usage information and exits.
+   -t TYPE, --type TYPE             Type of genomic feature to count on: 'genes' or 'transcripts' [default: genes].
+   -n <int>, --normalize <int>      Normalization constant. Default: (total number of mapped reads)/10^6.
+   -l <int>, --fraglength <int>     Average fragment length [default: 350].
+   -s, --stranded                   Compute sense and antisense reads separately [default: False].
+   -m, --multiple                   Divide count by NH flag for multiply mapping reads [default: False].
+   -c CHROMS, --chromosomes CHROMS  Selection of chromosome names (comma-separated list).
+   -o OUTPUT, --output OUTPUT       Output file to redirect stdout.
+   -v, --version                    Displays version information and exits.
+   -h, --help                       Displays usage information and exits.
 """
 
 import pysam
@@ -210,8 +209,7 @@ def process_chunk(ckexons, sam, chrom, lastend, **options):
     pieces = cobble(exons)
 
 
-    #--- Filter out too similar transcripts,
-    # e.g. made of the same exons up to 100bp.
+    #--- Filter out too similar transcripts, e.g. made of the same exons up to 100bp.
     t2e = {}                               # map {transcript: [pieces IDs]}
     for p in pieces:
         if p.length < 100: continue        # filter out cobbled pieces of less that read length
@@ -316,18 +314,17 @@ def process_chunk(ckexons, sam, chrom, lastend, **options):
                     chrom=exs[0].chrom, gene_id=exs[0].gene_id, gene_name=exs[0].gene_name))
         return feats
 
-    genes = estimate_expression(Gene, pieces, gene_ids)
-    transcripts = estimate_expression(Transcript, pieces, transcript_ids)
-
 
     #--- Print output
-    if options['type'].lower() == 'genes': feats = genes
-    elif options['type'].lower() == 'transcripts': feats = transcripts
-    for f in feats:
+    # Could do both genes and transcripts at the same time, but then output to different streams?
+    genes = []; transcripts = []
+    if 'genes' in options['type']:
+        genes = estimate_expression(Gene, pieces, gene_ids)
+    if 'transcripts' in options['type']:
+        transcripts = estimate_expression(Transcript, pieces, transcript_ids)
+    for f in itertools.chain(genes,transcripts):
         towrite = [str(x) for x in [f.name,f.count,f.rpk,f.chrom,f.start,f.end,f.gene_id,f.gene_name]]
         options['output'].write('\t'.join(towrite)+'\n')
-
-    return genes,transcripts
 
 
 def rnacounter_main(bamname, annotname, **options):
@@ -367,7 +364,6 @@ def rnacounter_main(bamname, annotname, **options):
     # Process together all exons of one chromosome at a time
     while row:
         chrexons = []
-        print ">> Chromosome", chrom
         while chrom == lastchrom:
             if (exon.end - exon.start > 1) and (exon.chrom in chromosomes):
                 chrexons.append(exon)
@@ -396,21 +392,22 @@ if __name__ == '__main__':
     args = docopt(__doc__, version='0.1')
     bamname = os.path.abspath(args['BAM'])
     annotname = os.path.abspath(args['GTF'])
+
     if args['--output'] is None: args['--output'] = sys.stdout
     else: args['--output'] = open(args['--output'], "wb")
+
     if args['--chromosomes'] is None: args['--chromosomes'] = []
     else: args['--chromosomes'] = args['--chromosomes'].split(',')
-    assert args['--type'].lower() in ["genes","transcripts"], \
-        "TYPE must be one of 'genes' or 'transcripts'"
-    options = dict((k.lstrip('-'),v) for k,v in args.iteritems())
 
+    # Type: one can actually give both as "-t genes,transcripts" but they
+    # will be mixed in the output stream
+    args['--type'] = args['--type'].split(',')
+    assert all(x.lower() in ["genes","transcripts"] for x in args['--type']), \
+        "TYPE must be one of 'genes' or 'transcripts'"
+
+    options = dict((k.lstrip('-'),v) for k,v in args.iteritems())
     rnacounter_main(bamname,annotname, **options)
 
     args['--output'].close()
 
-
-
-# Gapdh id: ENSMUSG00000057666
-# Gapdh transcripts: ENSMUST00000147954, ENSMUST00000147954, ENSMUST00000118875
-#                    ENSMUST00000073605, ENSMUST00000144205, ENSMUST00000144588
 
