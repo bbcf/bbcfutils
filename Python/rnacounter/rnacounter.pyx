@@ -11,7 +11,7 @@ Usage:
 Options:
    -t TYPE, --type TYPE                 Type of genomic feature to count on: 'genes' or 'transcripts'
                                         [default: genes].
-   -n <int>, --normalize <int>          Normalization constant [default: total number of reads].
+   -n <int>, --normalize <int>          Normalization constant. Default: (total number of mapped reads)/10^6.
    -l <int>, --fraglength <int>         Average fragment length [default: 350].
    -s, --stranded                       Compute sense and antisense reads separately [default: False].
    -m, --multiple                       Divide count by NH flag for multiply mapping reads [default: False].
@@ -22,14 +22,9 @@ Options:
 """
 
 import pysam
-import os, sys
-import itertools
+import os, sys, itertools, copy
 from numpy import asarray, zeros
-import copy
 from scipy.optimize import nnls
-
-
-_TEST_ = False
 
 
 Ecounter = itertools.count(1)  # to give unique ids to undefined exons, see parse_gtf()
@@ -106,7 +101,8 @@ class Exon(GenomicObject):
         E = GenomicObject.__and__(self,other)
         E.transcripts = set(self.transcripts) | set(other.transcripts)
         return E
-    def increment(self, x, alignment, multiple=False, stranded=False):
+    def increment(self, x, alignment, multiple=False, stranded=False, normalize=1.):
+        x = x/normalize
         if multiple:
             NH = [1.0/t[1] for t in alignment.tags if t[0]=='NH']+[1]
             x = x*NH[0]
@@ -241,7 +237,7 @@ def process_chunk(ckexons, sam, chrom, lastend, **options):
 
 
     #--- Count reads in each piece -- from rnacounter.cc
-    def count_reads(exons,ckreads,multiple=False,stranded=False):
+    def count_reads(exons,ckreads,multiple,stranded,normalize):
         """Adds (#aligned nucleotides/read length) to exon counts.
         Deals with indels, junctions etc.
         :param multiple: divide the count by the NH tag.
@@ -268,7 +264,7 @@ def process_chunk(ckexons, sam, chrom, lastend, **options):
                     # If read crosses exon right bound, maybe next exon(s)
                     while ali_pos+shift >= exon_end:
                         if op == 0: ali_len += exon_end - ali_pos
-                        exons[pos2].increment(float(ali_len)/float(read_len), alignment, multiple,stranded)
+                        exons[pos2].increment(float(ali_len)/float(read_len), alignment, multiple,stranded,normalize)
                         shift -= exon_end-ali_pos  # remaining part of the read
                         ali_pos = exon_end
                         ali_len = 0
@@ -284,9 +280,9 @@ def process_chunk(ckexons, sam, chrom, lastend, **options):
                 elif op == 1:  # BAM_CINS
                     ali_len += shift;
             if ali_len < 1: return 0;
-            exons[pos2].increment(float(ali_len)/float(read_len), alignment, multiple,stranded)
+            exons[pos2].increment(float(ali_len)/float(read_len), alignment, multiple,stranded,normalize)
 
-    count_reads(pieces,ckreads,options['multiple'],options['stranded'])
+    count_reads(pieces,ckreads,options['multiple'],options['stranded'],options['normalize'])
     #--- Calculate RPK
     for p in pieces:
         p.rpk = toRPK(p.count,p.length)
@@ -343,6 +339,20 @@ def rnacounter_main(bamname, annotname, **options):
         chromosomes = [c for c in sam.references if c in options['chromosomes']]
     else:
         chromosomes = sam.references
+
+    # Get total number of reads
+    if options['normalize'] is None:
+        class Counter(object):
+            def __init__(self):
+                self.n = 0
+            def __call__(self, alignment):
+                self.n += 1
+        Ncounter = Counter()
+        for ref,length in itertools.izip(sam.references,sam.lengths):
+            sam.fetch(ref,0,length, callback=Ncounter)
+        options['normalize'] = float(Ncounter.n) / 1e6
+    else:
+        options['normalize'] = float(options['normalize'])
 
     # Initialize
     chrom = ''

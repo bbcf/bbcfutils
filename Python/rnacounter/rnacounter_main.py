@@ -13,7 +13,7 @@ Usage:
 Options:
    -t TYPE, --type TYPE                 Type of genomic feature to count on: 'genes' or 'transcripts'
                                         [default: genes].
-   -n <int>, --normalize <int>          Normalization constant [default: total number of reads].
+   -n <int>, --normalize <int>          Normalization constant. Default: (total number of mapped reads)/10^6.
    -l <int>, --fraglength <int>         Average fragment length [default: 350].
    -s, --stranded                       Compute sense and antisense reads separately [default: False].
    -m, --multiple                       Divide count by NH flag for multiply mapping reads [default: False].
