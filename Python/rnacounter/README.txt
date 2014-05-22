@@ -40,7 +40,7 @@ After compilation:
 
 To compile:
 ============
-1. If there is an update in draft.py to include:
+1. If there is an update in draft.pyx to include:
     cp draft.pyx rnacounter.pyx ;
 
 2. Compilation:

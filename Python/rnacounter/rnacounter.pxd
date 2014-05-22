@@ -3,10 +3,10 @@ import cython
 
 
 # Numpy stuff - http://docs.cython.org/src/tutorial/numpy.html
-#import numpy as np
-#cimport numpy as np
-#DTYPE = np.double              # fix a datatype for the arrays
-#ctypedef np.double_t DTYPE_t   # "assign a corresponding compile-time type to DTYPE_t"
+import numpy as np
+cimport numpy as np
+DTYPE = np.double              # fix a datatype for the arrays
+ctypedef np.double_t DTYPE_t   # "assign a corresponding compile-time type to DTYPE_t"
 
 
 #cpdef inline object parse_gtf(str row)
@@ -39,8 +39,8 @@ cpdef inline count_reads(exons,ckreads,bint multiple,bint stranded,double normal
 cpdef inline estimate_epression(feat_class, pieces, ids):
     cdef int n,m,flen
     cdef double rnorm
-    #cdef np.nd_array[DTYPE_t, ndim=2] A
-    #cdef np.nd_array[DTYPE_t, ndim=1] E, T
+    cdef np.ndarray[DTYPE_t, ndim=2] A
+    cdef np.ndarray[DTYPE_t, ndim=1] E, T
 
 
 #rnacounter_main()
