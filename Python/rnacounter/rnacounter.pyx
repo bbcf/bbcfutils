@@ -325,7 +325,7 @@ def process_chunk(ckexons, sam, chrom, lastend, **options):
     if 'transcripts' in options['type']:
         transcripts = estimate_expression(Transcript, pieces, transcript_ids)
     for f in itertools.chain(genes,transcripts):
-        towrite = [str(x) for x in [f.name,f.count,f.rpk,f.chrom,f.start,f.end,f.gene_id,f.gene_name]]
+        towrite = [str(x) for x in [f.name,f.count,f.rpk,f.chrom,f.start,f.end,f.strand,f.gene_id,f.gene_name]]
         options['output'].write('\t'.join(towrite)+'\n')
 
 
