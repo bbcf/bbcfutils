@@ -1,3 +1,4 @@
+# cython: profile=True
 """
 Count reads on genes and transcripts from a genome-level BAM file and a
 GTF file describing the exons, such as those provided by Emsembl or GenRep.
@@ -20,6 +21,7 @@ Options:
    -h, --help                       Displays usage information and exits.
 """
 
+import cython
 import pysam
 import os, sys, itertools, copy
 from numpy import asarray, zeros
@@ -52,6 +54,8 @@ def parse_gtf(row):
 
 
 class GenomicObject(object):
+    @cython.locals(start=cython.int, end=cython.int, strand=cython.int, length=cython.int, multiplicity=cython.int)
+    @cython.locals(score=cython.double, count=cython.double, count_rev=cython.double)
     def __init__(self, id='',gene_id='',gene_name='',chrom='',start=0,end=0,
                  name='',score=0.0,count=0,count_rev=0,rpk=0.0,strand=0,length=0,seq='',multiplicity=1):
         self.id = id
@@ -100,6 +104,7 @@ class Exon(GenomicObject):
         E = GenomicObject.__and__(self,other)
         E.transcripts = set(self.transcripts) | set(other.transcripts)
         return E
+    @cython.locals(x=cython.double, multiple=cython.int, stranded=cython.int, normalize=cython.double)
     def increment(self, x, alignment, multiple=False, stranded=False, normalize=1.):
         x = x/normalize
         if multiple:
@@ -113,7 +118,6 @@ class Exon(GenomicObject):
                 self.count += x
         else:
             self.count += x
-
 
 class Transcript(GenomicObject):
     def __init__(self, exons=[], **args):
@@ -137,7 +141,6 @@ def intersect_exons_list(feats, multiple=False):
         return copy.deepcopy(feats[0])
     else:
         return reduce(lambda x,y: x&y, feats)
-
 
 def cobble(exons, multiple=False):
     """Split exons into non-overlapping parts.
@@ -291,15 +294,15 @@ def process_chunk(ckexons, sam, chrom, lastend, **options):
         # Lines are exons, columns are transcripts,
         # so that A[i,j]!=0 means "transcript Tj contains exon Ei".
         if feat_class == Gene:
-            is_in = lambda p,g: g in p.gene_id.split('|')
+            is_in = lambda x,g: g in x.gene_id.split('|')
         elif feat_class == Transcript:
-            is_in = lambda p,t: t in p.transcripts
+            is_in = lambda x,t: t in x.transcripts
         n = len(pieces)
         m = len(ids)
         A = zeros((n,m))
         for i,p in enumerate(pieces):
             for j,f in enumerate(ids):
-                A[i,j] = 1 if is_in(p,f) else 0
+                A[i,j] = 1. if is_in(p,f) else 0.
         #--- Build the exons scores vector
         E = asarray([p.rpk for p in pieces])
         #--- Solve for RPK
@@ -307,16 +310,15 @@ def process_chunk(ckexons, sam, chrom, lastend, **options):
         #--- Store result in *feat_class* objects
         feats = []
         for i,f in enumerate(ids):
-            exs = sorted([p for p in pieces if is_in(p,f)], key=lambda x:(x.start,x.end))
+            exs = sorted([e for e in exons if is_in(e,f)], key=lambda x:(x.start,x.end))
             flen = sum(p.length for p in pieces if is_in(p,f))
-            feats.append(Transcript(name=f, start=exs[0].start, end=exs[-1].end,
+            feats.append(feat_class(name=f, start=exs[0].start, end=exs[-1].end,
                     length=flen, rpk=T[i], count=fromRPK(T[i],flen),
                     chrom=exs[0].chrom, gene_id=exs[0].gene_id, gene_name=exs[0].gene_name))
         return feats
 
 
     #--- Print output
-    # Could do both genes and transcripts at the same time, but then output to different streams?
     genes = []; transcripts = []
     if 'genes' in options['type']:
         genes = estimate_expression(Gene, pieces, gene_ids)
@@ -400,14 +402,13 @@ if __name__ == '__main__':
     else: args['--chromosomes'] = args['--chromosomes'].split(',')
 
     # Type: one can actually give both as "-t genes,transcripts" but they
-    # will be mixed in the output stream
-    args['--type'] = args['--type'].split(',')
-    assert all(x.lower() in ["genes","transcripts"] for x in args['--type']), \
+    # will be mixed in the output stream - just use "grep ENST" afterwards, for instance.
+    args['--type'] = [x.lower() for x in args['--type'].split(',')]
+    assert all(x in ["genes","transcripts"] for x in args['--type']), \
         "TYPE must be one of 'genes' or 'transcripts'"
 
     options = dict((k.lstrip('-'),v) for k,v in args.iteritems())
     rnacounter_main(bamname,annotname, **options)
 
     args['--output'].close()
-
 

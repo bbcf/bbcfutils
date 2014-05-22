@@ -5,10 +5,16 @@ from distutils.core import setup
 from distutils.extension import Extension
 from Cython.Distutils import build_ext
 
+import numpy as np
+
+extensions = [
+    Extension("rnacounter", ["rnacounter.pyx"],
+              include_dirs=[np.get_include()],)
+]
+
 setup(
     name = "rnacounter",
-    ext_modules = cythonize("rnacounter.pyx",
-                            #sources=["rnacounter.cc"],
-                            #language="c++"
-                           ),
+    cmdclass = {'build_ext':build_ext},
+    ext_modules = extensions,
 )
+
