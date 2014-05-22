@@ -5,6 +5,10 @@ GTF file describing the exons, such as those provided by Emsembl or GenRep.
 The GTF is assumed to be sorted at least w.r.t. chromosome name,
 and the chromosome identifiers in the GTF must be the same as the BAM references.
 
+If your GTF does not represent exons but custom genomic intervals to simply count
+reads in, format it so that for each interval, the type (column 2) is 'exon',
+and the attributes `gene_id`, `transcript_id`, `exon_id` all have the same value.
+
 Usage:
    rnacounter  [-t TYPE] [-n <int>] [-l <int>] [-s] [-m] [-c CHROMS] [-o OUTPUT] BAM GTF
                [--version] [-h]
@@ -26,6 +30,9 @@ import pysam
 import os, sys, itertools, copy
 from numpy import asarray, zeros
 from scipy.optimize import nnls
+
+def usage_string():
+    return __doc__
 
 
 Ecounter = itertools.count(1)  # to give unique ids to undefined exons, see parse_gtf()
@@ -325,13 +332,17 @@ def process_chunk(ckexons, sam, chrom, lastend, **options):
     if 'transcripts' in options['type']:
         transcripts = estimate_expression(Transcript, pieces, transcript_ids)
     for f in itertools.chain(genes,transcripts):
-        towrite = [str(x) for x in [f.name,f.count,f.rpk,f.chrom,f.start,f.end,f.strand,f.gene_id,f.gene_name]]
+        towrite = [str(x) for x in [f.name,f.count,f.rpk,f.chrom,f.start,f.end,
+                                    f.strand,f.gene_name,f.__class__.__name__.lower()]]
         options['output'].write('\t'.join(towrite)+'\n')
 
 
 def rnacounter_main(bamname, annotname, **options):
     sam = pysam.Samfile(bamname, "rb")
     annot = open(annotname, "r")
+
+    if options['output'] is None: options['output'] = sys.stdout
+    else: options['output'] = open(options['output'], "wb")
 
     # Cross 'chromosomes' option with available BAM headers
     if len(options['chromosomes']) > 0:
@@ -381,8 +392,9 @@ def rnacounter_main(bamname, annotname, **options):
             process_chrexons(chrexons,sam,lastchrom, **options)
         lastchrom = chrom
 
+    options['output'].close()
     annot.close()
-    sam.close
+    sam.close()
 
 
 ######################################################################
@@ -390,13 +402,9 @@ def rnacounter_main(bamname, annotname, **options):
 
 from docopt import docopt
 
-if __name__ == '__main__':
-    args = docopt(__doc__, version='0.1')
+def parse_args(args):
     bamname = os.path.abspath(args['BAM'])
     annotname = os.path.abspath(args['GTF'])
-
-    if args['--output'] is None: args['--output'] = sys.stdout
-    else: args['--output'] = open(args['--output'], "wb")
 
     if args['--chromosomes'] is None: args['--chromosomes'] = []
     else: args['--chromosomes'] = args['--chromosomes'].split(',')
@@ -408,7 +416,11 @@ if __name__ == '__main__':
         "TYPE must be one of 'genes' or 'transcripts'"
 
     options = dict((k.lstrip('-'),v) for k,v in args.iteritems())
-    rnacounter_main(bamname,annotname, **options)
+    return bamname, annotname, options
 
-    args['--output'].close()
+
+if __name__ == '__main__':
+    args = docopt(__doc__, version='0.1')
+    bamname, annotname, options = parse_args(args)
+    rnacounter_main(bamname,annotname, **options)
 
