@@ -5,8 +5,12 @@ Initial files:
 * draft.py:
 Python only version, for testing purposes. Run as "python draft.py".
 
+* draft.pyx:
+Cython version, for testing purposes (with import cython and some @locals for instance).
+Run as "python draft.pyx".
+
 * rnacounter.pyx:
-A copy of draft.py, to be compiled by Cython.
+A copy of draft.pyx, to be compiled by Cython.
 
 * rnacounter.pdx:
 Redefinitions of rnacounter.pyx functions headers for faster execution
@@ -24,6 +28,8 @@ Folder with testing files, including
 - mm9_3genes_renamed.gtf: extract of the Ensembl GTF with Gapdh, the gene before and the gene after.
 - mm9_Gapdh_renamed.gtf: extract of the Ensembl GTF with Gapdh only.
 
+* benchmark.txt: some execution timings reported, in different conditions.
+
 
 After compilation:
 ===================
@@ -35,7 +41,7 @@ After compilation:
 To compile:
 ============
 1. If there is an update in draft.py to include:
-    cp draft.py rnacounter.pyx ;
+    cp draft.pyx rnacounter.pyx ;
 
 2. Compilation:
     python setup.py build_ext --inplace ;
