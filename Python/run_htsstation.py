@@ -113,6 +113,7 @@ class RnaseqWorkflow(Workflow):
                           "pileup_level": self.opts.pileup_level.split(','),
                           "via": self.opts.via,
                           "rpath": self.globals.get('script_path',''),
+                          "juliapath": self.globals.get('script_path',''),
                           "junctions": self.job.options['find_junctions'] or self.opts.junctions,
                           "stranded": self.job.options['stranded'] and not self.opts.stranded,
                           "debugfile": self.debugfile,
