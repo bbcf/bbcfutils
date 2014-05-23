@@ -4,13 +4,17 @@ GTF file describing the exons, such as those provided by Emsembl or GenRep.
 The GTF is assumed to be sorted at least w.r.t. chromosome name,
 and the chromosome identifiers in the GTF must be the same as the BAM references.
 
+If your GTF does not represent exons but custom genomic intervals to simply count
+reads in, format it so that for each interval, the type (column 2) is 'exon',
+and the attributes `gene_id`, `transcript_id`, `exon_id` all have the same value.
+
 Usage:
    rnacounter  [-t TYPE] [-n <int>] [-l <int>] [-s] [-m] [-c CHROMS] [-o OUTPUT] BAM GTF
                [--version] [-h]
 
 Options:
    -t TYPE, --type TYPE             Type of genomic feature to count on: 'genes' or 'transcripts' [default: genes].
-   -n <int>, --normalize <int>      Normalization constant. Default: (total number of mapped reads)/10^6.
+   -n <int>, --normalize <int>      Normalization constant for RPKM. Default: (total number of mapped reads)/10^6.
    -l <int>, --fraglength <int>     Average fragment length [default: 350].
    -s, --stranded                   Compute sense and antisense reads separately [default: False].
    -m, --multiple                   Divide count by NH flag for multiply mapping reads [default: False].
@@ -50,6 +54,12 @@ def parse_gtf(row):
                 name=exon_id, score=_score(row[5]), strand=_strand(row[6]),
                 transcripts=[attrs['transcript_id']])
 
+
+class Counter(object):
+    def __init__(self):
+        self.n = 0
+    def __call__(self, alignment):
+        self.n += 1
 
 class GenomicObject(object):
     def __init__(self, id='',gene_id='',gene_name='',chrom='',start=0,end=0,
@@ -100,8 +110,7 @@ class Exon(GenomicObject):
         E = GenomicObject.__and__(self,other)
         E.transcripts = set(self.transcripts) | set(other.transcripts)
         return E
-    def increment(self, x, alignment, multiple=False, stranded=False, normalize=1.):
-        x = x/normalize
+    def increment(self, x, alignment, multiple=False, stranded=False):
         if multiple:
             NH = [1.0/t[1] for t in alignment.tags if t[0]=='NH']+[1]
             x = x*NH[0]
@@ -136,7 +145,6 @@ def intersect_exons_list(feats, multiple=False):
         return copy.deepcopy(feats[0])
     else:
         return reduce(lambda x,y: x&y, feats)
-
 
 def cobble(exons, multiple=False):
     """Split exons into non-overlapping parts.
@@ -187,10 +195,10 @@ def process_chunk(ckexons, sam, chrom, lastend, **options):
     """Distribute counts across transcripts and genes of a chunk *ckexons*
     of non-overlapping exons."""
 
-    def toRPK(count,length):
-        return 1000.0 * count / length
-    def fromRPK(rpk,length):
-        return length * rpk / 1000.
+    def toRPK(count,length,norm_cst):
+        return 1000.0 * count / (length * norm_cst)
+    def fromRPK(rpk,length,norm_cst):
+        return length * norm_cst * rpk / 1000.
 
 
     #--- Regroup occurrences of the same Exon from a different transcript
@@ -234,7 +242,7 @@ def process_chunk(ckexons, sam, chrom, lastend, **options):
 
 
     #--- Count reads in each piece -- from rnacounter.cc
-    def count_reads(exons,ckreads,multiple,stranded,normalize):
+    def count_reads(exons,ckreads,multiple,stranded):
         """Adds (#aligned nucleotides/read length) to exon counts.
         Deals with indels, junctions etc.
         :param multiple: divide the count by the NH tag.
@@ -261,7 +269,7 @@ def process_chunk(ckexons, sam, chrom, lastend, **options):
                     # If read crosses exon right bound, maybe next exon(s)
                     while ali_pos+shift >= exon_end:
                         if op == 0: ali_len += exon_end - ali_pos
-                        exons[pos2].increment(float(ali_len)/float(read_len), alignment, multiple,stranded,normalize)
+                        exons[pos2].increment(float(ali_len)/float(read_len), alignment, multiple,stranded)
                         shift -= exon_end-ali_pos  # remaining part of the read
                         ali_pos = exon_end
                         ali_len = 0
@@ -277,12 +285,12 @@ def process_chunk(ckexons, sam, chrom, lastend, **options):
                 elif op == 1:  # BAM_CINS
                     ali_len += shift;
             if ali_len < 1: return 0;
-            exons[pos2].increment(float(ali_len)/float(read_len), alignment, multiple,stranded,normalize)
+            exons[pos2].increment(float(ali_len)/float(read_len), alignment, multiple,stranded)
 
-    count_reads(pieces,ckreads,options['multiple'],options['stranded'],options['normalize'])
+    count_reads(pieces,ckreads,options['multiple'],options['stranded'])
     #--- Calculate RPK
     for p in pieces:
-        p.rpk = toRPK(p.count,p.length)
+        p.rpk = toRPK(p.count,p.length,options['normalize'])
 
 
     def estimate_expression(feat_class, pieces, ids):
@@ -290,15 +298,15 @@ def process_chunk(ckexons, sam, chrom, lastend, **options):
         # Lines are exons, columns are transcripts,
         # so that A[i,j]!=0 means "transcript Tj contains exon Ei".
         if feat_class == Gene:
-            is_in = lambda p,g: g in p.gene_id.split('|')
+            is_in = lambda x,g: g in x.gene_id.split('|')
         elif feat_class == Transcript:
-            is_in = lambda p,t: t in p.transcripts
+            is_in = lambda x,t: t in x.transcripts
         n = len(pieces)
         m = len(ids)
         A = zeros((n,m))
         for i,p in enumerate(pieces):
             for j,f in enumerate(ids):
-                A[i,j] = 1 if is_in(p,f) else 0
+                A[i,j] = 1. if is_in(p,f) else 0.
         #--- Build the exons scores vector
         E = asarray([p.rpk for p in pieces])
         #--- Solve for RPK
@@ -306,29 +314,32 @@ def process_chunk(ckexons, sam, chrom, lastend, **options):
         #--- Store result in *feat_class* objects
         feats = []
         for i,f in enumerate(ids):
-            exs = sorted([p for p in pieces if is_in(p,f)], key=lambda x:(x.start,x.end))
+            exs = sorted([e for e in exons if is_in(e,f)], key=lambda x:(x.start,x.end))
             flen = sum(p.length for p in pieces if is_in(p,f))
-            feats.append(Transcript(name=f, start=exs[0].start, end=exs[-1].end,
-                    length=flen, rpk=T[i], count=fromRPK(T[i],flen),
+            feats.append(feat_class(name=f, start=exs[0].start, end=exs[-1].end,
+                    length=flen, rpk=T[i], count=fromRPK(T[i],flen,options['normalize']),
                     chrom=exs[0].chrom, gene_id=exs[0].gene_id, gene_name=exs[0].gene_name))
         return feats
 
 
     #--- Print output
-    # Could do both genes and transcripts at the same time, but then output to different streams?
     genes = []; transcripts = []
     if 'genes' in options['type']:
         genes = estimate_expression(Gene, pieces, gene_ids)
     if 'transcripts' in options['type']:
         transcripts = estimate_expression(Transcript, pieces, transcript_ids)
     for f in itertools.chain(genes,transcripts):
-        towrite = [str(x) for x in [f.name,f.count,f.rpk,f.chrom,f.start,f.end,f.gene_id,f.gene_name]]
+        towrite = [str(x) for x in [f.name,f.count,f.rpk,f.chrom,f.start,f.end,
+                                    f.strand,f.gene_name,f.__class__.__name__.lower()]]
         options['output'].write('\t'.join(towrite)+'\n')
 
 
 def rnacounter_main(bamname, annotname, **options):
     sam = pysam.Samfile(bamname, "rb")
     annot = open(annotname, "r")
+
+    if options['output'] is None: options['output'] = sys.stdout
+    else: options['output'] = open(options['output'], "wb")
 
     # Cross 'chromosomes' option with available BAM headers
     if len(options['chromosomes']) > 0:
@@ -338,11 +349,6 @@ def rnacounter_main(bamname, annotname, **options):
 
     # Get total number of reads
     if options['normalize'] is None:
-        class Counter(object):
-            def __init__(self):
-                self.n = 0
-            def __call__(self, alignment):
-                self.n += 1
         Ncounter = Counter()
         for ref,length in itertools.izip(sam.references,sam.lengths):
             sam.fetch(ref,0,length, callback=Ncounter)
@@ -378,8 +384,9 @@ def rnacounter_main(bamname, annotname, **options):
             process_chrexons(chrexons,sam,lastchrom, **options)
         lastchrom = chrom
 
+    options['output'].close()
     annot.close()
-    sam.close
+    sam.close()
 
 
 ######################################################################
@@ -387,25 +394,34 @@ def rnacounter_main(bamname, annotname, **options):
 
 from docopt import docopt
 
-if __name__ == '__main__':
-    args = docopt(__doc__, version='0.1')
+def usage_string():
+    return __doc__
+
+def parse_args(args):
     bamname = os.path.abspath(args['BAM'])
     annotname = os.path.abspath(args['GTF'])
-
-    if args['--output'] is None: args['--output'] = sys.stdout
-    else: args['--output'] = open(args['--output'], "wb")
 
     if args['--chromosomes'] is None: args['--chromosomes'] = []
     else: args['--chromosomes'] = args['--chromosomes'].split(',')
 
     # Type: one can actually give both as "-t genes,transcripts" but they
-    # will be mixed in the output stream - just use "grep ENST" afterwards, for instance.
+    # will be mixed in the output stream. Split the output using the last field ("Type").
     args['--type'] = [x.lower() for x in args['--type'].split(',')]
     assert all(x in ["genes","transcripts"] for x in args['--type']), \
         "TYPE must be one of 'genes' or 'transcripts'"
 
     options = dict((k.lstrip('-'),v) for k,v in args.iteritems())
+    return bamname, annotname, options
+
+
+if __name__ == '__main__':
+    args = docopt(__doc__, version='0.1')
+    bamname, annotname, options = parse_args(args)
     rnacounter_main(bamname,annotname, **options)
 
-    args['--output'].close()
 
+#----------------------------------------------#
+# This code was written by Julien Delafontaine #
+# EPFL,BBCF: http://bbcf.epfl.ch/              #
+# webmaster.bbcf@epfl.ch                       #
+#----------------------------------------------#

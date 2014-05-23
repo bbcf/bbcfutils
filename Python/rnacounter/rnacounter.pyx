@@ -1,4 +1,3 @@
-# cython: profile=True
 """
 Count reads on genes and transcripts from a genome-level BAM file and a
 GTF file describing the exons, such as those provided by Emsembl or GenRep.
@@ -15,7 +14,7 @@ Usage:
 
 Options:
    -t TYPE, --type TYPE             Type of genomic feature to count on: 'genes' or 'transcripts' [default: genes].
-   -n <int>, --normalize <int>      Normalization constant. Default: (total number of mapped reads)/10^6.
+   -n <int>, --normalize <int>      Normalization constant for RPKM. Default: (total number of mapped reads)/10^6.
    -l <int>, --fraglength <int>     Average fragment length [default: 350].
    -s, --stranded                   Compute sense and antisense reads separately [default: False].
    -m, --multiple                   Divide count by NH flag for multiply mapping reads [default: False].
@@ -25,7 +24,6 @@ Options:
    -h, --help                       Displays usage information and exits.
 """
 
-import cython
 import pysam
 import os, sys, itertools, copy
 from numpy import asarray, zeros
@@ -57,9 +55,13 @@ def parse_gtf(row):
                 transcripts=[attrs['transcript_id']])
 
 
+class Counter(object):
+    def __init__(self):
+        self.n = 0
+    def __call__(self, alignment):
+        self.n += 1
+
 class GenomicObject(object):
-    @cython.locals(start=cython.int, end=cython.int, strand=cython.int, length=cython.int, multiplicity=cython.int)
-    @cython.locals(score=cython.double, count=cython.double, count_rev=cython.double)
     def __init__(self, id='',gene_id='',gene_name='',chrom='',start=0,end=0,
                  name='',score=0.0,count=0,count_rev=0,rpk=0.0,strand=0,length=0,seq='',multiplicity=1):
         self.id = id
@@ -108,7 +110,6 @@ class Exon(GenomicObject):
         E = GenomicObject.__and__(self,other)
         E.transcripts = set(self.transcripts) | set(other.transcripts)
         return E
-    @cython.locals(x=cython.double, multiple=cython.int, stranded=cython.int, normalize=cython.double)
     def increment(self, x, alignment, multiple=False, stranded=False):
         if multiple:
             NH = [1.0/t[1] for t in alignment.tags if t[0]=='NH']+[1]
@@ -348,11 +349,6 @@ def rnacounter_main(bamname, annotname, **options):
 
     # Get total number of reads
     if options['normalize'] is None:
-        class Counter(object):
-            def __init__(self):
-                self.n = 0
-            def __call__(self, alignment):
-                self.n += 1
         Ncounter = Counter()
         for ref,length in itertools.izip(sam.references,sam.lengths):
             sam.fetch(ref,0,length, callback=Ncounter)
@@ -409,7 +405,7 @@ def parse_args(args):
     else: args['--chromosomes'] = args['--chromosomes'].split(',')
 
     # Type: one can actually give both as "-t genes,transcripts" but they
-    # will be mixed in the output stream - just use "grep ENST" afterwards, for instance.
+    # will be mixed in the output stream. Split the output using the last field ("Type").
     args['--type'] = [x.lower() for x in args['--type'].split(',')]
     assert all(x in ["genes","transcripts"] for x in args['--type']), \
         "TYPE must be one of 'genes' or 'transcripts'"
@@ -423,3 +419,9 @@ if __name__ == '__main__':
     bamname, annotname, options = parse_args(args)
     rnacounter_main(bamname,annotname, **options)
 
+
+#----------------------------------------------#
+# This code was written by Julien Delafontaine #
+# EPFL,BBCF: http://bbcf.epfl.ch/              #
+# webmaster.bbcf@epfl.ch                       #
+#----------------------------------------------#
