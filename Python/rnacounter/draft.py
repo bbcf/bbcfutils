@@ -400,6 +400,8 @@ def usage_string():
 def parse_args(args):
     bamname = os.path.abspath(args['BAM'])
     annotname = os.path.abspath(args['GTF'])
+    assert(os.path.exists(bamname))
+    assert(os.path.exists(annotname))
 
     if args['--chromosomes'] is None: args['--chromosomes'] = []
     else: args['--chromosomes'] = args['--chromosomes'].split(',')
