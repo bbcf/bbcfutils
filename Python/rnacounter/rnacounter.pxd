@@ -28,10 +28,10 @@ cpdef inline int _strand(x):
 # process_chrexons()
 # -
 # process_chunk()
-cpdef inline double toRPK(double count, double length):
-    return 1000.0 * count / length
-cpdef inline double fromRPK(double rpk, double length):
-    return length * rpk / 1000.
+cpdef inline double toRPK(double count, double length, double norm_cst):
+    return 1000.0 * count / (length * norm_cst)
+cpdef inline double fromRPK(double rpk, double length, double norm_cst):
+    return length * norm_cst * rpk / 1000.
 
 cpdef inline count_reads(exons,ckreads,bint multiple,bint stranded,double normalize):
     cdef int current_pos,pos2,ali_pos,exon_end,exon_start,read_len,ali_len,op,shift

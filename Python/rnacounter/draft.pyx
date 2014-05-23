@@ -109,8 +109,7 @@ class Exon(GenomicObject):
         E.transcripts = set(self.transcripts) | set(other.transcripts)
         return E
     @cython.locals(x=cython.double, multiple=cython.int, stranded=cython.int, normalize=cython.double)
-    def increment(self, x, alignment, multiple=False, stranded=False, normalize=1.):
-        x = x/normalize
+    def increment(self, x, alignment, multiple=False, stranded=False):
         if multiple:
             NH = [1.0/t[1] for t in alignment.tags if t[0]=='NH']+[1]
             x = x*NH[0]
@@ -195,10 +194,10 @@ def process_chunk(ckexons, sam, chrom, lastend, **options):
     """Distribute counts across transcripts and genes of a chunk *ckexons*
     of non-overlapping exons."""
 
-    def toRPK(count,length):
-        return 1000.0 * count / length
-    def fromRPK(rpk,length):
-        return length * rpk / 1000.
+    def toRPK(count,length,norm_cst):
+        return 1000.0 * count / (length * norm_cst)
+    def fromRPK(rpk,length,norm_cst):
+        return length * norm_cst * rpk / 1000.
 
 
     #--- Regroup occurrences of the same Exon from a different transcript
@@ -242,7 +241,7 @@ def process_chunk(ckexons, sam, chrom, lastend, **options):
 
 
     #--- Count reads in each piece -- from rnacounter.cc
-    def count_reads(exons,ckreads,multiple,stranded,normalize):
+    def count_reads(exons,ckreads,multiple,stranded):
         """Adds (#aligned nucleotides/read length) to exon counts.
         Deals with indels, junctions etc.
         :param multiple: divide the count by the NH tag.
@@ -269,7 +268,7 @@ def process_chunk(ckexons, sam, chrom, lastend, **options):
                     # If read crosses exon right bound, maybe next exon(s)
                     while ali_pos+shift >= exon_end:
                         if op == 0: ali_len += exon_end - ali_pos
-                        exons[pos2].increment(float(ali_len)/float(read_len), alignment, multiple,stranded,normalize)
+                        exons[pos2].increment(float(ali_len)/float(read_len), alignment, multiple,stranded)
                         shift -= exon_end-ali_pos  # remaining part of the read
                         ali_pos = exon_end
                         ali_len = 0
@@ -285,12 +284,12 @@ def process_chunk(ckexons, sam, chrom, lastend, **options):
                 elif op == 1:  # BAM_CINS
                     ali_len += shift;
             if ali_len < 1: return 0;
-            exons[pos2].increment(float(ali_len)/float(read_len), alignment, multiple,stranded,normalize)
+            exons[pos2].increment(float(ali_len)/float(read_len), alignment, multiple,stranded)
 
-    count_reads(pieces,ckreads,options['multiple'],options['stranded'],options['normalize'])
+    count_reads(pieces,ckreads,options['multiple'],options['stranded'])
     #--- Calculate RPK
     for p in pieces:
-        p.rpk = toRPK(p.count,p.length)
+        p.rpk = toRPK(p.count,p.length,options['normalize'])
 
 
     def estimate_expression(feat_class, pieces, ids):
@@ -317,7 +316,7 @@ def process_chunk(ckexons, sam, chrom, lastend, **options):
             exs = sorted([e for e in exons if is_in(e,f)], key=lambda x:(x.start,x.end))
             flen = sum(p.length for p in pieces if is_in(p,f))
             feats.append(feat_class(name=f, start=exs[0].start, end=exs[-1].end,
-                    length=flen, rpk=T[i], count=fromRPK(T[i],flen),
+                    length=flen, rpk=T[i], count=fromRPK(T[i],flen,options['normalize']),
                     chrom=exs[0].chrom, gene_id=exs[0].gene_id, gene_name=exs[0].gene_name))
         return feats
 
