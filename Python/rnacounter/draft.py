@@ -173,7 +173,7 @@ def cobble(exons, multiple=False):
 ######################################################################
 
 
-def process_chrexons(chrexons, sam,chrom, **options):
+def partition_chrexons(chrexons, **options):
     # Partition chrexons in non-overlapping chunks with distinct genes
     lastend = chrexons[0].end
     lastgeneids = set([chrexons[0].gene_id])
@@ -181,16 +181,15 @@ def process_chrexons(chrexons, sam,chrom, **options):
     partition = []
     for i,exon in enumerate(chrexons):
         if (exon.start > lastend) and (exon.gene_id not in lastgeneids):
-            partition.append((lastindex,i))
+            lastend = max(exon.end,lastend)
+            partition.append((lastindex,i,lastend))
             lastgeneids = set()
             lastindex = i
-        lastend = max(exon.end,lastend)
+        else:
+            lastend = max(exon.end,lastend)
         lastgeneids.add(exon.gene_id)
-    partition.append((lastindex,len(chrexons)))
-
-    # Process chunks
-    for (a,b) in partition:
-        process_chunk(chrexons[a:b], sam, chrom, lastend, **options)
+    partition.append((lastindex,len(chrexons),lastend))
+    return partition
 
 
 def process_chunk(ckexons, sam, chrom, lastend, **options):
@@ -238,7 +237,7 @@ def process_chunk(ckexons, sam, chrom, lastend, **options):
     transcript_ids = list(transcript_ids)
     gene_ids = list(set(e.gene_id for e in exons))
 
-    print ">> Process chunk with genes:", gene_ids
+    #print ">> Process chunk with genes:", gene_ids
 
     #--- Get all reads from this chunk - iterator
     ckreads = sam.fetch(chrom, exons[0].start, lastend)
@@ -384,7 +383,11 @@ def rnacounter_main(bamname, annotname, **options):
             chrom = exon.chrom
         if len(chrexons) > 0:
             chrexons.sort(key=lambda x: (x.start,x.end))
-            process_chrexons(chrexons,sam,lastchrom, **options)
+            partition = partition_chrexons(chrexons, **options)
+            # Process chunks
+            for (a,b,pend) in partition:
+                process_chunk(chrexons[a:b], sam, lastchrom, pend, **options)
+
         lastchrom = chrom
 
     options['output'].close()
