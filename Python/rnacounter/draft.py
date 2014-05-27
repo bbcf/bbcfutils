@@ -176,19 +176,18 @@ def cobble(exons, multiple=False):
 def process_chrexons(chrexons, sam,chrom, **options):
     # Process chunks of overlapping exons / exons of the same gene
     lastend = chrexons[0].end
-    lastgeneid = ''
-    ckexons = []
-    for exon in chrexons:
-        # Store
-        if (exon.start <= lastend) or (exon.gene_id == lastgeneid):
-            ckexons.append(exon)
-        # Process the stored chunk of exons
-        else:
-            process_chunk(ckexons, sam, chrom, lastend, **options)
-            ckexons = [exon]
+    lastgeneids = set([chrexons[0].gene_id])
+
+    lastindex = 0
+    for i,exon in enumerate(chrexons):
+        if (exon.start > lastend) and (exon.gene_id not in lastgeneids):
+            process_chunk(chrexons[lastindex:i], sam, chrom, lastend, **options)
+            lastgeneids = set()
+            lastindex = i
         lastend = max(exon.end,lastend)
-        lastgeneid = exon.gene_id
-    process_chunk(ckexons, sam, chrom, lastend, **options)
+        lastgeneids.add(exon.gene_id)
+    # Final chunk
+    process_chunk(chrexons[lastindex:], sam, chrom, lastend, **options)
 
 
 def process_chunk(ckexons, sam, chrom, lastend, **options):
