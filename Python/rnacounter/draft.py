@@ -1,12 +1,14 @@
 """
 Count reads on genes and transcripts from a genome-level BAM file and a
-GTF file describing the exons, such as those provided by Emsembl or GenRep.
+GTF/GFF file describing the exons, such as those provided by Emsembl or GenRep.
 The GTF is assumed to be sorted at least w.r.t. chromosome name,
 and the chromosome identifiers in the GTF must be the same as the BAM references.
 
 If your GTF does not represent exons but custom genomic intervals to simply count
-reads in, format it so that for each interval, the type (column 2) is 'exon',
-and the attributes `gene_id`, `transcript_id`, `exon_id` all have the same value.
+reads in, provide at least a unique `exon_id` in the attributes as a feature name,
+and the type field (column 2) must be set to 'exon'.
+If not specified, `gene_id`, `transcript_id` and `exon_id` will all get the value
+of `exon_id` and be considered as independant features.
 
 Usage:
    rnacounter  [-t TYPE] [-n <int>] [-l <int>] [-s] [-m] [-c CHROMS] [-o OUTPUT] BAM GTF
@@ -49,10 +51,11 @@ def parse_gtf(row):
     attrs = (x.strip().split() for x in row[8].split(';'))  # {gene_id: "AAA", ...}
     attrs = dict((x[0],x[1].strip("\"")) for x in attrs)
     exon_id = attrs.get('exon_id', 'E%d'%Ecounter.next())
-    return Exon(id=exon_id, gene_id=attrs['gene_id'], gene_name=attrs['gene_name'],
-                chrom=row[0], start=int(row[3])-1, end=int(row[4]),
-                name=exon_id, score=_score(row[5]), strand=_strand(row[6]),
-                transcripts=[attrs['transcript_id']])
+    return Exon(id=exon_id,
+        gene_id=attrs.get('gene_id',exon_id), gene_name=attrs.get('gene_name',exon_id),
+        chrom=row[0], start=int(row[3])-1, end=int(row[4]),
+        name=exon_id, score=_score(row[5]), strand=_strand(row[6]),
+        transcripts=[attrs.get('transcript_id',exon_id)], exon_number=int(attrs.get('exon_number',1)))
 
 
 class Counter(object):
@@ -102,8 +105,9 @@ class GenomicObject(object):
         return "<%s (%d-%d) %s>" % (self.name,self.start,self.end,self.gene_name)
 
 class Exon(GenomicObject):
-    def __init__(self, transcripts=set(), **args):
+    def __init__(self, exon_number=0, transcripts=set(), **args):
         GenomicObject.__init__(self, **args)
+        self.exon_number = exon_number
         self.transcripts = transcripts   # list of transcripts it is contained in
         self.length = self.end - self.start
     def __and__(self,other):
@@ -173,8 +177,50 @@ def cobble(exons, multiple=False):
 ######################################################################
 
 
+#def partition_chrexons0(chrexons, **options):
+#    """Partition chrexons in non-overlapping chunks with distinct genes"""
+#    lastend = chrexons[0].end
+#    lastgeneids = set([chrexons[0].gene_id])
+#    lastindex = 0
+#    partition = []
+#    for i,exon in enumerate(chrexons):
+#        if (exon.start > lastend) and (exon.gene_id not in lastgeneids):
+#            lastend = max(exon.end,lastend)
+#            partition.append((lastindex,i))
+#            lastgeneids = set()
+#            lastindex = i
+#        else:
+#            lastend = max(exon.end,lastend)
+#        lastgeneids.add(exon.gene_id)
+#    partition.append((lastindex,len(chrexons)))
+#    return partition
+#
+#def partition_chrexons_exonnr(chrexons, **options):
+#    """Partition chrexons in non-overlapping chunks with distinct genes.
+#    Reversed because it uses the `exon_number` to detect where a gene ends."""
+#    rev_enumerate = lambda x: itertools.izip(xrange(len(x)-1,-1,-1), reversed(x))
+#    lastindex = len(chrexons)
+#    laststart = chrexons[-1].start
+#    lastgeneids = set([chrexons[-1].gene_id])
+#    partition = []
+#    for i,exon in rev_enumerate(chrexons):
+#        if exon.exon_number == 1:
+#            lastgeneids.discard(exon.gene_id)
+#        else:
+#            lastgeneids.add(exon.gene_id)
+#        if (exon.end < laststart) and len(lastgeneids)==0:
+#            laststart = min(exon.start,laststart)
+#            partition.append((i+1,lastindex))
+#            lastindex = i+1
+#        else:
+#            laststart = min(exon.start,laststart)
+#    partition.append((i+1,lastindex))
+#    return reversed(partition)
+
 def partition_chrexons(chrexons, **options):
-    # Partition chrexons in non-overlapping chunks with distinct genes
+    """Partition chrexons in non-overlapping chunks with distinct genes,
+    using dichotomy"""
+    # Cut where disjoint and if the same gene continues
     lastend = chrexons[0].end
     lastgeneids = set([chrexons[0].gene_id])
     lastindex = 0
@@ -182,17 +228,34 @@ def partition_chrexons(chrexons, **options):
     for i,exon in enumerate(chrexons):
         if (exon.start > lastend) and (exon.gene_id not in lastgeneids):
             lastend = max(exon.end,lastend)
-            partition.append((lastindex,i,lastend))
+            partition.append((lastindex,i))
             lastgeneids = set()
             lastindex = i
         else:
             lastend = max(exon.end,lastend)
         lastgeneids.add(exon.gene_id)
-    partition.append((lastindex,len(chrexons),lastend))
+    partition.append((lastindex,len(chrexons)))
+
+    # Merge intervals containing parts of the same gene mixed with others
+    toremove = []
+    changed = 0  # number of times we had to group chunks in a loop
+    while True:
+        for i in xrange(len(partition)-1):
+            (a,b) = partition[i]
+            (c,d) = partition[i+1]
+            if len(set(chrexons[a:b]) & set(chrexons[c:d])) != 0:
+                partition[i+1] = (a,d)
+                toremove.append(i)
+                changed += 1
+        for i in toremove:
+            partition.pop(i)
+        if changed == 0: break
+        changed = 0
+
     return partition
 
 
-def process_chunk(ckexons, sam, chrom, lastend, **options):
+def process_chunk(ckexons, sam, chrom, **options):
     """Distribute counts across transcripts and genes of a chunk *ckexons*
     of non-overlapping exons."""
 
@@ -200,7 +263,6 @@ def process_chunk(ckexons, sam, chrom, lastend, **options):
         return 1000.0 * count / (length * norm_cst)
     def fromRPK(rpk,length,norm_cst):
         return length * norm_cst * rpk / 1000.
-
 
     #--- Regroup occurrences of the same Exon from a different transcript
     exons = []
@@ -240,6 +302,7 @@ def process_chunk(ckexons, sam, chrom, lastend, **options):
     #print ">> Process chunk with genes:", gene_ids
 
     #--- Get all reads from this chunk - iterator
+    lastend = max(e.end for e in exons)
     ckreads = sam.fetch(chrom, exons[0].start, lastend)
 
 
@@ -385,8 +448,8 @@ def rnacounter_main(bamname, annotname, **options):
             chrexons.sort(key=lambda x: (x.start,x.end))
             partition = partition_chrexons(chrexons, **options)
             # Process chunks
-            for (a,b,pend) in partition:
-                process_chunk(chrexons[a:b], sam, lastchrom, pend, **options)
+            for (a,b) in partition:
+                process_chunk(chrexons[a:b], sam, lastchrom, **options)
 
         lastchrom = chrom
 
