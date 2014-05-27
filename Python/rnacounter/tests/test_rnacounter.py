@@ -11,8 +11,11 @@ from numpy.testing import assert_almost_equal
 __test__ = True
 
 
-from rnacounter import *
+#from rnacounter import *
+from draft import *
 import pysam
+
+path = os.path.abspath("../testfiles/")
 
 
 class Test_Parse_GTF(unittest.TestCase):
@@ -30,7 +33,7 @@ class Test_Cobble(unittest.TestCase):
         self.exons = []
         self.sts = [0,2,3,4,7, 8, 11,12,16,17,20,21,22,26,27,28]
         self.ens = [1,5,6,9,10,15,14,13,19,18,25,24,23,29,30,31]
-        trans = {'T1':(0,2,8,17,20,26), 'T2':(3,7,11,6,21,27), 'T3':(4,8,12,17,22,28)}
+        trans = {'T1':(0,2,8,17,20,26), 'T2':(3,7,11,16,21,27), 'T3':(4,8,12,17,22,28)}
         for i in range(len(self.sts)):
             for x in trans:
                 if self.sts[i] in trans[x]: t = x; break
@@ -60,6 +63,41 @@ class Test_Cobble(unittest.TestCase):
         self.assertListEqual(sorted(cobbled[3].name.split('|')), ['E1','E2','E3'])
         self.assertListEqual(sorted(cobbled[7].name.split('|')), ['E3','E4','E5'])
         self.assertListEqual(sorted(cobbled[11].name.split('|')), ['E5','E6','E7'])
+
+
+class Test_Partition(unittest.TestCase):
+    # G1  = ===   =======  =  === ===  (+ -->)
+    # G2     === === ===  === ==   ==  (- <--)
+    # G3      =====   =       =     =  (?)
+    def setUp(self):
+        self.exons = []
+        self.sts = [0,2,3,4,7, 8, 11,12,16,17,20,21,22,26,27,28]
+        self.ens = [1,5,6,9,10,15,14,13,19,18,25,24,23,29,30,31]
+        gene = {'G1':(0,2,8,17,20,26), 'G2':(3,7,11,16,21,27), 'G3':(4,8,12,17,22,28)}
+        for i in range(len(self.sts)):
+            g = [x for x,v in gene.items() if self.sts[i] in v][0]
+            self.exons.append(Exon(chrom='c', start=self.sts[i]*10, end=self.ens[i]*10,
+                           gene_id=g, gene_name=g, name='E%d'%i,strand=-1))
+    def test_partition_chrexons(self):
+        part = partition_chrexons(self.exons)
+        self.assertEqual(part, [(0,16)])
+
+    def test_partition_chrexons_disjoint(self):
+        for e in self.exons:
+            if e.start < 160: e.gene_id=e.gene_name='G1'
+            elif e.start < 200: e.gene_id=e.gene_name='G2'
+            else: e.gene_id=e.gene_name='G3'
+        part = partition_chrexons(self.exons)
+        self.assertEqual(part, [(0,8),(8,10),(10,16)])
+
+    def test_partition_chrexons_pseudodisjoint(self):
+        # All merged because a part of G1 is found again after G2 begins
+        for e in self.exons:
+            if e.start < 160: e.gene_id=e.gene_name='G1'
+            elif e.start < 200: e.gene_id=e.gene_name='G2'
+            else: e.gene_id=e.gene_name='G1'                 # <--
+        part = partition_chrexons(self.exons)
+        self.assertEqual(part, [(0,16)])
 
 
 class Test_Counting(unittest.TestCase):

@@ -102,7 +102,7 @@ class GenomicObject(object):
             multiplicity = self.multiplicity + other.multiplicity
         )
     def __repr__(self):
-        return "<%s (%d-%d) %s>" % (self.name,self.start,self.end,self.gene_name)
+        return "__%s.%s:%d-%d__" % (self.name,self.gene_name,self.start,self.end)
 
 class Exon(GenomicObject):
     def __init__(self, exon_number=0, transcripts=set(), **args):
@@ -177,92 +177,60 @@ def cobble(exons, multiple=False):
 ######################################################################
 
 
-#def partition_chrexons0(chrexons, **options):
-#    """Partition chrexons in non-overlapping chunks with distinct genes"""
-#    lastend = chrexons[0].end
-#    lastgeneids = set([chrexons[0].gene_id])
-#    lastindex = 0
-#    partition = []
-#    for i,exon in enumerate(chrexons):
-#        if (exon.start > lastend) and (exon.gene_id not in lastgeneids):
-#            lastend = max(exon.end,lastend)
-#            partition.append((lastindex,i))
-#            lastgeneids = set()
-#            lastindex = i
-#        else:
-#            lastend = max(exon.end,lastend)
-#        lastgeneids.add(exon.gene_id)
-#    partition.append((lastindex,len(chrexons)))
-#    return partition
-#
-#def partition_chrexons_exonnr(chrexons, **options):
-#    """Partition chrexons in non-overlapping chunks with distinct genes.
-#    Reversed because it uses the `exon_number` to detect where a gene ends."""
-#    rev_enumerate = lambda x: itertools.izip(xrange(len(x)-1,-1,-1), reversed(x))
-#    lastindex = len(chrexons)
-#    laststart = chrexons[-1].start
-#    lastgeneids = set([chrexons[-1].gene_id])
-#    partition = []
-#    for i,exon in rev_enumerate(chrexons):
-#        if exon.exon_number == 1:
-#            lastgeneids.discard(exon.gene_id)
-#        else:
-#            lastgeneids.add(exon.gene_id)
-#        if (exon.end < laststart) and len(lastgeneids)==0:
-#            laststart = min(exon.start,laststart)
-#            partition.append((i+1,lastindex))
-#            lastindex = i+1
-#        else:
-#            laststart = min(exon.start,laststart)
-#    partition.append((i+1,lastindex))
-#    return reversed(partition)
-
-def partition_chrexons(chrexons, **options):
-    """Partition chrexons in non-overlapping chunks with distinct genes,
-    using dichotomy"""
+def partition_chrexons(chrexons):
+    """Partition chrexons in non-overlapping chunks with distinct genes.
+    The problem is that exons are sorted wrt start,end, and so the first
+    exon of a gene can be separate from the second by exons of other genes
+    - from the GTF we don't know how many and how far."""
     # Cut where disjoint and if the same gene continues
+                #geneids = dict((e.gene_id,i) for i,e in enumerate(chrexons))
     lastend = chrexons[0].end
     lastgeneids = set([chrexons[0].gene_id])
     lastindex = 0
     partition = []
+    pinvgenes = {}
+    npart = -1    # number of partitions
     for i,exon in enumerate(chrexons):
         if (exon.start > lastend) and (exon.gene_id not in lastgeneids):
             lastend = max(exon.end,lastend)
             partition.append((lastindex,i))
+            npart += 1
+            for g in lastgeneids:
+                pinvgenes.setdefault(g,[]).append(npart)
             lastgeneids = set()
             lastindex = i
         else:
             lastend = max(exon.end,lastend)
         lastgeneids.add(exon.gene_id)
     partition.append((lastindex,len(chrexons)))
+    npart += 1
+    for g in lastgeneids:
+        pinvgenes.setdefault(g,[]).append(npart)
 
     # Merge intervals containing parts of the same gene mixed with others
-    toremove = []
-    changed = 0  # number of times we had to group chunks in a loop
-    while True:
-        for i in xrange(len(partition)-1):
-            (a,b) = partition[i]
-            (c,d) = partition[i+1]
-            if len(set(chrexons[a:b]) & set(chrexons[c:d])) != 0:
-                partition[i+1] = (a,d)
-                toremove.append(i)
-                changed += 1
-        for i in toremove:
-            partition.pop(i)
-        if changed == 0: break
-        changed = 0
+    toremove = set()
+    for g,parts in pinvgenes.iteritems():
+        if len(parts)>1:
+            a = parts[0]; b = parts[-1]
+            partition[b] = (partition[a][0], partition[b][1])
+            toremove |= set(range(a,b))
+    partition = [p for i,p in enumerate(partition) if i not in toremove]
+
+    #def check_unique(parts):
+    #    return len(reduce(set.union, parts)) == len([x for p in parts for x in p])
 
     return partition
+
+
+def toRPK(count,length,norm_cst):
+    return 1000.0 * count / (length * norm_cst)
+def fromRPK(rpk,length,norm_cst):
+    return length * norm_cst * rpk / 1000.
 
 
 def process_chunk(ckexons, sam, chrom, **options):
     """Distribute counts across transcripts and genes of a chunk *ckexons*
     of non-overlapping exons."""
-
-    def toRPK(count,length,norm_cst):
-        return 1000.0 * count / (length * norm_cst)
-    def fromRPK(rpk,length,norm_cst):
-        return length * norm_cst * rpk / 1000.
 
     #--- Regroup occurrences of the same Exon from a different transcript
     exons = []
@@ -446,7 +414,7 @@ def rnacounter_main(bamname, annotname, **options):
             chrom = exon.chrom
         if len(chrexons) > 0:
             chrexons.sort(key=lambda x: (x.start,x.end))
-            partition = partition_chrexons(chrexons, **options)
+            partition = partition_chrexons(chrexons)
             # Process chunks
             for (a,b) in partition:
                 process_chunk(chrexons[a:b], sam, lastchrom, **options)
