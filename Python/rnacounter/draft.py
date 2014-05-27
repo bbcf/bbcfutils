@@ -174,20 +174,23 @@ def cobble(exons, multiple=False):
 
 
 def process_chrexons(chrexons, sam,chrom, **options):
-    # Process chunks of overlapping exons / exons of the same gene
+    # Partition chrexons in non-overlapping chunks with distinct genes
     lastend = chrexons[0].end
     lastgeneids = set([chrexons[0].gene_id])
-
     lastindex = 0
+    partition = []
     for i,exon in enumerate(chrexons):
         if (exon.start > lastend) and (exon.gene_id not in lastgeneids):
-            process_chunk(chrexons[lastindex:i], sam, chrom, lastend, **options)
+            partition.append((lastindex,i))
             lastgeneids = set()
             lastindex = i
         lastend = max(exon.end,lastend)
         lastgeneids.add(exon.gene_id)
-    # Final chunk
-    process_chunk(chrexons[lastindex:], sam, chrom, lastend, **options)
+    partition.append((lastindex,len(chrexons)))
+
+    # Process chunks
+    for (a,b) in partition:
+        process_chunk(chrexons[a:b], sam, chrom, lastend, **options)
 
 
 def process_chunk(ckexons, sam, chrom, lastend, **options):
@@ -235,6 +238,7 @@ def process_chunk(ckexons, sam, chrom, lastend, **options):
     transcript_ids = list(transcript_ids)
     gene_ids = list(set(e.gene_id for e in exons))
 
+    print ">> Process chunk with genes:", gene_ids
 
     #--- Get all reads from this chunk - iterator
     ckreads = sam.fetch(chrom, exons[0].start, lastend)
@@ -248,12 +252,12 @@ def process_chunk(ckexons, sam, chrom, lastend, **options):
         :param standed: for strand-specific protocols, use the strand information."""
         current_pos = 0
         for alignment in ckreads:
-            if current_pos > len(exons): return 0
+            if current_pos >= len(exons): return 0
             exon_end = exons[current_pos].end
             ali_pos = alignment.pos
             while exon_end <= ali_pos:
                 current_pos += 1
-                if current_pos > len(exons): return 0
+                if current_pos >= len(exons): return 0
                 exon_end = exons[current_pos].end
             pos2 = current_pos
             exon_start = exons[pos2].start
