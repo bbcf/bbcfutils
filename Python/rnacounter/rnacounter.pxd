@@ -10,6 +10,7 @@ ctypedef cnp.double_t DTYPE_t   # assign a corresponding compile-time C type to 
 
 
 #cpdef inline object parse_gtf(str row)
+# -> Error: closures inside cdef functions not yet supported
 cpdef inline double _score(double x):
     if str(x) == '.': return 0
     else: return float(x)
@@ -34,7 +35,9 @@ cdef class Counter:
 
 
 #cpdef inline intersect_exons_list(feats,bint multiple=*)
+# -> Error: closures inside cdef functions not yet supported
 #cpdef inline cobble(exons,bint multiple=*)
+# -> Error: closures inside cdef functions not yet supported
 
 
 # process_chrexons()
