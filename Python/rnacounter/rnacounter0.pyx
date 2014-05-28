@@ -1,43 +1,24 @@
-"""
-Count reads on genes and transcripts from a genome-level BAM file and a
-GTF file describing the exons, such as those provided by Emsembl or GenRep.
-The GTF is assumed to be sorted at least w.r.t. chromosome name,
-and the chromosome identifiers in the GTF must be the same as the BAM references.
 
-If your GTF does not represent exons but custom genomic intervals to simply count
-reads in, format it so that for each interval, the type (column 2) is 'exon',
-and the attributes `gene_id`, `transcript_id`, `exon_id` all have the same value.
-
-Usage:
-   rnacounter  [-t TYPE] [-n <int>] [-l <int>] [-s] [-m] [-c CHROMS] [-o OUTPUT] BAM GTF
-               [--version] [-h]
-
-Options:
-   -t TYPE, --type TYPE             Type of genomic feature to count on: 'genes' or 'transcripts' [default: genes].
-   -n <int>, --normalize <int>      Normalization constant for RPKM. Default: (total number of mapped reads)/10^6.
-   -l <int>, --fraglength <int>     Average fragment length [default: 350].
-   -s, --stranded                   Compute sense and antisense reads separately [default: False].
-   -m, --multiple                   Divide count by NH flag for multiply mapping reads [default: False].
-   -c CHROMS, --chromosomes CHROMS  Selection of chromosome names (comma-separated list).
-   -o OUTPUT, --output OUTPUT       Output file to redirect stdout.
-   -v, --version                    Displays version information and exits.
-   -h, --help                       Displays usage information and exits.
-"""
-
+import cython
 import pysam
 import os, sys, itertools, copy
 from numpy import asarray, zeros
 from scipy.optimize import nnls
 
+import numpy as np
+cimport numpy as cnp
+DTYPE = np.double               # fix a datatype for the arrays
+ctypedef cnp.double_t DTYPE_t   # assign a corresponding compile-time C type to DTYPE_t
+
 
 Ecounter = itertools.count(1)  # to give unique ids to undefined exons, see parse_gtf()
-def parse_gtf(row):
+cpdef parse_gtf(str row):
     """Parse one GTF line. Return None if not an 'exon'. Return False if row is empty."""
     # GTF fields = ['chr','source','name','start','end','score','strand','frame','attributes']
-    def _score(x):
-        if str(x) == '.': return 0
+    cdef double _score(x):
+        if x == '.': return 0.0
         else: return float(x)
-    def _strand(x):
+    cdef int _strand(x):
         smap = {'+':1, 1:1, '-':-1, -1:-1, '.':0, 0:0}
         return smap[x]
     if not row: return False
@@ -49,21 +30,28 @@ def parse_gtf(row):
     attrs = (x.strip().split() for x in row[8].split(';'))  # {gene_id: "AAA", ...}
     attrs = dict((x[0],x[1].strip("\"")) for x in attrs)
     exon_id = attrs.get('exon_id', 'E%d'%Ecounter.next())
-    return Exon(id=exon_id, gene_id=attrs['gene_id'], gene_name=attrs['gene_name'],
-                chrom=row[0], start=int(row[3])-1, end=int(row[4]),
-                name=exon_id, score=_score(row[5]), strand=_strand(row[6]),
-                transcripts=[attrs['transcript_id']])
+    return Exon(id=exon_id,
+        gene_id=attrs.get('gene_id',exon_id), gene_name=attrs.get('gene_name',exon_id),
+        chrom=row[0], start=int(row[3])-1, end=int(row[4]),
+        name=exon_id, score=_score(row[5]), strand=_strand(row[6]),
+        transcripts=[attrs.get('transcript_id',exon_id)], exon_number=int(attrs.get('exon_number',1)))
 
 
-class Counter(object):
+cdef class Counter(object):
+    cdef int n
     def __init__(self):
         self.n = 0
     def __call__(self, alignment):
         self.n += 1
 
-class GenomicObject(object):
-    def __init__(self, id='',gene_id='',gene_name='',chrom='',start=0,end=0,
-                 name='',score=0.0,count=0,count_rev=0,rpk=0.0,strand=0,length=0,seq='',multiplicity=1):
+cdef class GenomicObject(object):
+    cdef:
+        str id,gene_id,gene_name,chrom,name,seq
+        int start,end,strand,multiplicity
+        double score,count,count_rev,rpk
+    def __init__(self,str id='',str gene_id='',str gene_name='',str chrom='',int start=0,int end=0,
+                  str name='',double score=0.0,double count=0.0,double count_rev=0.0,double rpk=0.0,
+                  int strand=0,int length=0,str seq='',int multiplicity=1):
         self.id = id
         self.gene_id = gene_id
         self.gene_name = gene_name
@@ -71,13 +59,13 @@ class GenomicObject(object):
         self.start = start
         self.end = end
         self.name = name
-        #self.score = score
+        self.score = score
         self.count = count
         self.count_rev = count_rev
         self.rpk = rpk
         self.strand = strand  # 1,-1,0
         self.length = length
-        #self.seq = seq  # sequence
+        self.seq = seq  # sequence
         self.multiplicity = multiplicity
     def __and__(self,other):
         """The intersection of two GenomicObjects"""
@@ -99,19 +87,24 @@ class GenomicObject(object):
             multiplicity = self.multiplicity + other.multiplicity
         )
     def __repr__(self):
-        return "<%s (%d-%d) %s>" % (self.name,self.start,self.end,self.gene_name)
+        return "__%s.%s:%d-%d__" % (self.name,self.gene_name,self.start,self.end)
 
-class Exon(GenomicObject):
-    def __init__(self, transcripts=set(), **args):
+cdef class Exon(GenomicObject):
+    cdef:
+        int exon_number, length
+        object transcripts
+    def __init__(self,int exon_number=0,object transcripts=set(), **args):
         GenomicObject.__init__(self, **args)
+        self.exon_number = exon_number
         self.transcripts = transcripts   # list of transcripts it is contained in
         self.length = self.end - self.start
     def __and__(self,other):
         E = GenomicObject.__and__(self,other)
         E.transcripts = set(self.transcripts) | set(other.transcripts)
         return E
-    def increment(self, x, alignment, multiple=False, stranded=False):
+    cpdef increment(self,double x,object alignment,bint multiple=False,bint stranded=False):
         if multiple:
+            cdef object NH
             NH = [1.0/t[1] for t in alignment.tags if t[0]=='NH']+[1]
             x = x*NH[0]
         if stranded:
@@ -123,22 +116,25 @@ class Exon(GenomicObject):
         else:
             self.count += x
 
-class Transcript(GenomicObject):
+cdef class Transcript(GenomicObject):
+    cpdef object exons
     def __init__(self, exons=[], **args):
         GenomicObject.__init__(self, **args)
         self.exons = exons               # list of exons it contains
 
-class Gene(GenomicObject):
+cdef class Gene(GenomicObject):
+    cpdef object exons, transcripts
     def __init__(self, exons=set(),transcripts=set(), **args):
         GenomicObject.__init__(self, **args)
         self.exons = exons               # list of exons contained
         self.transcripts = transcripts   # list of transcripts contained
 
 
-def intersect_exons_list(feats, multiple=False):
+cpdef intersect_exons_list(object feats,bint multiple=False):
     """The intersection of a list *feats* of GenomicObjects.
     If *multiple* is True, permits multiplicity: if the same exon E1 is
     given twice, there will be "E1|E1" parts. Otherwise pieces are unique."""
+    cdef object feats
     if multiple is False:
         feats = list(set(feats))
     if len(feats) == 1:
@@ -146,9 +142,11 @@ def intersect_exons_list(feats, multiple=False):
     else:
         return reduce(lambda x,y: x&y, feats)
 
-def cobble(exons, multiple=False):
+cpdef cobble(object exons,bint multiple=False):
     """Split exons into non-overlapping parts.
     :param multiple: see intersect_exons_list()."""
+    cdef object ends, active_exons, cobbled, e, a, b
+    cdef int i
     ends = [(e.start,1,e) for e in exons] + [(e.end,0,e) for e in exons]
     ends.sort()
     active_exons = []
@@ -173,33 +171,56 @@ def cobble(exons, multiple=False):
 ######################################################################
 
 
-def process_chrexons(chrexons, sam,chrom, **options):
-    # Process chunks of overlapping exons / exons of the same gene
+cpdef partition_chrexons(object chrexons):
+    """Partition chrexons in non-overlapping chunks with distinct genes.
+    The problem is that exons are sorted wrt start,end, and so the first
+    exon of a gene can be separate from the second by exons of other genes
+    - from the GTF we don't know how many and how far."""
+    # Cut where disjoint and if the same gene continues
     lastend = chrexons[0].end
-    lastgeneid = ''
-    ckexons = []
-    for exon in chrexons:
-        # Store
-        if (exon.start <= lastend) or (exon.gene_id == lastgeneid):
-            ckexons.append(exon)
-        # Process the stored chunk of exons
+    lastgeneids = set([chrexons[0].gene_id])
+    lastindex = 0
+    partition = []
+    pinvgenes = {}  # map {gene_id: partitions it is in}
+    npart = 0       # number of partitions
+    for i,exon in enumerate(chrexons):
+        if (exon.start > lastend) and (exon.gene_id not in lastgeneids):
+            lastend = max(exon.end,lastend)
+            partition.append((lastindex,i))
+            for g in lastgeneids:
+                pinvgenes.setdefault(g,[]).append(npart)
+            npart += 1
+            lastgeneids = set()
+            lastindex = i
         else:
-            process_chunk(ckexons, sam, chrom, lastend, **options)
-            ckexons = [exon]
-        lastend = max(exon.end,lastend)
-        lastgeneid = exon.gene_id
-    process_chunk(ckexons, sam, chrom, lastend, **options)
+            lastend = max(exon.end,lastend)
+        lastgeneids.add(exon.gene_id)
+    partition.append((lastindex,len(chrexons)))
+    for g in lastgeneids:
+        pinvgenes.setdefault(g,[]).append(npart)
+    npart += 1
+
+    # Merge intervals containing parts of the same gene mixed with others
+    toremove = set()
+    for g,parts in pinvgenes.iteritems():
+        if len(parts)>1:
+            a = parts[0]; b = parts[-1]
+            partition[b] = (partition[a][0], partition[b][1])
+            toremove |= set(range(a,b))
+    partition = [p for i,p in enumerate(partition) if i not in toremove]
+
+    return partition
 
 
-def process_chunk(ckexons, sam, chrom, lastend, **options):
+cpdef double toRPK(double count,double length,double norm_cst):
+    return 1000.0 * count / (length * norm_cst)
+cpdef double fromRPK(double rpk,double length,double norm_cst):
+    return length * norm_cst * rpk / 1000.
+
+
+cpdef process_chunk(object ckexons,object sam,str chrom, **options):
     """Distribute counts across transcripts and genes of a chunk *ckexons*
     of non-overlapping exons."""
-
-    def toRPK(count,length,norm_cst):
-        return 1000.0 * count / (length * norm_cst)
-    def fromRPK(rpk,length,norm_cst):
-        return length * norm_cst * rpk / 1000.
-
 
     #--- Regroup occurrences of the same Exon from a different transcript
     exons = []
@@ -236,25 +257,30 @@ def process_chunk(ckexons, sam, chrom, lastend, **options):
     transcript_ids = list(transcript_ids)
     gene_ids = list(set(e.gene_id for e in exons))
 
+    #print ">> Process chunk with genes:", gene_ids
 
     #--- Get all reads from this chunk - iterator
+    cdef int lastend
+    lastend = max(e.end for e in exons)
     ckreads = sam.fetch(chrom, exons[0].start, lastend)
 
 
     #--- Count reads in each piece -- from rnacounter.cc
-    def count_reads(exons,ckreads,multiple,stranded):
+    cdef count_reads(object exons,object ckreads,bint multiple,bint stranded):
         """Adds (#aligned nucleotides/read length) to exon counts.
         Deals with indels, junctions etc.
         :param multiple: divide the count by the NH tag.
         :param standed: for strand-specific protocols, use the strand information."""
+        cdef int current_pos, pos2, ali_pos
+        cdef int exon_start, exon_end, shift, op, ali_len, read_len
         current_pos = 0
         for alignment in ckreads:
-            if current_pos > len(exons): return 0
+            if current_pos >= len(exons): return 0
             exon_end = exons[current_pos].end
             ali_pos = alignment.pos
             while exon_end <= ali_pos:
                 current_pos += 1
-                if current_pos > len(exons): return 0
+                if current_pos >= len(exons): return 0
                 exon_end = exons[current_pos].end
             pos2 = current_pos
             exon_start = exons[pos2].start
@@ -293,10 +319,14 @@ def process_chunk(ckexons, sam, chrom, lastend, **options):
         p.rpk = toRPK(p.count,p.length,options['normalize'])
 
 
-    def estimate_expression(feat_class, pieces, ids):
+    cdef estimate_expression(object feat_class,object pieces,object ids):
         #--- Build the exons-transcripts structure matrix:
         # Lines are exons, columns are transcripts,
         # so that A[i,j]!=0 means "transcript Tj contains exon Ei".
+        cdef int n,m,flen
+        cdef double rnorm
+        cdef cnp.ndarray[DTYPE_t, ndim=2] A
+        cdef cnp.ndarray[DTYPE_t, ndim=1] E, T
         if feat_class == Gene:
             is_in = lambda x,g: g in x.gene_id.split('|')
         elif feat_class == Transcript:
@@ -334,7 +364,7 @@ def process_chunk(ckexons, sam, chrom, lastend, **options):
         options['output'].write('\t'.join(towrite)+'\n')
 
 
-def rnacounter_main(bamname, annotname, **options):
+cdef rnacounter_main(str bamname,str annotname, **options):
     sam = pysam.Samfile(bamname, "rb")
     annot = open(annotname, "r")
 
@@ -381,43 +411,16 @@ def rnacounter_main(bamname, annotname, **options):
             chrom = exon.chrom
         if len(chrexons) > 0:
             chrexons.sort(key=lambda x: (x.start,x.end))
-            process_chrexons(chrexons,sam,lastchrom, **options)
+            partition = partition_chrexons(chrexons)
+            # Process chunks
+            for (a,b) in partition:
+                process_chunk(chrexons[a:b], sam, lastchrom, **options)
+
         lastchrom = chrom
 
     options['output'].close()
     annot.close()
     sam.close()
-
-
-######################################################################
-
-
-from docopt import docopt
-
-def usage_string():
-    return __doc__
-
-def parse_args(args):
-    bamname = os.path.abspath(args['BAM'])
-    annotname = os.path.abspath(args['GTF'])
-
-    if args['--chromosomes'] is None: args['--chromosomes'] = []
-    else: args['--chromosomes'] = args['--chromosomes'].split(',')
-
-    # Type: one can actually give both as "-t genes,transcripts" but they
-    # will be mixed in the output stream. Split the output using the last field ("Type").
-    args['--type'] = [x.lower() for x in args['--type'].split(',')]
-    assert all(x in ["genes","transcripts"] for x in args['--type']), \
-        "TYPE must be one of 'genes' or 'transcripts'"
-
-    options = dict((k.lstrip('-'),v) for k,v in args.iteritems())
-    return bamname, annotname, options
-
-
-if __name__ == '__main__':
-    args = docopt(__doc__, version='0.1')
-    bamname, annotname, options = parse_args(args)
-    rnacounter_main(bamname,annotname, **options)
 
 
 #----------------------------------------------#

@@ -5,22 +5,21 @@ Initial files:
 * draft.py:
 Python only version, for testing purposes. Run as "python draft.py".
 
-* draft.pyx:
-Cython version, for testing purposes (with import cython and some @locals for instance).
-Run as "python draft.pyx".
+* rnacounter.py:
+The one we compile sith setup.py.
 
 * rnacounter.pyx:
-A copy of draft.pyx, to be compiled by Cython.
+The Cython version, still in development.
 
-* rnacounter.pdx:
-Redefinitions of rnacounter.pyx functions headers for faster execution
+* rnacounter.pxd:
+Redefinitions of rnacounter.py functions headers for faster execution
 (specifying C types for the functions' variables before compilation).
 
 * setup.py:
 The "Makefile" for Cython.
 
-* rnacounter_main.py
-The executable, imports and runs the C version after compilation.
+* rnacounter
+The (python) executable, imports and runs the C version after compilation.
 
 * testfiles/:
 Folder with testing files, including
@@ -40,8 +39,8 @@ After compilation:
 
 To compile:
 ============
-1. If there is an update in draft.pyx to include:
-    cp draft.pyx rnacounter.pyx ;
+1. If there is an update in draft.py to include:
+    cp draft.py rnacounter.py ;
 
 2. Compilation:
     python setup.py build_ext --inplace ;
@@ -55,10 +54,10 @@ to run without raising an error:
 
 To run:
 ========
-./rnacounter_main.py --help
+./rnacounter --help
 
 Example:
-./rnacounter_main.py testfiles/gapdhKO.bam testfiles/mm9_3genes_renamed.gtf
+./rnacounter testfiles/gapdhKO.bam testfiles/mm9_3genes_renamed.gtf
 
 
 Testing:

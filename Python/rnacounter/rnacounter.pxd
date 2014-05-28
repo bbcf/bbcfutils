@@ -17,9 +17,9 @@ cpdef inline int _strand(x):
     smap = {'+':1, 1:1, '-':-1, -1:-1, '.':0, 0:0}
     return smap[x]
 
-#cdef class Counter:
-#    cpdef int n
-#
+cdef class Counter:
+    cpdef int n
+
 #cdef class GenomicObject:
 #    cpdef int start,end,strand,length,multiplicity
 #    cpdef double count,count_rev,rpk,score
@@ -40,10 +40,8 @@ cpdef inline int _strand(x):
 # process_chrexons()
 # -
 # process_chunk()
-cpdef inline double toRPK(double count, double length, double norm_cst):
-    return 1000.0 * count / (length * norm_cst)
-cpdef inline double fromRPK(double rpk, double length, double norm_cst):
-    return length * norm_cst * rpk / 1000.
+cpdef inline double toRPK(double count, double length, double norm_cst)
+cpdef inline double fromRPK(double rpk, double length, double norm_cst)
 
 cpdef inline count_reads(exons,ckreads,bint multiple,bint stranded,double normalize):
     cdef int current_pos,pos2,ali_pos,exon_end,exon_start,read_len,ali_len,op,shift

@@ -8,7 +8,7 @@ from Cython.Distutils import build_ext
 import numpy as np
 
 extensions = [
-    Extension("rnacounter", ["rnacounter.pyx"],
+    Extension("rnacounter", ["rnacounter.py"],
               include_dirs=[np.get_include()],
              )
 ]
