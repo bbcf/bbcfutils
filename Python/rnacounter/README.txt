@@ -1,25 +1,27 @@
 
 Initial files:
 ===============
-
 * draft.py:
 Python only version, for testing purposes. Run as "python draft.py".
 
 * rnacounter.py:
-The one we compile sith setup.py.
+Copy of draft.py that we compile with setup.py. Imports functions from rnacounter0.
 
-* rnacounter.pyx:
-The Cython version, still in development.
-
-* rnacounter.pxd:
-Redefinitions of rnacounter.py functions headers for faster execution
-(specifying C types for the functions' variables before compilation).
+* rnacounter0.pyx:
+Cython functions, to be compiled with setup0.py and then imported by rnacounter.py.
 
 * setup.py:
-The "Makefile" for Cython.
+The "Makefile" for rnacounter.py.
+Produces rnacounter.c, rnacounter.so.
+
+* setup0.py:
+The "Makefile" for rnacounter0.pyx.
+Produces rnacounter0.c, rnacounter0.so.
 
 * rnacounter
 The (python) executable, imports and runs the C version after compilation.
+
+* benchmark.txt: some execution timings reported, in different conditions.
 
 * testfiles/:
 Folder with testing files, including
@@ -27,22 +29,27 @@ Folder with testing files, including
 - mm9_3genes_renamed.gtf: extract of the Ensembl GTF with Gapdh, the gene before and the gene after.
 - mm9_Gapdh_renamed.gtf: extract of the Ensembl GTF with Gapdh only.
 
-* benchmark.txt: some execution timings reported, in different conditions.
-
-
-After compilation:
-===================
-* rnacounter.c: C source.
-* rnacounter.so: executabe.
 * build/: platform-specific compilation stuff.
 
 
-To compile:
-============
-1. If there is an update in draft.py to include:
+Backup:
+========
+* rnacounter.pxd:
+Redefinitions of rnacounter.py functions headers for faster execution
+(specifying C types for the functions' variables before compilation).
+Not used atm.
+* diverse working versions of draft.py
+
+
+To compile and run:
+====================
+1. Compile rnacounter0.pyx:
+    python setup0.py build_ext --inplace ;
+
+2. If there is an update in draft.py to include:
     cp draft.py rnacounter.py ;
 
-2. Compilation:
+3. Compile rnacounter.py:
     python setup.py build_ext --inplace ;
 
 Note: On OSX Mavericks, XCode 5 is bugged and clang requires to add the following
@@ -51,13 +58,10 @@ to run without raising an error:
     ARCHFLAGS=-Wno-error=unused-command-line-argument-hard-error-in-future \
     python setup.py build_ext --inplace ;
 
-
-To run:
-========
-./rnacounter --help
-
+4. Run:
+    ./rnacounter --help
 Example:
-./rnacounter testfiles/gapdhKO.bam testfiles/mm9_3genes_renamed.gtf
+    ./rnacounter testfiles/gapdhKO.bam testfiles/mm9_3genes_renamed.gtf
 
 
 Testing:
