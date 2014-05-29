@@ -1,27 +1,28 @@
 
-Initial files:
-===============
-* draft.py:
-Python only version, for testing purposes. Run as "python draft.py".
+Usage:
+======
+See "rnacounter --help".
 
-* rnacounter.py:
-Copy of draft.py that we compile with setup.py. Imports functions from rnacounter0.
 
-* rnacounter0.pyx:
-Cython functions, to be compiled with setup0.py and then imported by rnacounter.py.
+Files description:
+==================
+* draft_nocython.py:
+Python only version, for testing purposes. Run as "python draft.py ...".
+
+* rnacounter.pyx:
+Cython version that we compile with setup.py.
 
 * setup.py:
 The "Makefile" for rnacounter.py.
 Produces rnacounter.c, rnacounter.so.
 
-* setup0.py:
-The "Makefile" for rnacounter0.pyx.
-Produces rnacounter0.c, rnacounter0.so.
-
 * rnacounter
 The (python) executable, imports and runs the C version after compilation.
 
 * benchmark.txt: some execution timings reported, in different conditions.
+
+* tests/:
+Unit tests, run with "nosetests test_rnacounter.py".
 
 * testfiles/:
 Folder with testing files, including
@@ -31,18 +32,14 @@ Folder with testing files, including
 
 * build/: platform-specific compilation stuff.
 
-
-Backup:
-========
-* rnacounter.pxd:
+* backup/:
+Contains in particular "rnacounter.pxd":
 Redefinitions of rnacounter.py functions headers for faster execution
 (specifying C types for the functions' variables before compilation).
-Not used atm.
-* diverse working versions of draft.py
 
 
 To compile and run:
-====================
+===================
 1. Compile rnacounter0.pyx:
     python setup0.py build_ext --inplace ;
 
@@ -66,7 +63,7 @@ Example:
 
 Testing:
 =========
-Uni tests to come.
+Unit tests in folder tests/
 
 The BAM contains 4041 reads all aligning perfectly on Gapdh (ENSMUSG00000057666) exons,
 mostly on ENSMUSE00000487077 but also ENSMUSE00000751942 and ENSMUSE00000886744.
