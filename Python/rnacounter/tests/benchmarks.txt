@@ -33,3 +33,12 @@ real	3m27.375s
 user	3m19.240s
 sys	0m4.795s
 
+Cython:
+========
+real   2m12.479s
+user   2m3.433s
+sys    0m3.709s
+
+real   2m24.614s
+user   2m16.341s
+sys    0m3.921s

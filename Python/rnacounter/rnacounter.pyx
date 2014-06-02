@@ -41,19 +41,20 @@ ctypedef cnp.double_t DTYPE_t   # assign a corresponding compile-time C type to 
 ######################################################################
 
 
-cpdef double _score(x):
+cdef double _score(x):
     if x == '.': return 0.0
     else: return <double>x
-cpdef int _strand(x):
+cdef int _strand(x):
     smap = {'+':1, 1:1, '-':-1, -1:-1, '.':0, 0:0}
     return smap[x]
 Ecounter = itertools.count(1)  # to give unique ids to undefined exons, see parse_gtf()
 
-def parse_gtf(row):
+def parse_gtf(str line):
     """Parse one GTF line. Return None if not an 'exon'. Return False if row is empty."""
     # GTF fields = ['chr','source','name','start','end','score','strand','frame','attributes']
-    if not row: return False
-    row = row.strip().split("\t")
+    cdef list row
+    if not line: return False
+    row = line.strip().split("\t")
     if len(row) < 9:
         raise ValueError("\"Attributes\" field required in GFF.")
     if row[2] != 'exon':
@@ -166,7 +167,7 @@ cdef class Gene(GenomicObject):
 
 
 # Only "def" and not "cdef" because closures (lambdas here) are not supported yet by Cython
-def intersect_exons_list(object feats,bint multiple=False):
+def intersect_exons_list(list feats,bint multiple=False):
     """The intersection of a list *feats* of GenomicObjects.
     If *multiple* is True, permits multiplicity: if the same exon E1 is
     given twice, there will be "E1|E1" parts. Otherwise pieces are unique."""
@@ -183,10 +184,12 @@ def intersect_exons_list(object feats,bint multiple=False):
     else:
         return reduce(lambda x,y: x&y, feats)
 
-cpdef cobble(object exons,bint multiple=False):
+cdef cobble(list exons,bint multiple=False):
     """Split exons into non-overlapping parts.
     :param multiple: see intersect_exons_list()."""
-    cdef object ends, active_exons, cobbled, e, a, b
+    cdef list ends, active_exons, cobbled
+    cdef Exon e
+    cdef tuple a,b
     cdef int i
     ends = [(e.start,1,e) for e in exons] + [(e.end,0,e) for e in exons]
     ends.sort()
@@ -212,15 +215,18 @@ cpdef cobble(object exons,bint multiple=False):
 ######################################################################
 
 
-cpdef partition_chrexons(object chrexons):
+cdef partition_chrexons(list chrexons):
     """Partition chrexons in non-overlapping chunks with distinct genes.
     The problem is that exons are sorted wrt start,end, and so the first
     exon of a gene can be separate from the second by exons of other genes
     - from the GTF we don't know how many and how far."""
     cdef int lastend, lastindex, npart, i
-    cdef object lastgeneids, pinvgenes, partition, toremove, parts
+    cdef list partition, parts
+    cdef dict pinvgenes
+    cdef set lastgeneids, toremove
     cdef Exon exon
-    # Cut where disjoint and if the same gene continues
+    cdef str g
+    # Cut where disjoint except if the same gene continues
     lastend = chrexons[0].end
     lastgeneids = set([chrexons[0].gene_id])
     lastindex = 0
@@ -243,7 +249,6 @@ cpdef partition_chrexons(object chrexons):
     for g in lastgeneids:
         pinvgenes.setdefault(g,[]).append(npart)
     npart += 1
-
     # Merge intervals containing parts of the same gene mixed with others
     toremove = set()
     for g,parts in pinvgenes.iteritems():
@@ -252,18 +257,17 @@ cpdef partition_chrexons(object chrexons):
             partition[b] = (partition[a][0], partition[b][1])
             toremove |= set(range(a,b))
     partition = [p for i,p in enumerate(partition) if i not in toremove]
-
     return partition
 
 
-cpdef double toRPK(double count,double length,double norm_cst):
+cdef double toRPK(double count,double length,double norm_cst):
     return 1000.0 * count / (length * norm_cst)
-cpdef double fromRPK(double rpk,double length,double norm_cst):
+cdef double fromRPK(double rpk,double length,double norm_cst):
     return length * norm_cst * rpk / 1000.
 
 
 # Only "def" and not "cdef" because closures (lambdas here) are not supported yet by Cython
-def estimate_expression(object feat_class,object pieces,object ids,object exons,double norm_cst):
+def estimate_expression(object feat_class,list pieces,list ids,list exons,double norm_cst):
     """Build the exons-transcripts structure matrix:
     Lines are exons, columns are transcripts,
     so that A[i,j]!=0 means 'transcript Tj contains exon Ei'."""
@@ -273,6 +277,7 @@ def estimate_expression(object feat_class,object pieces,object ids,object exons,
     cdef cnp.ndarray[DTYPE_t, ndim=2] A
     cdef cnp.ndarray[DTYPE_t, ndim=1] E, T
     cdef Exon p
+    cdef list exs, feats
     if feat_class == Gene:
         is_in = lambda Exon x,str g: g in x.gene_id.split('|')
     elif feat_class == Transcript:
@@ -298,7 +303,7 @@ def estimate_expression(object feat_class,object pieces,object ids,object exons,
     return feats
 
 
-cpdef int count_reads(object exons,object ckreads,bint multiple,bint stranded) except -1:
+cdef int count_reads(list exons,object ckreads,bint multiple,bint stranded) except -1:
     """Adds (#aligned nucleotides/read length) to exon counts.
     Deals with indels, junctions etc.
     :param multiple: divide the count by the NH tag.
@@ -349,9 +354,10 @@ cpdef int count_reads(object exons,object ckreads,bint multiple,bint stranded) e
     return 0
 
 
-cpdef int get_total_nreads(object sam):
+cdef int get_total_nreads(object sam):
     cdef str ref
     cdef int length
+    cdef Counter Ncounter
     Ncounter = Counter()
     for ref,length in itertools.izip(sam.references,sam.lengths):
         sam.fetch(ref,0,length, callback=Ncounter)
