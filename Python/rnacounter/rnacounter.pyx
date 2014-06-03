@@ -26,7 +26,6 @@ Options:
    -h, --help                       Displays usage information and exits.
 """
 
-import cython
 import pysam
 import os, sys, itertools, copy
 from numpy import asarray, zeros
@@ -36,6 +35,10 @@ import numpy as np
 cimport numpy as cnp
 DTYPE = np.double               # fix a datatype for the arrays
 ctypedef cnp.double_t DTYPE_t   # assign a corresponding compile-time C type to DTYPE_t
+
+cdef extern from "math.h":
+    double sqrt(double x)
+    double pow(double x,double y)
 
 
 ######################################################################
@@ -263,12 +266,21 @@ cdef partition_chrexons(list chrexons):
 cdef double toRPK(double count,double length,double norm_cst):
     return 1000.0 * count / (length * norm_cst)
 cdef double fromRPK(double rpk,double length,double norm_cst):
-    return length * norm_cst * rpk / 1000.
+    return length * norm_cst * rpk / 1000.0
+
+cdef double toSQRPK(double count,double length,double norm_cst):
+    return 1000.0 * sqrt(count) / (length * norm_cst)
+cdef double fromSQRPK(double sqrpk,double length,double norm_cst):
+    return pow(length * norm_cst * sqrpk / 1000.0 , 2.0)
 
 
 # Only "def" and not "cdef" because closures (lambdas here) are not supported yet by Cython
 def estimate_expression(object feat_class,list pieces,list ids,list exons,double norm_cst):
-    """Build the exons-transcripts structure matrix:
+    """Infer gene/transcript expression from exons RPK. Takes Exon instances *pieces*
+    and returns for each feature ID in *ids* an instance of *feat_class* with the
+    appropriate count and RPK attributes set.
+
+    Builds the exons-transcripts structure matrix:
     Lines are exons, columns are transcripts,
     so that A[i,j]!=0 means 'transcript Tj contains exon Ei'."""
     cdef int n,m,flen,i,j
@@ -454,7 +466,8 @@ def rnacounter_main(bamname, annotname, options):
         exon = None
         while exon is None:
             row = annot.readline().strip()
-            exon = parse_gtf(row)
+            exon = parse_gtf(row)  # None if not an exon, False if EOF
+        if not row: break
         chrom = exon.chrom
     lastchrom = chrom
 
@@ -493,8 +506,8 @@ def usage_string():
 def parse_args(args):
     bamname = os.path.abspath(args['BAM'])
     annotname = os.path.abspath(args['GTF'])
-    assert(os.path.exists(bamname))
-    assert(os.path.exists(annotname))
+    assert os.path.exists(bamname), "BAM file not found: %s" %bamname
+    assert os.path.exists(annotname), "GTF file not found: %s" %annotname
 
     if args['--chromosomes'] is None: args['--chromosomes'] = []
     else: args['--chromosomes'] = args['--chromosomes'].split(',')
