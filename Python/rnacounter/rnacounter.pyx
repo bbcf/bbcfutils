@@ -44,10 +44,10 @@ cdef extern from "math.h":
 ######################################################################
 
 
-cdef double _score(x):
+cdef inline double _score(x):
     if x == '.': return 0.0
     else: return <double>x
-cdef int _strand(x):
+cdef inline int _strand(x):
     smap = {'+':1, 1:1, '-':-1, -1:-1, '.':0, 0:0}
     return smap[x]
 Ecounter = itertools.count(1)  # to give unique ids to undefined exons, see parse_gtf()
@@ -263,14 +263,14 @@ cdef partition_chrexons(list chrexons):
     return partition
 
 
-cdef double toRPK(double count,double length,double norm_cst):
+cdef inline double toRPK(double count,double length,double norm_cst):
     return 1000.0 * count / (length * norm_cst)
-cdef double fromRPK(double rpk,double length,double norm_cst):
+cdef inline double fromRPK(double rpk,double length,double norm_cst):
     return length * norm_cst * rpk / 1000.0
 
-cdef double toSQRPK(double count,double length,double norm_cst):
+cdef inline double toSQRPK(double count,double length,double norm_cst):
     return 1000.0 * sqrt(count) / (length * norm_cst)
-cdef double fromSQRPK(double sqrpk,double length,double norm_cst):
+cdef inline double fromSQRPK(double sqrpk,double length,double norm_cst):
     return pow(length * norm_cst * sqrpk / 1000.0 , 2.0)
 
 
