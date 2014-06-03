@@ -39,7 +39,7 @@ static const std::string bed_plus("track type=bedGraph visibility=2 name=strand+
 static const std::string bed_minus("track type=bedGraph visibility=2 name=strand- color=200,10,0 windowingFunction=maximum\n");
 
 static struct global_options {
-    bool regress, noratio, six, sql, nohds, fragcen;
+    bool regress, noratio, six, sql, nohds, fragcen, sglend;
     long wtpm;
     int mincover, maxhits, maxcnt, cut, cut_ct, chid, start, end, merge;
     std::string ofile, sfile, cfile, chr, chrn;
@@ -300,7 +300,7 @@ inline static int accumulate( const samtools::bam1_t *b, void *d ) {
     float weight = 1.0/nh;
 // ****************** if cut > 0, set tag size = cut even if longer than read 
     if (opts.cut < 0) read_cut = b->core.l_qseq;
-    if (opts.merge > -1) {
+    if (opts.merge > -1 && !opts.sglend) {
 	if ((b->core.flag&BAM_FPAIRED) && !(b->core.flag&BAM_FPROPER_PAIR))
 	    return 1;
 	if (b->core.flag&BAM_FPROPER_PAIR) {
@@ -383,7 +383,7 @@ inline static int accumulate( const samtools::bam1_t *b, void *d ) {
 	    int ri0 = start, ri1 = stop;
 	    if (opts.merge > 0) {
 		ri0 += opts.merge;
-                if ((b->core.flag&BAM_FPROPER_PAIR) == 0) ri1 += opts.merge;
+                if ((!opts.sglend) && (b->core.flag&BAM_FPROPER_PAIR) == 0) ri1 += opts.merge;
 	    }
 	    for ( int i = ri0; i < ri1; i++ ) 
 		if (!data->scounts || data->scounts->count(i)) data->counts[i]+=weight;
@@ -432,6 +432,8 @@ int main( int argc, char **argv )
 	cmd.add( nohds );
 	TCLAP::SwitchArg fcen( "f", "fragcenter", "For paired-end only: center on fragment midpoint", false );
 	cmd.add( fcen );
+	TCLAP::SwitchArg send( "", "single_end", "Ignore paired-end status",  false );
+	cmd.add( send );
 
 	cmd.parse( argc, argv );
 	global_options o = {
@@ -441,6 +443,7 @@ int main( int argc, char **argv )
 	    sql.getValue(),
 	    nohds.getValue(),
 	    fcen.getValue(),
+	    send.getValue(),
 	    wtpm.getValue(),
 	    std::max(0,mincv.getValue()),
 	    maxh.getValue(),
