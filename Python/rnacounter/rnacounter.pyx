@@ -1,3 +1,5 @@
+#cython: wraparound=False
+#cython: boundscheck=False
 """
 Count reads on genes and transcripts from a genome-level BAM file and a
 GTF/GFF file describing the exons, such as those provided by Emsembl or GenRep.
@@ -255,8 +257,9 @@ cdef partition_chrexons(list chrexons):
     # Merge intervals containing parts of the same gene mixed with others
     toremove = set()
     for g,parts in pinvgenes.iteritems():
-        if len(parts)>1:
-            a = parts[0]; b = parts[-1]
+        lp = len(parts)
+        if lp>1:
+            a = parts[0]; b = parts[lp-1]
             partition[b] = (partition[a][0], partition[b][1])
             toremove |= set(range(a,b))
     partition = [p for i,p in enumerate(partition) if i not in toremove]
@@ -309,7 +312,7 @@ def estimate_expression(object feat_class,list pieces,list ids,list exons,double
     for i,f in enumerate(ids):
         exs = sorted([e for e in exons if is_in(e,f)], key=lambda x:(x.start,x.end))
         flen = sum([p.length for p in pieces if is_in(p,f)])
-        feats.append(feat_class(name=f, start=exs[0].start, end=exs[-1].end,
+        feats.append(feat_class(name=f, start=exs[0].start, end=exs[len(exs)-1].end,
                 length=flen, rpk=T[i], count=fromRPK(T[i],flen,norm_cst),
                 chrom=exs[0].chrom, gene_id=exs[0].gene_id, gene_name=exs[0].gene_name))
     return feats
