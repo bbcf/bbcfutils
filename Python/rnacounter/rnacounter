@@ -7,5 +7,5 @@ from docopt import docopt
 if __name__ == '__main__':
     args = docopt(usage_string(), version='0.1')
     bamname, annotname, options = parse_args(args)
-    rnacounter_main(bamname,annotname, **options)
+    rnacounter_main(bamname,annotname, options)
 

@@ -11,8 +11,7 @@ from numpy.testing import assert_almost_equal
 __test__ = True
 
 
-#from rnacounter import *
-from draft import *
+from rnacounter import *
 import pysam
 
 path = os.path.abspath("../testfiles/")

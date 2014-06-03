@@ -1,0 +1,44 @@
+
+* mefKO.bam: complete alignment on mm9 (HTSstation Mapping 3XTw8WNAnFsl0EX2fvVb)
+
+
+            #############
+            #  28.05.14 #
+            #############
+
+
+Pure Python:
+=============
+real	5m1.901s
+user	4m41.739s
+sys	0m5.929s
+
+Compiled:
+==========
+real	4m3.282s
+user	3m48.855s
+sys	0m5.584s
+
+With .pxd:
+===========
+real	3m40.137s
+user	3m25.320s
+sys	0m5.413s
+
+real	3m45.083s
+user	3m29.161s
+sys	0m5.238s
+
+real	3m27.375s
+user	3m19.240s
+sys	0m4.795s
+
+Cython:
+========
+real   2m12.479s
+user   2m3.433s
+sys    0m3.709s
+
+real   2m24.614s
+user   2m16.341s
+sys    0m3.921s

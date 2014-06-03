@@ -1,26 +1,28 @@
 
-Initial files:
-===============
+Usage:
+======
+See "rnacounter --help".
 
-* draft.py:
-Python only version, for testing purposes. Run as "python draft.py".
 
-* draft.pyx:
-Cython version, for testing purposes (with import cython and some @locals for instance).
-Run as "python draft.pyx".
+Files description:
+==================
+* draft_nocython.py:
+Python only version, for testing purposes. Run as "python draft.py ...".
 
 * rnacounter.pyx:
-A copy of draft.pyx, to be compiled by Cython.
-
-* rnacounter.pdx:
-Redefinitions of rnacounter.pyx functions headers for faster execution
-(specifying C types for the functions' variables before compilation).
+Cython version that we compile with setup.py.
 
 * setup.py:
-The "Makefile" for Cython.
+The "Makefile" for rnacounter.py.
+Produces rnacounter.c, rnacounter.so.
 
-* rnacounter_main.py
-The executable, imports and runs the C version after compilation.
+* rnacounter
+The (python) executable, imports and runs the C version after compilation.
+
+* benchmark.txt: some execution timings reported, in different conditions.
+
+* tests/:
+Unit tests, run with "nosetests test_rnacounter.py".
 
 * testfiles/:
 Folder with testing files, including
@@ -28,22 +30,23 @@ Folder with testing files, including
 - mm9_3genes_renamed.gtf: extract of the Ensembl GTF with Gapdh, the gene before and the gene after.
 - mm9_Gapdh_renamed.gtf: extract of the Ensembl GTF with Gapdh only.
 
-* benchmark.txt: some execution timings reported, in different conditions.
-
-
-After compilation:
-===================
-* rnacounter.c: C source.
-* rnacounter.so: executabe.
 * build/: platform-specific compilation stuff.
 
+* backup/:
+Contains in particular "rnacounter.pxd":
+Redefinitions of rnacounter.py functions headers for faster execution
+(specifying C types for the functions' variables before compilation).
 
-To compile:
-============
-1. If there is an update in draft.pyx to include:
-    cp draft.pyx rnacounter.pyx ;
 
-2. Compilation:
+To compile and run:
+===================
+1. Compile rnacounter0.pyx:
+    python setup0.py build_ext --inplace ;
+
+2. If there is an update in draft.py to include:
+    cp draft.py rnacounter.py ;
+
+3. Compile rnacounter.py:
     python setup.py build_ext --inplace ;
 
 Note: On OSX Mavericks, XCode 5 is bugged and clang requires to add the following
@@ -52,18 +55,15 @@ to run without raising an error:
     ARCHFLAGS=-Wno-error=unused-command-line-argument-hard-error-in-future \
     python setup.py build_ext --inplace ;
 
-
-To run:
-========
-./rnacounter_main.py --help
-
+4. Run:
+    ./rnacounter --help
 Example:
-./rnacounter_main.py testfiles/gapdhKO.bam testfiles/mm9_3genes_renamed.gtf
+    ./rnacounter testfiles/gapdhKO.bam testfiles/mm9_3genes_renamed.gtf
 
 
 Testing:
 =========
-Uni tests to come.
+Unit tests in folder tests/
 
 The BAM contains 4041 reads all aligning perfectly on Gapdh (ENSMUSG00000057666) exons,
 mostly on ENSMUSE00000487077 but also ENSMUSE00000751942 and ENSMUSE00000886744.

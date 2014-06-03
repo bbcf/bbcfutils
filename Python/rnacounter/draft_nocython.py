@@ -37,7 +37,7 @@ def parse_gtf(row):
     """Parse one GTF line. Return None if not an 'exon'. Return False if row is empty."""
     # GTF fields = ['chr','source','name','start','end','score','strand','frame','attributes']
     def _score(x):
-        if str(x) == '.': return 0
+        if x == '.': return 0.0
         else: return float(x)
     def _strand(x):
         smap = {'+':1, 1:1, '-':-1, -1:-1, '.':0, 0:0}
@@ -183,29 +183,28 @@ def partition_chrexons(chrexons):
     exon of a gene can be separate from the second by exons of other genes
     - from the GTF we don't know how many and how far."""
     # Cut where disjoint and if the same gene continues
-                #geneids = dict((e.gene_id,i) for i,e in enumerate(chrexons))
     lastend = chrexons[0].end
     lastgeneids = set([chrexons[0].gene_id])
     lastindex = 0
     partition = []
-    pinvgenes = {}
-    npart = -1    # number of partitions
+    pinvgenes = {}  # map {gene_id: partitions it is in}
+    npart = 0       # number of partitions
     for i,exon in enumerate(chrexons):
         if (exon.start > lastend) and (exon.gene_id not in lastgeneids):
             lastend = max(exon.end,lastend)
             partition.append((lastindex,i))
-            npart += 1
             for g in lastgeneids:
                 pinvgenes.setdefault(g,[]).append(npart)
+            npart += 1
             lastgeneids = set()
             lastindex = i
         else:
             lastend = max(exon.end,lastend)
         lastgeneids.add(exon.gene_id)
     partition.append((lastindex,len(chrexons)))
-    npart += 1
     for g in lastgeneids:
         pinvgenes.setdefault(g,[]).append(npart)
+    npart += 1
 
     # Merge intervals containing parts of the same gene mixed with others
     toremove = set()
@@ -216,9 +215,6 @@ def partition_chrexons(chrexons):
             toremove |= set(range(a,b))
     partition = [p for i,p in enumerate(partition) if i not in toremove]
 
-    #def check_unique(parts):
-    #    return len(reduce(set.union, parts)) == len([x for p in parts for x in p])
-
     return partition
 
 
@@ -228,7 +224,7 @@ def fromRPK(rpk,length,norm_cst):
     return length * norm_cst * rpk / 1000.
 
 
-def process_chunk(ckexons, sam, chrom, **options):
+def process_chunk(ckexons, sam, chrom, options):
     """Distribute counts across transcripts and genes of a chunk *ckexons*
     of non-overlapping exons."""
 
@@ -367,7 +363,14 @@ def process_chunk(ckexons, sam, chrom, **options):
         options['output'].write('\t'.join(towrite)+'\n')
 
 
-def rnacounter_main(bamname, annotname, **options):
+def get_total_nreads(sam):
+    Ncounter = Counter()
+    for ref,length in itertools.izip(sam.references,sam.lengths):
+        sam.fetch(ref,0,length, callback=Ncounter)
+    return Ncounter.n
+
+
+def rnacounter_main(bamname, annotname, options):
     sam = pysam.Samfile(bamname, "rb")
     annot = open(annotname, "r")
 
@@ -382,10 +385,7 @@ def rnacounter_main(bamname, annotname, **options):
 
     # Get total number of reads
     if options['normalize'] is None:
-        Ncounter = Counter()
-        for ref,length in itertools.izip(sam.references,sam.lengths):
-            sam.fetch(ref,0,length, callback=Ncounter)
-        options['normalize'] = float(Ncounter.n) / 1e6
+        options['normalize'] = get_total_nreads(sam) / 1.0e6
     else:
         options['normalize'] = float(options['normalize'])
 
@@ -417,8 +417,7 @@ def rnacounter_main(bamname, annotname, **options):
             partition = partition_chrexons(chrexons)
             # Process chunks
             for (a,b) in partition:
-                process_chunk(chrexons[a:b], sam, lastchrom, **options)
-
+                process_chunk(chrexons[a:b], sam, lastchrom, options)
         lastchrom = chrom
 
     options['output'].close()
@@ -456,7 +455,7 @@ def parse_args(args):
 if __name__ == '__main__':
     args = docopt(__doc__, version='0.1')
     bamname, annotname, options = parse_args(args)
-    rnacounter_main(bamname,annotname, **options)
+    rnacounter_main(bamname,annotname, options)
 
 
 #----------------------------------------------#
