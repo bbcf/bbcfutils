@@ -116,14 +116,14 @@ cdef class GenomicObject(object):
             gene_id = '|'.join(set([self.gene_id, other.gene_id])),
             gene_name = '|'.join(set([self.gene_name, other.gene_name])),
             chrom = self.chrom,
+            name = '|'.join([self.name, other.name]),
+            strand = (self.strand + other.strand)/2,
+            multiplicity = self.multiplicity + other.multiplicity
+            ##   name = '|'.join(set([self.name, other.name])),
             #start = max(self.start, other.start),
             #end = min(self.end, other.end),
-            ##   name = '|'.join(set([self.name, other.name])),
-            name = '|'.join([self.name, other.name]),
             #score = self.score + other.score,
-            strand = (self.strand + other.strand)/2,
             #length = min(self.end, other.end) - max(self.start, other.start),
-            multiplicity = self.multiplicity + other.multiplicity
         )
     def __repr__(self):
         return "__%s.%s:%d-%d__" % (self.name,self.gene_name,self.start,self.end)
@@ -132,6 +132,9 @@ cdef class Exon(GenomicObject):
     cdef public:
         int exon_number
         object transcripts
+    cdef:
+        double NH,v
+        str k
     def __init__(self,int exon_number=0,object transcripts=set(), **args):
         GenomicObject.__init__(self, **args)
         self.exon_number = exon_number
@@ -143,8 +146,12 @@ cdef class Exon(GenomicObject):
         return E
     cpdef increment(self,double x,object alignment,bint multiple=False,bint stranded=False):
         if multiple:
-            NH = [1.0/t[1] for t in alignment.tags if t[0]=='NH']+[1]
-            x = x*NH[0]
+            NH = 1.0
+            for (k,v) in alignment.tags:
+                if k=='NH':
+                    NH = 1.0/v
+                    break
+            x = x * NH
         if stranded:
             # read/exon stand mismatch
             if alignment.is_reverse and self.strand != -1:
@@ -225,7 +232,7 @@ cdef partition_chrexons(list chrexons):
     The problem is that exons are sorted wrt start,end, and so the first
     exon of a gene can be separate from the second by exons of other genes
     - from the GTF we don't know how many and how far."""
-    cdef int lastend, lastindex, npart, i
+    cdef int lastend, lastindex, npart, i, lp
     cdef list partition, parts
     cdef dict pinvgenes
     cdef set lastgeneids, toremove
@@ -245,7 +252,7 @@ cdef partition_chrexons(list chrexons):
             for g in lastgeneids:
                 pinvgenes.setdefault(g,[]).append(npart)
             npart += 1
-            lastgeneids = set()
+            lastgeneids.clear()
             lastindex = i
         else:
             lastend = max(exon.end,lastend)
@@ -326,18 +333,22 @@ cdef int count_reads(list exons,object ckreads,bint multiple,bint stranded) exce
     cdef int current_pos, pos2, ali_pos, nexons
     cdef int exon_start, exon_end, shift, op, ali_len, read_len
     cdef object alignment
+    cdef Exon E1, E2
     current_pos = 0
     nexons = len(exons)
     for alignment in ckreads:
         if current_pos >= nexons: return 0
-        exon_end = exons[current_pos].end
+        E1 = exons[current_pos]
+        exon_end = E1.end
         ali_pos = alignment.pos
         while exon_end <= ali_pos:
             current_pos += 1
             if current_pos >= nexons: return 0
-            exon_end = exons[current_pos].end
+            E1 = exons[current_pos]
+            exon_end = E1.end
         pos2 = current_pos
-        exon_start = exons[pos2].start
+        E2 = exons[pos2]
+        exon_start = E2.start
         read_len = alignment.rlen
         ali_len = 0
         for op,shift in alignment.cigar:
@@ -349,14 +360,15 @@ cdef int count_reads(list exons,object ckreads,bint multiple,bint stranded) exce
                 # If read crosses exon right bound, maybe next exon(s)
                 while ali_pos+shift >= exon_end:
                     if op == 0: ali_len += exon_end - ali_pos
-                    exons[pos2].increment(float(ali_len)/float(read_len), alignment, multiple,stranded)
+                    E2.increment(float(ali_len)/float(read_len), alignment, multiple,stranded)
                     shift -= exon_end-ali_pos  # remaining part of the read
                     ali_pos = exon_end
                     ali_len = 0
                     pos2 += 1
                     if pos2 >= nexons: return 0
-                    exon_start = exons[pos2].start
-                    exon_end = exons[pos2].end
+                    E2 = exons[pos2]
+                    exon_start = E2.start
+                    exon_end = E2.end
                     if ali_pos < exon_start:
                         ali_pos = min(exon_start, ali_pos+shift)
                         shift = max(0, ali_pos+shift-exon_start)  # from exon start to end of the read
@@ -365,7 +377,7 @@ cdef int count_reads(list exons,object ckreads,bint multiple,bint stranded) exce
             elif op == 1:  # BAM_CINS
                 ali_len += shift;
         if ali_len < 1: return 0;
-        exons[pos2].increment(float(ali_len)/float(read_len), alignment, multiple,stranded)
+        E2.increment(float(ali_len)/float(read_len), alignment, multiple,stranded)
     return 0
 
 
