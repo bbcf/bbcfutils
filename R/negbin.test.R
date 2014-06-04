@@ -61,7 +61,10 @@ main <- function(data_file, sep="\t", output_file=''){
     }
 
     if (nrow(data)>3){
-    DES(data, conds, method, sharingMode, output_file) }
+        DES(data, conds, method, sharingMode, output_file)
+    } else {
+        print("Less than 3 rows. Return.")
+    }
 }
 
 
