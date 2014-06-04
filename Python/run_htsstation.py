@@ -7,7 +7,7 @@ Top-level script for HTSstation.epfl.ch pipelines.
 import optparse, sys, os
 from bbcflib.workflows import Workflow, Usage
 
-_module_list = ["demultiplexing","mapseq","chipseq","rnaseq","snp","4cseq"]
+_module_list = ["demultiplexing","mapseq","chipseq","rnaseq","snp","4cseq","microbiome","dnaseseq"]
 _mapseq_lims_opt = ("-m", "--mapseq_minilims",
                     "MiniLIMS where a previous Mapseq execution and files have been stored.",
                     {'default': None})
@@ -169,6 +169,26 @@ class C4seqWorkflow(Workflow):
                           "via": self.opts.via}
         return True
 
+
+############################### Microbiome ###############################
+class MicrobiomeWorkflow(Workflow):
+
+    def __init__(self):
+        opts = (_mapseq_lims_opt,)
+        usage = "[-m mapseq_minilims]"
+        desc = """A High-throughput microbiome analysis workflow. Will return counts per level for the selected microbiome database."""
+        Workflow.__init__(self,module="microbiome",name="microbiome",opts=opts,usage=usage,desc=desc)
+
+    def check_options(self):
+        Workflow.check_options(self)
+        self.main_args = {"job": self.job,
+                          "assembly": self.job.assembly,
+                          "script_path": self.globals.get('script_path',''),
+                          "logfile": self.logfile,
+                          "via": self.opts.via}
+        return True
+
+
 ############################### MAIN ###############################
 def main():
     parser = None
@@ -187,6 +207,8 @@ def main():
             WF = SnpWorkflow()
         elif module[:2] in ["c4","4c"]:
             WF = C4seqWorkflow()
+        elif module[:5] == "micro":
+            WF = MicrobiomeWorkflow()
         else:
             m = "No such operation: %s, choose one of %s." %(module,str(_module_list)) if module else ''
             raise Usage(m)

@@ -1,4 +1,4 @@
-#smoothData.R --args infile nFragsPerWin curName resfile regToExclude (if any) 
+#smoothData.R --args infile nFragsPerWin curName resfile regToExclude (if any)
 
 Args <- commandArgs(TRUE)
 print(length(Args))
@@ -75,11 +75,11 @@ generateSmoothedWindows <- function(myData,n)
 			ipairs <- cbind(istart,iend,mid)
 			ipairs[which(ipairs[,2]>length(mid)),2]=length(mid)
 			ipairs[which(ipairs[,1]<0),1]=1
-                        
+
                         cbind(data_byChr[[i]][mid,2],data_byChr[[i]][mid,3],groupFrag_betweenIndices(data_byChr[[i]][,4],ipairs[,1],ipairs[,2]))
 			} #end if nrow>0
-                        } #end function(i) 
-                
+                        } #end function(i)
+
         )
         names(newWindows)=names(data_byChr)}
 	else{newWindows=c()}
@@ -87,25 +87,29 @@ generateSmoothedWindows <- function(myData,n)
 }
 
 stringsAsFactors=FALSE
+print(paste("read file ",fragsFile,sep=""))
 allFrags <- read.delim(fragsFile,header=FALSE,skip=skipN)
 data <- data.frame("chr"=as.factor(allFrags[,1]),"start"=as.integer(allFrags[,2]),"end"=as.integer(allFrags[,3]),"score"=as.numeric(allFrags[,4]),stringsAsFactors=FALSE)
+print("dim(data)")
+print(dim(data))
+if(nrow(data)==0){print("Warning!! file is empty!!")}
 allSmoothedWindows <- generateSmoothedWindows(data,nFragsPerWin)
 
 if(nchar(regToExclude)>2)
 {
-	regToExcludeSplit <- unlist(strsplit(gsub("-",":",regToExclude,perl=TRUE),":"))
-	data_splitted <- getRegions(data,regToExcludeSplit)
-	othersChrs_allWindows <- generateSmoothedWindows(data_splitted[[1]],nFragsPerWin)
-	upInteractiveReg_allWindows <- generateSmoothedWindows(data_splitted[[2]],nFragsPerWin)
-	downInteractiveReg_allWindows <- generateSmoothedWindows(data_splitted[[3]],nFragsPerWin)
-	allSmoothedWindows <- mergeLists(othersChrs_allWindows,upInteractiveReg_allWindows)
-	allSmoothedWindows <- mergeLists(allSmoothedWindows,downInteractiveReg_allWindows)
-	header=paste("track type=bedGraph name='",curName," (all smoothed windows - ",nFragsPerWin," fragments per window)' description='",curName," (all smoothed windows - ",nFragsPerWin," fragments per window - region excluded=",regToExclude,")' visibility=full windowingFunction=maximum",sep="")
+    regToExcludeSplit <- unlist(strsplit(gsub("-",":",regToExclude,perl=TRUE),":"))
+    data_splitted <- getRegions(data,regToExcludeSplit)
+    othersChrs_allWindows <- generateSmoothedWindows(data_splitted[[1]],nFragsPerWin)
+    upInteractiveReg_allWindows <- generateSmoothedWindows(data_splitted[[2]],nFragsPerWin)
+    downInteractiveReg_allWindows <- generateSmoothedWindows(data_splitted[[3]],nFragsPerWin)
+    allSmoothedWindows <- mergeLists(othersChrs_allWindows,upInteractiveReg_allWindows)
+    allSmoothedWindows <- mergeLists(allSmoothedWindows,downInteractiveReg_allWindows)
+    header=paste("track type=bedGraph name='",curName," (all smoothed windows - ",nFragsPerWin," fragments per window)' description='",curName," (all smoothed windows - ",nFragsPerWin," fragments per window - region excluded=",regToExclude,")' visibility=full windowingFunction=maximum",sep="")
 }
 
 if(nchar(regToExclude)<=2)
 {
-	header=paste("track type=bedGraph name='",curName," (all smoothed windows - ",nFragsPerWin," fragments per window)' description='",curName," (all smoothed windows - ",nFragsPerWin," fragments per window)' visibility=full windowingFunction=maximum",sep="")
+header=paste("track type=bedGraph name='",curName," (all smoothed windows - ",nFragsPerWin," fragments per window)' description='",curName," (all smoothed windows - ",nFragsPerWin," fragments per window)' visibility=full windowingFunction=maximum",sep="")
 }
 
 
