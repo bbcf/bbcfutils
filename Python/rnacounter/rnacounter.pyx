@@ -484,6 +484,8 @@ def rnacounter_main(bamname, annotname, options):
             exon = parse_gtf(row)  # None if not an exon, False if EOF
         if not row: break
         chrom = exon.chrom
+    if chrom == '':
+        raise ValueError("Reference names in BAM do not correspond to that of the GTF.")
     lastchrom = chrom
 
     # Process together all exons of one chromosome at a time
