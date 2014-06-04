@@ -1,3 +1,5 @@
+#cython: wraparound=False
+#cython: boundscheck=False
 """
 Count reads on genes and transcripts from a genome-level BAM file and a
 GTF/GFF file describing the exons, such as those provided by Emsembl or GenRep.
@@ -26,7 +28,6 @@ Options:
    -h, --help                       Displays usage information and exits.
 """
 
-import cython
 import pysam
 import os, sys, itertools, copy
 from numpy import asarray, zeros
@@ -37,14 +38,18 @@ cimport numpy as cnp
 DTYPE = np.double               # fix a datatype for the arrays
 ctypedef cnp.double_t DTYPE_t   # assign a corresponding compile-time C type to DTYPE_t
 
+cdef extern from "math.h":
+    double sqrt(double x)
+    double pow(double x,double y)
+
 
 ######################################################################
 
 
-cdef double _score(x):
+cdef inline double _score(x):
     if x == '.': return 0.0
     else: return <double>x
-cdef int _strand(x):
+cdef inline int _strand(x):
     smap = {'+':1, 1:1, '-':-1, -1:-1, '.':0, 0:0}
     return smap[x]
 Ecounter = itertools.count(1)  # to give unique ids to undefined exons, see parse_gtf()
@@ -111,14 +116,14 @@ cdef class GenomicObject(object):
             gene_id = '|'.join(set([self.gene_id, other.gene_id])),
             gene_name = '|'.join(set([self.gene_name, other.gene_name])),
             chrom = self.chrom,
+            name = '|'.join([self.name, other.name]),
+            strand = (self.strand + other.strand)/2,
+            multiplicity = self.multiplicity + other.multiplicity
+            ##   name = '|'.join(set([self.name, other.name])),
             #start = max(self.start, other.start),
             #end = min(self.end, other.end),
-            ##   name = '|'.join(set([self.name, other.name])),
-            name = '|'.join([self.name, other.name]),
             #score = self.score + other.score,
-            strand = (self.strand + other.strand)/2,
             #length = min(self.end, other.end) - max(self.start, other.start),
-            multiplicity = self.multiplicity + other.multiplicity
         )
     def __repr__(self):
         return "__%s.%s:%d-%d__" % (self.name,self.gene_name,self.start,self.end)
@@ -127,6 +132,9 @@ cdef class Exon(GenomicObject):
     cdef public:
         int exon_number
         object transcripts
+    cdef:
+        double NH,v
+        str k
     def __init__(self,int exon_number=0,object transcripts=set(), **args):
         GenomicObject.__init__(self, **args)
         self.exon_number = exon_number
@@ -138,8 +146,12 @@ cdef class Exon(GenomicObject):
         return E
     cpdef increment(self,double x,object alignment,bint multiple=False,bint stranded=False):
         if multiple:
-            NH = [1.0/t[1] for t in alignment.tags if t[0]=='NH']+[1]
-            x = x*NH[0]
+            NH = 1.0
+            for (k,v) in alignment.tags:
+                if k=='NH':
+                    NH = 1.0/v
+                    break
+            x = x * NH
         if stranded:
             # read/exon stand mismatch
             if alignment.is_reverse and self.strand != -1:
@@ -220,7 +232,7 @@ cdef partition_chrexons(list chrexons):
     The problem is that exons are sorted wrt start,end, and so the first
     exon of a gene can be separate from the second by exons of other genes
     - from the GTF we don't know how many and how far."""
-    cdef int lastend, lastindex, npart, i
+    cdef int lastend, lastindex, npart, i, lp
     cdef list partition, parts
     cdef dict pinvgenes
     cdef set lastgeneids, toremove
@@ -240,7 +252,7 @@ cdef partition_chrexons(list chrexons):
             for g in lastgeneids:
                 pinvgenes.setdefault(g,[]).append(npart)
             npart += 1
-            lastgeneids = set()
+            lastgeneids.clear()
             lastindex = i
         else:
             lastend = max(exon.end,lastend)
@@ -252,23 +264,33 @@ cdef partition_chrexons(list chrexons):
     # Merge intervals containing parts of the same gene mixed with others
     toremove = set()
     for g,parts in pinvgenes.iteritems():
-        if len(parts)>1:
-            a = parts[0]; b = parts[-1]
+        lp = len(parts)
+        if lp>1:
+            a = parts[0]; b = parts[lp-1]
             partition[b] = (partition[a][0], partition[b][1])
             toremove |= set(range(a,b))
     partition = [p for i,p in enumerate(partition) if i not in toremove]
     return partition
 
 
-cdef double toRPK(double count,double length,double norm_cst):
+cdef inline double toRPK(double count,double length,double norm_cst):
     return 1000.0 * count / (length * norm_cst)
-cdef double fromRPK(double rpk,double length,double norm_cst):
-    return length * norm_cst * rpk / 1000.
+cdef inline double fromRPK(double rpk,double length,double norm_cst):
+    return length * norm_cst * rpk / 1000.0
+
+cdef inline double toSQRPK(double count,double length,double norm_cst):
+    return 1000.0 * sqrt(count) / (length * norm_cst)
+cdef inline double fromSQRPK(double sqrpk,double length,double norm_cst):
+    return pow(length * norm_cst * sqrpk / 1000.0 , 2.0)
 
 
 # Only "def" and not "cdef" because closures (lambdas here) are not supported yet by Cython
 def estimate_expression(object feat_class,list pieces,list ids,list exons,double norm_cst):
-    """Build the exons-transcripts structure matrix:
+    """Infer gene/transcript expression from exons RPK. Takes Exon instances *pieces*
+    and returns for each feature ID in *ids* an instance of *feat_class* with the
+    appropriate count and RPK attributes set.
+
+    Builds the exons-transcripts structure matrix:
     Lines are exons, columns are transcripts,
     so that A[i,j]!=0 means 'transcript Tj contains exon Ei'."""
     cdef int n,m,flen,i,j
@@ -297,7 +319,7 @@ def estimate_expression(object feat_class,list pieces,list ids,list exons,double
     for i,f in enumerate(ids):
         exs = sorted([e for e in exons if is_in(e,f)], key=lambda x:(x.start,x.end))
         flen = sum([p.length for p in pieces if is_in(p,f)])
-        feats.append(feat_class(name=f, start=exs[0].start, end=exs[-1].end,
+        feats.append(feat_class(name=f, start=exs[0].start, end=exs[len(exs)-1].end,
                 length=flen, rpk=T[i], count=fromRPK(T[i],flen,norm_cst),
                 chrom=exs[0].chrom, gene_id=exs[0].gene_id, gene_name=exs[0].gene_name))
     return feats
@@ -311,18 +333,22 @@ cdef int count_reads(list exons,object ckreads,bint multiple,bint stranded) exce
     cdef int current_pos, pos2, ali_pos, nexons
     cdef int exon_start, exon_end, shift, op, ali_len, read_len
     cdef object alignment
+    cdef Exon E1, E2
     current_pos = 0
     nexons = len(exons)
     for alignment in ckreads:
         if current_pos >= nexons: return 0
-        exon_end = exons[current_pos].end
+        E1 = exons[current_pos]
+        exon_end = E1.end
         ali_pos = alignment.pos
         while exon_end <= ali_pos:
             current_pos += 1
             if current_pos >= nexons: return 0
-            exon_end = exons[current_pos].end
+            E1 = exons[current_pos]
+            exon_end = E1.end
         pos2 = current_pos
-        exon_start = exons[pos2].start
+        E2 = exons[pos2]
+        exon_start = E2.start
         read_len = alignment.rlen
         ali_len = 0
         for op,shift in alignment.cigar:
@@ -334,14 +360,15 @@ cdef int count_reads(list exons,object ckreads,bint multiple,bint stranded) exce
                 # If read crosses exon right bound, maybe next exon(s)
                 while ali_pos+shift >= exon_end:
                     if op == 0: ali_len += exon_end - ali_pos
-                    exons[pos2].increment(float(ali_len)/float(read_len), alignment, multiple,stranded)
+                    E2.increment(float(ali_len)/float(read_len), alignment, multiple,stranded)
                     shift -= exon_end-ali_pos  # remaining part of the read
                     ali_pos = exon_end
                     ali_len = 0
                     pos2 += 1
                     if pos2 >= nexons: return 0
-                    exon_start = exons[pos2].start
-                    exon_end = exons[pos2].end
+                    E2 = exons[pos2]
+                    exon_start = E2.start
+                    exon_end = E2.end
                     if ali_pos < exon_start:
                         ali_pos = min(exon_start, ali_pos+shift)
                         shift = max(0, ali_pos+shift-exon_start)  # from exon start to end of the read
@@ -350,7 +377,7 @@ cdef int count_reads(list exons,object ckreads,bint multiple,bint stranded) exce
             elif op == 1:  # BAM_CINS
                 ali_len += shift;
         if ali_len < 1: return 0;
-        exons[pos2].increment(float(ali_len)/float(read_len), alignment, multiple,stranded)
+        E2.increment(float(ali_len)/float(read_len), alignment, multiple,stranded)
     return 0
 
 
@@ -454,7 +481,8 @@ def rnacounter_main(bamname, annotname, options):
         exon = None
         while exon is None:
             row = annot.readline().strip()
-            exon = parse_gtf(row)
+            exon = parse_gtf(row)  # None if not an exon, False if EOF
+        if not row: break
         chrom = exon.chrom
     lastchrom = chrom
 
@@ -493,8 +521,8 @@ def usage_string():
 def parse_args(args):
     bamname = os.path.abspath(args['BAM'])
     annotname = os.path.abspath(args['GTF'])
-    assert(os.path.exists(bamname))
-    assert(os.path.exists(annotname))
+    assert os.path.exists(bamname), "BAM file not found: %s" %bamname
+    assert os.path.exists(annotname), "GTF file not found: %s" %annotname
 
     if args['--chromosomes'] is None: args['--chromosomes'] = []
     else: args['--chromosomes'] = args['--chromosomes'].split(',')
