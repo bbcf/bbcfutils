@@ -39,7 +39,7 @@ static const std::string bed_plus("track type=bedGraph visibility=2 name=strand+
 static const std::string bed_minus("track type=bedGraph visibility=2 name=strand- color=200,10,0 windowingFunction=maximum\n");
 
 static struct global_options {
-    bool regress, noratio, six, sql, nohds, fragcen;
+    bool regress, noratio, six, sql, nohds, fragcen, sglend, nonh;
     long wtpm;
     int mincover, maxhits, maxcnt, cut, cut_ct, chid, start, end, merge;
     std::string ofile, sfile, cfile, chr, chrn;
@@ -50,7 +50,7 @@ static inline int counttags( const samtools::bam1_t *b, void *data )
     size_t i = 0;
     if ((b->core.flag & BAM_FUNMAP) == 0) {
 	i = samtools::bam_aux2i(bam_aux_get(b,"NH"));
-	if (i==0) i=1;
+	if (opts.nonh || i==0) i=1;
 	(*(std::map< int, size_t >*)data)[i]++;
     }
     return 0;
@@ -295,19 +295,19 @@ inline static int accumulate( const samtools::bam1_t *b, void *d ) {
     samdata *data = (samdata*)d;
     int nh = 1, read_cut = opts.cut, dstr = data->strand;
 // ****************** NH field = Number of Hits for this tag
-    if (bam_aux_get(b,"NH")) nh = samtools::bam_aux2i(bam_aux_get(b,"NH"));
+    if ((!opts.nonh) && bam_aux_get(b,"NH")) nh = samtools::bam_aux2i(bam_aux_get(b,"NH"));
     if (nh > opts.maxhits && opts.maxhits >= 0) return 1;
     float weight = 1.0/nh;
 // ****************** if cut > 0, set tag size = cut even if longer than read 
     if (opts.cut < 0) read_cut = b->core.l_qseq;
-    if (opts.merge > -1) {
+    if (opts.merge > -1 && !opts.sglend) {
 	if ((b->core.flag&BAM_FPAIRED) && !(b->core.flag&BAM_FPROPER_PAIR))
 	    return 1;
 	if (b->core.flag&BAM_FPROPER_PAIR) {
             if (bam1_strand(b) ^ (b->core.isize<0))  
                 return 1;
             if (!opts.fragcen) {
-                read_cut = b->core.isize-opts.merge;
+                read_cut = b->core.isize-2*opts.merge;
                 opts.cut = 1;
                 if (read_cut < 1 || bam1_strand(b)) 
                     return 1;
@@ -355,11 +355,9 @@ inline static int accumulate( const samtools::bam1_t *b, void *d ) {
 		if (!data->scounts || data->scounts->count(i)) data->counts[i]+=weight;
 	}
     } else if ((!bam1_strand(b)) && dstr >= 0) { // ********* forward strand *********
-	int start = b->core.pos+1, stop = start+read_cut;
-	if (opts.fragcen) {
-	    start = b->core.pos+b->core.isize/2-read_cut/2+1;
-	    stop = start+read_cut;
-	}
+	int start = b->core.pos+1;
+	if (opts.fragcen) start = b->core.pos+b->core.isize/2-read_cut/2+1;
+        int stop = start+read_cut;
 	for ( uint32_t j = 0; j < b->core.n_cigar; j++ ) {
 	    int op = bam1_cigar(b)[j]&BAM_CIGAR_MASK,
 		shift = bam1_cigar(b)[j]>>BAM_CIGAR_SHIFT;
@@ -383,7 +381,7 @@ inline static int accumulate( const samtools::bam1_t *b, void *d ) {
 	    int ri0 = start, ri1 = stop;
 	    if (opts.merge > 0) {
 		ri0 += opts.merge;
-                if ((b->core.flag&BAM_FPROPER_PAIR) == 0) ri1 += opts.merge;
+                if (opts.sglend || (b->core.flag&BAM_FPROPER_PAIR) == 0) ri1 += opts.merge;
 	    }
 	    for ( int i = ri0; i < ri1; i++ ) 
 		if (!data->scounts || data->scounts->count(i)) data->counts[i]+=weight;
@@ -416,7 +414,7 @@ int main( int argc, char **argv )
 	cmd.add( cut );
 	TCLAP::ValueArg< int > cut_c( "k", "kut", "Control tags (pseudo-)size",  false, -1, "int" );
 	cmd.add( cut_c );
-	TCLAP::ValueArg< long > wtpm( "w", "weight", "If 0: normalise by total tag count*1e-7, if >0: uses 1e-7*w as factor",  false, -1, "int" );
+	TCLAP::ValueArg< long > wtpm( "w", "weight", "If 0: normalise by total tag count*1e-7, if >0: uses 1e-7*w as factor, default: no normalisation",  false, -1, "int" );
 	cmd.add( wtpm );
 	TCLAP::SwitchArg reg( "r", "regress", "Normalize count by regression on control",  false );
 	cmd.add( reg );
@@ -432,6 +430,10 @@ int main( int argc, char **argv )
 	cmd.add( nohds );
 	TCLAP::SwitchArg fcen( "f", "fragcenter", "For paired-end only: center on fragment midpoint", false );
 	cmd.add( fcen );
+	TCLAP::SwitchArg send( "", "single_end", "Ignore paired-end status",  false );
+	cmd.add( send );
+	TCLAP::SwitchArg nnh( "", "no_nh", "Ignore BAM's NH attribute",  false );
+	cmd.add( nnh );
 
 	cmd.parse( argc, argv );
 	global_options o = {
@@ -441,6 +443,8 @@ int main( int argc, char **argv )
 	    sql.getValue(),
 	    nohds.getValue(),
 	    fcen.getValue(),
+	    send.getValue(),
+	    nnh.getValue(),
 	    wtpm.getValue(),
 	    std::max(0,mincv.getValue()),
 	    maxh.getValue(),
