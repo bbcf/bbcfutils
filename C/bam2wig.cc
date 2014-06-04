@@ -307,7 +307,7 @@ inline static int accumulate( const samtools::bam1_t *b, void *d ) {
             if (bam1_strand(b) ^ (b->core.isize<0))  
                 return 1;
             if (!opts.fragcen) {
-                read_cut = b->core.isize-opts.merge;
+                read_cut = b->core.isize-2*opts.merge;
                 opts.cut = 1;
                 if (read_cut < 1 || bam1_strand(b)) 
                     return 1;
@@ -355,11 +355,9 @@ inline static int accumulate( const samtools::bam1_t *b, void *d ) {
 		if (!data->scounts || data->scounts->count(i)) data->counts[i]+=weight;
 	}
     } else if ((!bam1_strand(b)) && dstr >= 0) { // ********* forward strand *********
-	int start = b->core.pos+1, stop = start+read_cut;
-	if (opts.fragcen) {
-	    start = b->core.pos+b->core.isize/2-read_cut/2+1;
-	    stop = start+read_cut;
-	}
+	int start = b->core.pos+1;
+	if (opts.fragcen) start = b->core.pos+b->core.isize/2-read_cut/2+1;
+        int stop = start+read_cut;
 	for ( uint32_t j = 0; j < b->core.n_cigar; j++ ) {
 	    int op = bam1_cigar(b)[j]&BAM_CIGAR_MASK,
 		shift = bam1_cigar(b)[j]>>BAM_CIGAR_SHIFT;
@@ -383,7 +381,7 @@ inline static int accumulate( const samtools::bam1_t *b, void *d ) {
 	    int ri0 = start, ri1 = stop;
 	    if (opts.merge > 0) {
 		ri0 += opts.merge;
-                if ((!opts.sglend) && (b->core.flag&BAM_FPROPER_PAIR) == 0) ri1 += opts.merge;
+                if (opts.sglend || (b->core.flag&BAM_FPROPER_PAIR) == 0) ri1 += opts.merge;
 	    }
 	    for ( int i = ri0; i < ri1; i++ ) 
 		if (!data->scounts || data->scounts->count(i)) data->counts[i]+=weight;
