@@ -30,6 +30,7 @@ Options:
 
 import pysam
 import os, sys, itertools, copy
+from operator import attrgetter
 from numpy import asarray, zeros
 from scipy.optimize import nnls
 
@@ -120,11 +121,6 @@ cdef class GenomicObject(object):
             name = '|'.join([self.name, other.name]),
             strand = (self.strand + other.strand)/2,
             multiplicity = self.multiplicity + other.multiplicity
-            ##   name = '|'.join(set([self.name, other.name])),
-            #start = max(self.start, other.start),
-            #end = min(self.end, other.end),
-            #score = self.score + other.score,
-            #length = min(self.end, other.end) - max(self.start, other.start),
         )
     def __repr__(self):
         return "__%s.%s:%d-%d__" % (self.name,self.gene_name,self.start,self.end)
@@ -179,8 +175,7 @@ cdef class Gene(GenomicObject):
 #####################  Operations on intervals  #####################
 
 
-# Only "def" and not "cdef" because closures (lambdas here) are not supported yet by Cython
-def intersect_exons_list(list feats,bint multiple=False):
+cdef Exon intersect_exons_list(list feats,bint multiple=False):
     """The intersection of a list *feats* of GenomicObjects.
     If *multiple* is True, permits multiplicity: if the same exon E1 is
     given twice, there will be "E1|E1" parts. Otherwise pieces are unique."""
@@ -195,9 +190,9 @@ def intersect_exons_list(list feats,bint multiple=False):
             chrom=f.chrom,start=f.start,end=f.end,name=f.name,score=f.score,
             strand=f.strand,transcripts=f.transcripts,exon_number=f.exon_number)
     else:
-        return reduce(lambda x,y: x&y, feats)
+        return reduce(Exon.__and__, feats)
 
-cdef cobble(list exons,bint multiple=False):
+cdef list cobble(list exons,bint multiple=False):
     """Split exons into non-overlapping parts.
     :param multiple: see intersect_exons_list()."""
     cdef list ends, active_exons, cobbled
@@ -296,6 +291,7 @@ cdef int count_reads(list exons,object ckreads,bint multiple,bint stranded) exce
 
 
 cdef int get_total_nreads(object sam):
+    """Returns the raw total number of alignments (lines) in a *sam* file."""
     cdef str ref
     cdef int length
     cdef Counter Ncounter
@@ -309,14 +305,14 @@ cdef int get_total_nreads(object sam):
 
 
 cdef bint is_in(object feat_class,Exon x,str feat_id):
+    """Returns True if Exon *x* is part of the gene/transcript *feat_id*."""
     if feat_class == Transcript:
         return feat_id in x.transcripts
     elif feat_class == Gene:
         return feat_id in x.gene_id.split('|')
 
 
-# Only "def" and not "cdef" because closures (lambdas here) are not supported yet by Cython
-def estimate_expression_NNLS(object feat_class,list pieces,list ids,list exons,double norm_cst):
+cdef list estimate_expression_NNLS(object feat_class,list pieces,list ids,list exons,double norm_cst):
     """Infer gene/transcript expression from exons RPK. Takes Exon instances *pieces*
     and returns for each feature ID in *ids* an instance of *feat_class* with the
     appropriate count and RPK attributes set.
@@ -344,7 +340,7 @@ def estimate_expression_NNLS(object feat_class,list pieces,list ids,list exons,d
     #--- Store result in *feat_class* objects
     feats = []
     for i,f in enumerate(ids):
-        exs = sorted([e for e in exons if is_in(feat_class,e,f)], key=lambda x:(x.start,x.end))
+        exs = sorted([e for e in exons if is_in(feat_class,e,f)], key=attrgetter('start','end'))
         flen = sum([p.length for p in pieces if is_in(feat_class,p,f)])
         frpk = T[i]
         fcount = fromRPK(T[i],flen,norm_cst)
@@ -354,12 +350,12 @@ def estimate_expression_NNLS(object feat_class,list pieces,list ids,list exons,d
     return feats
 
 
-def estimate_expression_raw(object feat_class,list pieces,list ids,list exons,double norm_cst):
+cdef list estimate_expression_raw(object feat_class,list pieces,list ids,list exons,double norm_cst):
     """For each feature ID in *ids*, just sum the score of its components as one
     commonly does for genes from exon counts."""
     feats = []
     for i,f in enumerate(ids):
-        inner = sorted([p for p in pieces if is_in(feat_class,p,f)], key=lambda x:(x.start,x.end))
+        inner = sorted([p for p in pieces if is_in(feat_class,p,f)], key=attrgetter('start','end'))
         flen = sum([p.length for p in inner])
         fcount = sum([p.count for p in inner])
         frpk = toRPK(fcount,flen,norm_cst)
@@ -372,7 +368,7 @@ def estimate_expression_raw(object feat_class,list pieces,list ids,list exons,do
 ###########################  Main script  ###########################
 
 
-cdef partition_chrexons(list chrexons):
+cdef list partition_chrexons(list chrexons):
     """Partition chrexons in non-overlapping chunks with distinct genes.
     The problem is that exons are sorted wrt start,end, and so the first
     exon of a gene can be separate from the second by exons of other genes
@@ -424,7 +420,7 @@ def process_chunk(ckexons, sam, chrom, options):
 
     #--- Regroup occurrences of the same Exon from a different transcript
     exons = []
-    for key,group in itertools.groupby(ckexons, lambda x:x.id):
+    for key,group in itertools.groupby(ckexons, attrgetter('id')):
         # ckexons are sorted by id because chrexons were sorted by chrom,start,end
         exon0 = group.next()
         for g in group:
@@ -454,8 +450,6 @@ def process_chunk(ckexons, sam, chrom, options):
         p.transcripts = list(filtered)
     transcript_ids = list(transcript_ids)
     gene_ids = list(set(e.gene_id for e in exons))
-
-    #print ">> Process chunk with genes:", gene_ids
 
     #--- Get all reads from this chunk - iterator
     lastend = max(e.end for e in exons)
@@ -526,7 +520,7 @@ def rnacounter_main(bamname, annotname, options):
             if not row: break
             chrom = exon.chrom
         if len(chrexons) > 0:
-            chrexons.sort(key=lambda x: (x.start,x.end))
+            chrexons.sort(key=attrgetter('start','end'))
             partition = partition_chrexons(chrexons)
             # Process chunks
             for (a,b) in partition:
