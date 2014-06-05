@@ -13,7 +13,7 @@ If not specified, `gene_id`, `transcript_id` and `exon_id` will all get the valu
 of `exon_id` and be considered as independant features.
 
 Usage:
-   rnacounter  [-t TYPE] [-n <int>] [-l <int>] [-s] [-m] [-c CHROMS] [-o OUTPUT] BAM GTF
+   rnacounter  [-t TYPE] [-n <int>] [-l <int>] [-s] [-m] [-c CHROMS] [-o OUTPUT] [--method METHOD] BAM GTF
                [--version] [-h]
 
 Options:
@@ -24,6 +24,7 @@ Options:
    -m, --multiple                   Divide count by NH flag for multiply mapping reads [default: False].
    -c CHROMS, --chromosomes CHROMS  Selection of chromosome names (comma-separated list).
    -o OUTPUT, --output OUTPUT       Output file to redirect stdout.
+   --method METHOD                  Choose from 'nnls', 'raw', ('likelihood'-soon) [default: nnls].
    -v, --version                    Displays version information and exits.
    -h, --help                       Displays usage information and exits.
 """
@@ -462,12 +463,16 @@ def process_chunk(ckexons, sam, chrom, options):
     for p in pieces:
         p.rpk = toRPK(p.count,p.length,options['normalize'])
 
-    #--- Print output
+    #--- Infer gene/transcript counts
     genes = []; transcripts = []
+    if options['method'] == 'nnls': estimate_expression = estimate_expression_NNLS
+    elif options['method'] == 'raw': estimate_expression = estimate_expression_raw
     if 'genes' in options['type']:
-        genes = estimate_expression_NNLS(Gene, pieces, gene_ids, exons, options['normalize'])
+        genes = estimate_expression(Gene, pieces, gene_ids, exons, options['normalize'])
     if 'transcripts' in options['type']:
-        transcripts = estimate_expression_NNLS(Transcript, pieces, transcript_ids, exons, options['normalize'])
+        transcripts = estimate_expression(Transcript, pieces, transcript_ids, exons, options['normalize'])
+
+    #--- Print output
     for f in itertools.chain(genes,transcripts):
         towrite = [str(x) for x in [f.name,f.count,f.rpk,f.chrom,f.start,f.end,
                                     f.strand,f.gene_name,f.__class__.__name__.lower()]]
