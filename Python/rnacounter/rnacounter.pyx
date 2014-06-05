@@ -305,7 +305,7 @@ cdef int get_total_nreads(object sam):
 ######################  Expression inference  #######################
 
 
-cdef bint is_in(object feat_class,Exon x,str feat_id):
+cdef inline bint is_in(object feat_class,Exon x,str feat_id):
     """Returns True if Exon *x* is part of the gene/transcript *feat_id*."""
     if feat_class == Transcript:
         return feat_id in x.transcripts
@@ -322,7 +322,7 @@ cdef list estimate_expression_NNLS(object feat_class,list pieces,list ids,list e
     Lines are exons, columns are transcripts,
     so that A[i,j]!=0 means 'transcript Tj contains exon Ei'."""
     cdef int n,m,flen,i,j
-    cdef double rnorm
+    cdef double rnorm, fcount, frpk
     cdef str f
     cdef cnp.ndarray[DTYPE_t, ndim=2] A
     cdef cnp.ndarray[DTYPE_t, ndim=1] E, T
@@ -354,15 +354,21 @@ cdef list estimate_expression_NNLS(object feat_class,list pieces,list ids,list e
 cdef list estimate_expression_raw(object feat_class,list pieces,list ids,list exons,double norm_cst):
     """For each feature ID in *ids*, just sum the score of its components as one
     commonly does for genes from exon counts."""
+    cdef int flen,i,j
+    cdef double fcount, frpk
+    cdef str f
+    cdef Exon p
+    cdef list inner, feats
     feats = []
     for i,f in enumerate(ids):
-        inner = sorted([p for p in pieces if is_in(feat_class,p,f)], key=attrgetter('start','end'))
+        exs = sorted([e for e in exons if is_in(feat_class,e,f)], key=attrgetter('start','end'))
+        inner = [p for p in pieces if is_in(feat_class,p,f)]
         flen = sum([p.length for p in inner])
         fcount = sum([p.count for p in inner])
         frpk = toRPK(fcount,flen,norm_cst)
         feats.append(feat_class(name=f, length=flen, rpk=frpk, count=fcount,
-                chrom=inner[0].chrom, start = inner[0].start, end = inner[len(inner)-1].end,
-                gene_id=inner[0].gene_id, gene_name=inner[0].gene_name))
+                chrom=exs[0].chrom, start=exs[0].start, end=exs[len(exs)-1].end,
+                gene_id=exs[0].gene_id, gene_name=exs[0].gene_name))
     return feats
 
 
@@ -382,7 +388,7 @@ cdef list partition_chrexons(list chrexons):
     cdef str g
     # Cut where disjoint except if the same gene continues
     lastend = chrexons[0].end
-    lastgeneids = set([chrexons[0].gene_id])
+    lastgeneids = set(chrexons[0].gene_id)
     lastindex = 0
     partition = []
     pinvgenes = {}  # map {gene_id: partitions it is in}
@@ -410,7 +416,7 @@ cdef list partition_chrexons(list chrexons):
         if lp>1:
             a = parts[0]; b = parts[lp-1]
             partition[b] = (partition[a][0], partition[b][1])
-            toremove |= set(range(a,b))
+            toremove |= set(xrange(a,b))
     partition = [p for i,p in enumerate(partition) if i not in toremove]
     return partition
 
@@ -446,7 +452,7 @@ def process_chunk(ckexons, sam, chrom, options):
     transcript_ids = set()  # full list of remaining transcripts
     tx_replace = dict((badt,tlist[0]) for tlist in e2t.values() for badt in tlist[1:] if len(tlist)>1)
     for p in pieces:
-        filtered = set([tx_replace.get(t,t) for t in p.transcripts])
+        filtered = set(tx_replace.get(t,t) for t in p.transcripts)
         transcript_ids |= filtered
         p.transcripts = list(filtered)
     transcript_ids = list(transcript_ids)

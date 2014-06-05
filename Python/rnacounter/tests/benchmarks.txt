@@ -43,20 +43,14 @@ real   2m24.614s
 user   2m16.341s
 sys    0m3.921s
 
-With boundscheck=False, wraparound=False, inline fcts:
-=======================================================
-real	1m35.389s
-user	1m23.727s
-sys	0m2.974s
+real	2m45.098s
+user	2m22.367s
+sys	0m5.050s
 
-real	1m30.989s
-user	1m20.473s
-sys	0m2.009s
+real	2m43.170s
+user	2m21.051s
+sys	0m4.899s
 
-real	1m19.031s
-user	1m13.478s
-sys	0m1.795s
-
-real	1m20.153s
-user	1m14.583s
-sys	0m1.818s
+real	2m29.389s
+user	2m17.482s
+sys	0m4.198s
