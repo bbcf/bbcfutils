@@ -43,7 +43,7 @@ cdef extern from "math.h":
     double pow(double x,double y)
 
 
-######################################################################
+##########################  GTF parsing  #############################
 
 
 cdef inline double _score(x):
@@ -74,7 +74,7 @@ def parse_gtf(str line):
         transcripts=[attrs.get('transcript_id',exon_id)], exon_number=int(attrs.get('exon_number',1)))
 
 
-######################################################################
+#########################  Global classes  ##########################
 
 
 cdef class Counter(object):
@@ -88,9 +88,9 @@ cdef class GenomicObject(object):
     cdef public:
         str id,gene_id,gene_name,chrom,name
         int start,end,strand,length,multiplicity
-        double score,count,count_rev,rpk
-    def __init__(self,str id='',str gene_id='',str gene_name='',str chrom='',int start=0,int end=0,
-                  str name='',double score=0.0,double count=0.0,double count_rev=0.0,double rpk=0.0,
+        double score,count,count_rev,rpk,rpk_rev
+    def __init__(self,str id='',str gene_id='',str gene_name='',str chrom='',int start=0,int end=0,str name='',
+                  double score=0.0,double count=0.0,double count_rev=0.0,double rpk=0.0,double rpk_rev=0.0,
                   int strand=0,int length=0,int multiplicity=1):
         self.id = id
         self.gene_id = gene_id
@@ -103,6 +103,7 @@ cdef class GenomicObject(object):
         self.count = count
         self.count_rev = count_rev
         self.rpk = rpk
+        self.rpk_rev = rpk_rev
         self.strand = strand  # 1,-1,0
         self.length = length
         self.multiplicity = multiplicity
@@ -175,7 +176,7 @@ cdef class Gene(GenomicObject):
         self.transcripts = transcripts   # list of transcripts contained
 
 
-######################################################################
+#####################  Operations on intervals  #####################
 
 
 # Only "def" and not "cdef" because closures (lambdas here) are not supported yet by Cython
@@ -224,53 +225,7 @@ cdef cobble(list exons,bint multiple=False):
     return cobbled
 
 
-######################################################################
-
-
-cdef partition_chrexons(list chrexons):
-    """Partition chrexons in non-overlapping chunks with distinct genes.
-    The problem is that exons are sorted wrt start,end, and so the first
-    exon of a gene can be separate from the second by exons of other genes
-    - from the GTF we don't know how many and how far."""
-    cdef int lastend, lastindex, npart, i, lp
-    cdef list partition, parts
-    cdef dict pinvgenes
-    cdef set lastgeneids, toremove
-    cdef Exon exon
-    cdef str g
-    # Cut where disjoint except if the same gene continues
-    lastend = chrexons[0].end
-    lastgeneids = set([chrexons[0].gene_id])
-    lastindex = 0
-    partition = []
-    pinvgenes = {}  # map {gene_id: partitions it is in}
-    npart = 0       # number of partitions
-    for i,exon in enumerate(chrexons):
-        if (exon.start > lastend) and (exon.gene_id not in lastgeneids):
-            lastend = max(exon.end,lastend)
-            partition.append((lastindex,i))
-            for g in lastgeneids:
-                pinvgenes.setdefault(g,[]).append(npart)
-            npart += 1
-            lastgeneids.clear()
-            lastindex = i
-        else:
-            lastend = max(exon.end,lastend)
-        lastgeneids.add(exon.gene_id)
-    partition.append((lastindex,len(chrexons)))
-    for g in lastgeneids:
-        pinvgenes.setdefault(g,[]).append(npart)
-    npart += 1
-    # Merge intervals containing parts of the same gene mixed with others
-    toremove = set()
-    for g,parts in pinvgenes.iteritems():
-        lp = len(parts)
-        if lp>1:
-            a = parts[0]; b = parts[lp-1]
-            partition[b] = (partition[a][0], partition[b][1])
-            toremove |= set(range(a,b))
-    partition = [p for i,p in enumerate(partition) if i not in toremove]
-    return partition
+#############################  Counting  ############################
 
 
 cdef inline double toRPK(double count,double length,double norm_cst):
@@ -282,47 +237,6 @@ cdef inline double toSQRPK(double count,double length,double norm_cst):
     return 1000.0 * sqrt(count) / (length * norm_cst)
 cdef inline double fromSQRPK(double sqrpk,double length,double norm_cst):
     return pow(length * norm_cst * sqrpk / 1000.0 , 2.0)
-
-
-# Only "def" and not "cdef" because closures (lambdas here) are not supported yet by Cython
-def estimate_expression(object feat_class,list pieces,list ids,list exons,double norm_cst):
-    """Infer gene/transcript expression from exons RPK. Takes Exon instances *pieces*
-    and returns for each feature ID in *ids* an instance of *feat_class* with the
-    appropriate count and RPK attributes set.
-
-    Builds the exons-transcripts structure matrix:
-    Lines are exons, columns are transcripts,
-    so that A[i,j]!=0 means 'transcript Tj contains exon Ei'."""
-    cdef int n,m,flen,i,j
-    cdef double rnorm
-    cdef str f
-    cdef cnp.ndarray[DTYPE_t, ndim=2] A
-    cdef cnp.ndarray[DTYPE_t, ndim=1] E, T
-    cdef Exon p
-    cdef list exs, feats
-    if feat_class == Gene:
-        is_in = lambda Exon x,str g: g in x.gene_id.split('|')
-    elif feat_class == Transcript:
-        is_in = lambda Exon x,str t: t in x.transcripts
-    n = len(pieces)
-    m = len(ids)
-    A = zeros((n,m))
-    for i,p in enumerate(pieces):
-        for j,f in enumerate(ids):
-            A[i,j] = 1. if is_in(p,f) else 0.
-    #--- Build the exons scores vector
-    E = asarray([p.rpk for p in pieces])
-    #--- Solve for RPK
-    T,rnorm = nnls(A,E)
-    #--- Store result in *feat_class* objects
-    feats = []
-    for i,f in enumerate(ids):
-        exs = sorted([e for e in exons if is_in(e,f)], key=lambda x:(x.start,x.end))
-        flen = sum([p.length for p in pieces if is_in(p,f)])
-        feats.append(feat_class(name=f, start=exs[0].start, end=exs[len(exs)-1].end,
-                length=flen, rpk=T[i], count=fromRPK(T[i],flen,norm_cst),
-                chrom=exs[0].chrom, gene_id=exs[0].gene_id, gene_name=exs[0].gene_name))
-    return feats
 
 
 cdef int count_reads(list exons,object ckreads,bint multiple,bint stranded) except -1:
@@ -391,7 +305,117 @@ cdef int get_total_nreads(object sam):
     return Ncounter.n
 
 
-######################################################################
+######################  Expression inference  #######################
+
+
+cdef bint is_in(object feat_class,Exon x,str feat_id):
+    if feat_class == Transcript:
+        return feat_id in x.transcripts
+    elif feat_class == Gene:
+        return feat_id in x.gene_id.split('|')
+
+
+# Only "def" and not "cdef" because closures (lambdas here) are not supported yet by Cython
+def estimate_expression_NNLS(object feat_class,list pieces,list ids,list exons,double norm_cst):
+    """Infer gene/transcript expression from exons RPK. Takes Exon instances *pieces*
+    and returns for each feature ID in *ids* an instance of *feat_class* with the
+    appropriate count and RPK attributes set.
+
+    Builds the exons-transcripts structure matrix:
+    Lines are exons, columns are transcripts,
+    so that A[i,j]!=0 means 'transcript Tj contains exon Ei'."""
+    cdef int n,m,flen,i,j
+    cdef double rnorm
+    cdef str f
+    cdef cnp.ndarray[DTYPE_t, ndim=2] A
+    cdef cnp.ndarray[DTYPE_t, ndim=1] E, T
+    cdef Exon p
+    cdef list exs, feats
+    n = len(pieces)
+    m = len(ids)
+    A = zeros((n,m))
+    for i,p in enumerate(pieces):
+        for j,f in enumerate(ids):
+            A[i,j] = 1. if is_in(feat_class,p,f) else 0.
+    #--- Build the exons scores vector
+    E = asarray([p.rpk for p in pieces])
+    #--- Solve for RPK
+    T,rnorm = nnls(A,E)
+    #--- Store result in *feat_class* objects
+    feats = []
+    for i,f in enumerate(ids):
+        exs = sorted([e for e in exons if is_in(feat_class,e,f)], key=lambda x:(x.start,x.end))
+        flen = sum([p.length for p in pieces if is_in(feat_class,p,f)])
+        frpk = T[i]
+        fcount = fromRPK(T[i],flen,norm_cst)
+        feats.append(feat_class(name=f, length=flen, rpk=frpk, count=fcount,
+                chrom=exs[0].chrom, start=exs[0].start, end=exs[len(exs)-1].end,
+                gene_id=exs[0].gene_id, gene_name=exs[0].gene_name))
+    return feats
+
+
+def estimate_expression_raw(object feat_class,list pieces,list ids,list exons,double norm_cst):
+    """For each feature ID in *ids*, just sum the score of its components as one
+    commonly does for genes from exon counts."""
+    feats = []
+    for i,f in enumerate(ids):
+        inner = sorted([p for p in pieces if is_in(feat_class,p,f)], key=lambda x:(x.start,x.end))
+        flen = sum([p.length for p in inner])
+        fcount = sum([p.count for p in inner])
+        frpk = toRPK(fcount,flen,norm_cst)
+        feats.append(feat_class(name=f, length=flen, rpk=frpk, count=fcount,
+                chrom=inner[0].chrom, start = inner[0].start, end = inner[len(inner)-1].end,
+                gene_id=inner[0].gene_id, gene_name=inner[0].gene_name))
+    return feats
+
+
+###########################  Main script  ###########################
+
+
+cdef partition_chrexons(list chrexons):
+    """Partition chrexons in non-overlapping chunks with distinct genes.
+    The problem is that exons are sorted wrt start,end, and so the first
+    exon of a gene can be separate from the second by exons of other genes
+    - from the GTF we don't know how many and how far."""
+    cdef int lastend, lastindex, npart, i, lp
+    cdef list partition, parts
+    cdef dict pinvgenes
+    cdef set lastgeneids, toremove
+    cdef Exon exon
+    cdef str g
+    # Cut where disjoint except if the same gene continues
+    lastend = chrexons[0].end
+    lastgeneids = set([chrexons[0].gene_id])
+    lastindex = 0
+    partition = []
+    pinvgenes = {}  # map {gene_id: partitions it is in}
+    npart = 0       # number of partitions
+    for i,exon in enumerate(chrexons):
+        if (exon.start > lastend) and (exon.gene_id not in lastgeneids):
+            lastend = max(exon.end,lastend)
+            partition.append((lastindex,i))
+            for g in lastgeneids:
+                pinvgenes.setdefault(g,[]).append(npart)
+            npart += 1
+            lastgeneids.clear()
+            lastindex = i
+        else:
+            lastend = max(exon.end,lastend)
+        lastgeneids.add(exon.gene_id)
+    partition.append((lastindex,len(chrexons)))
+    for g in lastgeneids:
+        pinvgenes.setdefault(g,[]).append(npart)
+    npart += 1
+    # Merge intervals containing parts of the same gene mixed with others
+    toremove = set()
+    for g,parts in pinvgenes.iteritems():
+        lp = len(parts)
+        if lp>1:
+            a = parts[0]; b = parts[lp-1]
+            partition[b] = (partition[a][0], partition[b][1])
+            toremove |= set(range(a,b))
+    partition = [p for i,p in enumerate(partition) if i not in toremove]
+    return partition
 
 
 def process_chunk(ckexons, sam, chrom, options):
@@ -447,9 +471,9 @@ def process_chunk(ckexons, sam, chrom, options):
     #--- Print output
     genes = []; transcripts = []
     if 'genes' in options['type']:
-        genes = estimate_expression(Gene, pieces, gene_ids, exons, options['normalize'])
+        genes = estimate_expression_NNLS(Gene, pieces, gene_ids, exons, options['normalize'])
     if 'transcripts' in options['type']:
-        transcripts = estimate_expression(Transcript, pieces, transcript_ids, exons, options['normalize'])
+        transcripts = estimate_expression_NNLS(Transcript, pieces, transcript_ids, exons, options['normalize'])
     for f in itertools.chain(genes,transcripts):
         towrite = [str(x) for x in [f.name,f.count,f.rpk,f.chrom,f.start,f.end,
                                     f.strand,f.gene_name,f.__class__.__name__.lower()]]
@@ -514,7 +538,7 @@ def rnacounter_main(bamname, annotname, options):
     sam.close()
 
 
-######################################################################
+########################  Argument parsing  #########################
 
 
 def usage_string():
