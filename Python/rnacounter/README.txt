@@ -40,25 +40,20 @@ Redefinitions of rnacounter.py functions headers for faster execution
 
 To compile and run:
 ===================
-1. Compile rnacounter0.pyx:
-    python setup0.py build_ext --inplace ;
 
-2. If there is an update in draft.py to include:
-    cp draft.py rnacounter.py ;
-
-3. Compile rnacounter.py:
+1. Compile rnacounter.py:
     python setup.py build_ext --inplace ;
 
-Note: On OSX Mavericks, XCode 5 is bugged and clang requires to add the following
+Note: On OSX Mavericks, XCode 5 is bugged and clang requires to add the following flag
 to run without raising an error:
 
     ARCHFLAGS=-Wno-error=unused-command-line-argument-hard-error-in-future \
     python setup.py build_ext --inplace ;
 
-4. Run:
-    ./rnacounter --help
+2. Run:
+    rnacounter --help
 Example:
-    ./rnacounter testfiles/gapdhKO.bam testfiles/mm9_3genes_renamed.gtf
+    rnacounter testfiles/gapdhKO.bam testfiles/mm9_3genes_renamed.gtf
 
 
 Testing:
