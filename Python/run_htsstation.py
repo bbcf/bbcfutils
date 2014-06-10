@@ -183,7 +183,6 @@ class MicrobiomeWorkflow(Workflow):
         Workflow.check_options(self)
         self.main_args = {"job": self.job,
                           "assembly": self.job.assembly,
-                          "script_path": self.globals.get('script_path',''),
                           "logfile": self.logfile,
                           "via": self.opts.via}
         return True
