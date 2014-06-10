@@ -41,7 +41,7 @@ Redefinitions of rnacounter.py functions headers for faster execution
 To compile and run:
 ===================
 
-1. Compile rnacounter.py:
+1. Compile rnacounter.pyx:
     python setup.py build_ext --inplace ;
 
 Note: On OSX Mavericks, XCode 5 is bugged and clang requires to add the following flag
@@ -69,6 +69,5 @@ ENSMUST00000117757, ENSMUST00000118875, ENSMUST00000147954
 and nothing on ENSMUST00000073605, ENSMUST00000144205, ENSMUST00000144588 .
 
 Returns a count of 2459.62 (1091.71 RPK) for the gene.
-When counting a rough 1.0 per read aligned, we get around 7000.
 
 Reports to "benchmark.txt".
