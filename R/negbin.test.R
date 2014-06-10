@@ -1,3 +1,6 @@
+#!/usr/bin/env Rscript
+
+
 # This script uses DESeq to look for differential expression in RNA-seq data
 # of genomic features in different conditions.
 
@@ -61,7 +64,10 @@ main <- function(data_file, sep="\t", output_file=''){
     }
 
     if (nrow(data)>3){
-    DES(data, conds, method, sharingMode, output_file) }
+        DES(data, conds, method, sharingMode, output_file)
+    } else {
+        print("Less than 3 rows. Return.")
+    }
 }
 
 
