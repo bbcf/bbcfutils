@@ -6,7 +6,11 @@ External script to run microbiome functions
 import sys
 from bbcflib.microbiome import bam_to_annot_counts, getCountsPerLevel,combine_counts
 
-if sys.argv[1] == "bam_to_annot_counts":
+funcnames = ["bam_to_annot_counts","getCountsPerLevel","combine_counts"]
+
+if len(sys.argv)<2 or sys.argv[1] not in funcnames:
+    raise ValueError("Choose one function from %s" %(", ".join(funcnames)))
+elif sys.argv[1] == "bam_to_annot_counts":
     if len(sys.argv < 4):
         raise ValueError("Need at least one bam file and an annotation file")
     bamfiles = sys.argv[2].split(",")
@@ -41,5 +45,3 @@ elif sys.argv[1] == "combine_counts":
     else:
         output = None
     output = combine_counts(counts, idsColsKey, idsColsCounts, output)
-else:
-    raise ValueError("Function not implemented: %s" sys.argv[1])
