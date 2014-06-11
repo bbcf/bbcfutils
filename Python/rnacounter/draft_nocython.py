@@ -48,7 +48,7 @@ def parse_gtf(row):
         raise ValueError("\"Attributes\" field required in GFF.")
     if row[2] != 'exon':
         return None
-    attrs = (x.strip().split() for x in row[8].split(';'))  # {gene_id: "AAA", ...}
+    attrs = tuple(x.strip().split() for x in row[8].rstrip(';').split(';'))  # {gene_id: "AAA", ...}
     attrs = dict((x[0],x[1].strip("\"")) for x in attrs)
     exon_id = attrs.get('exon_id', 'E%d'%Ecounter.next())
     return Exon(id=exon_id,

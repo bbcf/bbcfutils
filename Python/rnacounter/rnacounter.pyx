@@ -66,7 +66,7 @@ def parse_gtf(str line):
         raise ValueError("\"Attributes\" field required in GFF.")
     if row[2] != 'exon':
         return None
-    attrs = (x.strip().split() for x in row[8].split(';'))  # {gene_id: "AAA", ...}
+    attrs = tuple(x.strip().split() for x in row[8].rstrip(';').split(';'))  # {gene_id: "AAA", ...}
     attrs = dict((x[0],x[1].strip("\"")) for x in attrs)
     exon_id = attrs.get('exon_id', 'E%d'%Ecounter.next())
     return Exon(id=exon_id,
@@ -336,6 +336,7 @@ cdef list estimate_expression_NNLS(object feat_class,list pieces,list ids,list e
             A[i,j] = 1. if is_in(feat_class,p,f) else 0.
     #--- Build the exons scores vector
     E = asarray([p.rpk for p in pieces])
+    #E = asarray([toSQRPK(p.count,p.length,norm_cst) for p in pieces])
     #--- Solve for RPK
     T,rnorm = nnls(A,E)
     #--- Store result in *feat_class* objects
@@ -345,6 +346,9 @@ cdef list estimate_expression_NNLS(object feat_class,list pieces,list ids,list e
         flen = sum([p.length for p in pieces if is_in(feat_class,p,f)])
         frpk = T[i]
         fcount = fromRPK(T[i],flen,norm_cst)
+        #fSQrpk = T[i]
+        #fcount = fromSQRPK(T[i],flen,norm_cst)
+        #frpk = toRPK(fcount,flen,norm_cst)
         feats.append(feat_class(name=f, length=flen, rpk=frpk, count=fcount,
                 chrom=exs[0].chrom, start=exs[0].start, end=exs[len(exs)-1].end,
                 gene_id=exs[0].gene_id, gene_name=exs[0].gene_name))
