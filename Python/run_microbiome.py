@@ -44,4 +44,4 @@ elif sys.argv[1] == "combine_counts":
         output = sys.argv[5]
     else:
         output = None
-    output = combine_counts(counts, idsColsKey, idsColsCounts, output)
+    output = combine_counts(files, idsColsKey, idsColsCounts, output)
