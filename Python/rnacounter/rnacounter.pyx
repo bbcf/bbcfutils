@@ -296,7 +296,7 @@ cdef int count_reads(list exons,object ckreads,bint multiple,bint stranded) exce
                 ali_pos += shift   # got to start of next op in prevision for next round
             elif op == 1:  # BAM_CINS
                 ali_len += shift;
-            E2.increment(float(ali_len)/float(read_len), alignment, multiple,stranded)
+        E2.increment(float(ali_len)/float(read_len), alignment, multiple,stranded)
     return 0
 
 
@@ -434,9 +434,15 @@ cdef list partition_chrexons(list chrexons):
     return partition
 
 
-def process_chunk(ckexons, sam, chrom, options):
+def process_chunk(list ckexons,object sam,str chrom,dict options):
     """Distribute counts across transcripts and genes of a chunk *ckexons*
     of non-overlapping exons."""
+    cdef int method, lastend
+    cdef Exon exon0, g, e, p
+    cdef list pieces, exons, gene_ids, genes, transcripts
+    cdef dict t2e, e2t, tx_replace
+    cdef set filtered
+    cdef str t
 
     #--- Regroup occurrences of the same Exon from a different transcript
     exons = []
@@ -446,30 +452,30 @@ def process_chunk(ckexons, sam, chrom, options):
         for g in group:
             exon0.transcripts.append(g.transcripts[0])
         exons.append(exon0)
-    del ckexons
+    gene_ids = list(set(e.gene_id for e in exons))
 
     #--- Cobble all these intervals
     pieces = cobble(exons)
 
     #--- Filter out too similar transcripts, e.g. made of the same exons up to 100bp.
-    t2e = {}                               # map {transcript: [pieces IDs]}
-    for p in pieces:
-        if p.length < 100: continue        # filter out cobbled pieces of less that read length
-        for t in p.transcripts:
-            t2e.setdefault(t,[]).append(p.id)
-    e2t = {}
-    for t,e in t2e.iteritems():
-        es = tuple(sorted(e))              # combination of pieces indices
-        e2t.setdefault(es,[]).append(t)    # {(pieces IDs combination): [transcripts with same struct]}
-    # Replace too similar transcripts by the first of the list, arbitrarily
-    transcript_ids = set()  # full list of remaining transcripts
-    tx_replace = dict((badt,tlist[0]) for tlist in e2t.values() for badt in tlist[1:] if len(tlist)>1)
-    for p in pieces:
-        filtered = set(tx_replace.get(t,t) for t in p.transcripts)
-        transcript_ids |= filtered
-        p.transcripts = list(filtered)
-    transcript_ids = list(transcript_ids)
-    gene_ids = list(set(e.gene_id for e in exons))
+    if 1 in options['type']:  # transcripts
+        transcript_ids = set()  # full list of remaining transcripts
+        t2e = {}                               # map {transcript: [pieces IDs]}
+        for p in pieces:
+            if p.length < 100: continue        # filter out cobbled pieces of less that read length
+            for t in p.transcripts:
+                t2e.setdefault(t,[]).append(p.id)
+        e2t = {}
+        for t,e in t2e.iteritems():
+            es = tuple(sorted(e))              # combination of pieces indices
+            e2t.setdefault(es,[]).append(t)    # {(pieces IDs combination): [transcripts with same struct]}
+        # Replace too similar transcripts by the first of the list, arbitrarily
+        tx_replace = dict((badt,tlist[0]) for tlist in e2t.values() for badt in tlist[1:] if len(tlist)>1)
+        for p in pieces:
+            filtered = set(tx_replace.get(t,t) for t in p.transcripts)
+            transcript_ids |= filtered
+            p.transcripts = list(filtered)
+        transcript_ids = list(transcript_ids)
 
     #--- Get all reads from this chunk - iterator
     lastend = max(e.end for e in exons)
@@ -484,12 +490,20 @@ def process_chunk(ckexons, sam, chrom, options):
 
     #--- Infer gene/transcript counts
     genes = []; transcripts = []
-    if options['method'] == 'nnls': estimate_expression = estimate_expression_NNLS
-    elif options['method'] == 'raw': estimate_expression = estimate_expression_raw
-    if 'genes' in options['type']:
-        genes = estimate_expression(Gene, pieces, gene_ids, exons, options['normalize'])
-    if 'transcripts' in options['type']:
-        transcripts = estimate_expression(Transcript, pieces, transcript_ids, exons, options['normalize'])
+    # Genes - 0
+    if 0 in options['type']:
+        method = options['method'][0]
+        if method == 0:    # raw
+            genes = estimate_expression_raw(Gene, pieces, gene_ids, exons, options['normalize'])
+        elif method == 1:  # nnls
+            genes = estimate_expression_NNLS(Gene, pieces, gene_ids, exons, options['normalize'])
+    # Transcripts - 1
+    if 1 in options['type']:
+        method = options['method'][1]
+        if method == 1:    # nnls
+            transcripts = estimate_expression_NNLS(Transcript, pieces, transcript_ids, exons, options['normalize'])
+        elif method == 0:  # raw
+            transcripts = estimate_expression_raw(Transcript, pieces, transcript_ids, exons, options['normalize'])
 
     #--- Print output
     for f in itertools.chain(genes,transcripts):
@@ -576,6 +590,18 @@ def parse_args(args):
     args['--type'] = [x.lower() for x in args['--type'].split(',')]
     assert all(x in ["genes","transcripts"] for x in args['--type']), \
         "TYPE must be one of 'genes' or 'transcripts'"
+    type_map = {'genes':0, 'transcripts':1, 'exons':2}  # avoid comparing strings later
+    args['--type'] = [type_map[x] for x in args['--type']]
+
+    # Same for methods. If given as a list, the length must be that of `--type`,
+    # the method at index i will be applied to feature type at index i.
+    args['--method'] = [x.lower() for x in args['--method'].split(',')]
+    assert len(args['--method']) == len(args['--type'])
+    assert all(x in ["raw","nnls","likelihood"] for x in args['--method']), \
+        "METHOD must be one of 'raw', 'nnls' or 'likelihood'."
+    method_map = {'raw':0, 'nnls':1, 'likelihood':2}  # avoid comparing strings later
+    args['--method'] = [method_map[x] for x in args['--method']]
+    args['--method'] = dict(zip(args['--type'],args['--method']))
 
     options = dict((k.lstrip('-'),v) for k,v in args.iteritems())
     return bamname, annotname, options

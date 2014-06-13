@@ -54,3 +54,17 @@ sys	0m4.899s
 real	2m29.389s
 user	2m17.482s
 sys	0m4.198s
+
+Local:
+
+real	3m16.416s
+user	3m6.500s
+sys	0m3.913s
+
+real	3m13.099s
+user	3m3.280s
+sys	0m3.882s
+
+real	3m20.541s
+user	3m7.579s
+sys	0m4.194s

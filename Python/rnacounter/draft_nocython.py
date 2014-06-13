@@ -11,7 +11,7 @@ If not specified, `gene_id`, `transcript_id` and `exon_id` will all get the valu
 of `exon_id` and be considered as independant features.
 
 Usage:
-   rnacounter  [-t TYPE] [-n <int>] [-l <int>] [-s] [-m] [-c CHROMS] [-o OUTPUT] BAM GTF
+   rnacounter  [-t TYPE] [-n <int>] [-l <int>] [-s] [-m] [-c CHROMS] [-o OUTPUT] [--method METHOD] BAM GTF
                [--version] [-h]
 
 Options:
@@ -22,6 +22,7 @@ Options:
    -m, --multiple                   Divide count by NH flag for multiply mapping reads [default: False].
    -c CHROMS, --chromosomes CHROMS  Selection of chromosome names (comma-separated list).
    -o OUTPUT, --output OUTPUT       Output file to redirect stdout.
+   --method METHOD                  Choose from 'nnls', 'raw', ('likelihood'-soon) [default: nnls].
    -v, --version                    Displays version information and exits.
    -h, --help                       Displays usage information and exits.
 """
@@ -30,6 +31,7 @@ import pysam
 import os, sys, itertools, copy
 from numpy import asarray, zeros
 from scipy.optimize import nnls
+from operator import attrgetter
 
 
 Ecounter = itertools.count(1)  # to give unique ids to undefined exons, see parse_gtf()
@@ -224,6 +226,13 @@ def fromRPK(rpk,length,norm_cst):
     return length * norm_cst * rpk / 1000.
 
 
+def is_in(feat_class,x,feat_id):
+    """Returns True if Exon *x* is part of the gene/transcript *feat_id*."""
+    if feat_class == Transcript:
+        return feat_id in x.transcripts
+    elif feat_class == Gene:
+        return feat_id in x.gene_id.split('|')
+
 def process_chunk(ckexons, sam, chrom, options):
     """Distribute counts across transcripts and genes of a chunk *ckexons*
     of non-overlapping exons."""
@@ -330,20 +339,16 @@ def process_chunk(ckexons, sam, chrom, options):
         p.rpk = toRPK(p.count,p.length,options['normalize'])
 
 
-    def estimate_expression(feat_class, pieces, ids):
+    def estimate_expression_NNLS(feat_class, pieces, ids, exons, norm_cst):
         #--- Build the exons-transcripts structure matrix:
         # Lines are exons, columns are transcripts,
         # so that A[i,j]!=0 means "transcript Tj contains exon Ei".
-        if feat_class == Gene:
-            is_in = lambda x,g: g in x.gene_id.split('|')
-        elif feat_class == Transcript:
-            is_in = lambda x,t: t in x.transcripts
         n = len(pieces)
         m = len(ids)
         A = zeros((n,m))
         for i,p in enumerate(pieces):
             for j,f in enumerate(ids):
-                A[i,j] = 1. if is_in(p,f) else 0.
+                A[i,j] = 1. if is_in(feat_class,p,f) else 0.
         #--- Build the exons scores vector
         E = asarray([p.rpk for p in pieces])
         #--- Solve for RPK
@@ -351,20 +356,44 @@ def process_chunk(ckexons, sam, chrom, options):
         #--- Store result in *feat_class* objects
         feats = []
         for i,f in enumerate(ids):
-            exs = sorted([e for e in exons if is_in(e,f)], key=lambda x:(x.start,x.end))
-            flen = sum(p.length for p in pieces if is_in(p,f))
+            exs = sorted([e for e in exons if is_in(feat_class,e,f)], key=lambda x:(x.start,x.end))
+            flen = sum(p.length for p in pieces if is_in(feat_class,p,f))
             feats.append(feat_class(name=f, start=exs[0].start, end=exs[-1].end,
-                    length=flen, rpk=T[i], count=fromRPK(T[i],flen,options['normalize']),
+                    length=flen, rpk=T[i], count=fromRPK(T[i],flen,norm_cst),
                     chrom=exs[0].chrom, gene_id=exs[0].gene_id, gene_name=exs[0].gene_name))
         return feats
 
+    def estimate_expression_raw(feat_class, pieces, ids, exons, norm_cst):
+        """For each feature ID in *ids*, just sum the score of its components as one
+        commonly does for genes from exon counts."""
+        feats = []
+        for i,f in enumerate(ids):
+            exs = sorted([e for e in exons if is_in(feat_class,e,f)], key=attrgetter('start','end'))
+            inner = [p for p in pieces if is_in(feat_class,p,f)]
+            flen = sum([p.length for p in inner])
+            fcount = sum([p.count for p in inner])
+            frpk = toRPK(fcount,flen,norm_cst)
+            feats.append(feat_class(name=f, length=flen, rpk=frpk, count=fcount,
+                    chrom=exs[0].chrom, start=exs[0].start, end=exs[len(exs)-1].end,
+                    gene_id=exs[0].gene_id, gene_name=exs[0].gene_name))
+        return feats
 
-    #--- Print output
+    #--- Infer gene/transcript counts
     genes = []; transcripts = []
     if 'genes' in options['type']:
-        genes = estimate_expression(Gene, pieces, gene_ids)
+        method = options['method']['genes']
+        if method == 'raw':
+            genes = estimate_expression_raw(Gene, pieces, gene_ids, exons, options['normalize'])
+        elif method == 'nnls':
+            genes = estimate_expression_NNLS(Gene, pieces, gene_ids, exons, options['normalize'])
     if 'transcripts' in options['type']:
-        transcripts = estimate_expression(Transcript, pieces, transcript_ids)
+        method = options['method']['transcripts']
+        if method == 'nnls':
+            transcripts = estimate_expression_NNLS(Transcript, pieces, transcript_ids, exons, options['normalize'])
+        elif method == 'raw':
+            transcripts = estimate_expression_raw(Transcript, pieces, transcript_ids, exons, options['normalize'])
+
+    #--- Print output
     for f in itertools.chain(genes,transcripts):
         towrite = [str(x) for x in [f.name,f.count,f.rpk,f.chrom,f.start,f.end,
                                     f.strand,f.gene_name,f.__class__.__name__.lower()]]
@@ -451,11 +480,19 @@ def parse_args(args):
     if args['--chromosomes'] is None: args['--chromosomes'] = []
     else: args['--chromosomes'] = args['--chromosomes'].split(',')
 
-    # Type: one can actually give both as "-t genes,transcripts" but they
+    # Type: one can actually give both as `-t genes,transcripts` but they
     # will be mixed in the output stream. Split the output using the last field ("Type").
     args['--type'] = [x.lower() for x in args['--type'].split(',')]
     assert all(x in ["genes","transcripts"] for x in args['--type']), \
         "TYPE must be one of 'genes' or 'transcripts'"
+
+    # Same for methods. If given as a list, the length must be that of `--type`,
+    # the method at index i will be applied to feature type at index i.
+    args['--method'] = [x.lower() for x in args['--method'].split(',')]
+    assert len(args['--method']) == len(args['--type'])
+    assert all(x in ["raw","nnls","likelihood"] for x in args['--method']), \
+        "METHOD must be one of 'raw', 'nnls' or 'likelihood'."
+    args['--method'] = dict(zip(args['--type'],args['--method']))
 
     options = dict((k.lstrip('-'),v) for k,v in args.iteritems())
     return bamname, annotname, options
