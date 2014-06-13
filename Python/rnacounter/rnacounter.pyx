@@ -240,24 +240,24 @@ cdef int count_reads(list exons,object ckreads,bint multiple,bint stranded) exce
     Deals with indels, junctions etc.
     :param multiple: divide the count by the NH tag.
     :param standed: for strand-specific protocols, use the strand information."""
-    cdef int current_pos, pos2, ali_pos, nexons
+    cdef int current_idx, idx2, pos, ali_pos, nexons
     cdef int exon_start, exon_end, shift, op, ali_len, read_len
     cdef object alignment
     cdef Exon E1, E2
-    current_pos = 0
+    current_idx = 0
     nexons = len(exons)
     for alignment in ckreads:
-        if current_pos >= nexons: return 0
-        E1 = exons[current_pos]
+        if current_idx >= nexons: return 0
+        E1 = exons[current_idx]
         exon_end = E1.end
         ali_pos = alignment.pos
         while exon_end <= ali_pos:
-            current_pos += 1
-            if current_pos >= nexons: return 0
-            E1 = exons[current_pos]
+            current_idx += 1
+            if current_idx >= nexons: return 0
+            E1 = exons[current_idx]
             exon_end = E1.end
-        pos2 = current_pos
-        E2 = exons[pos2]
+        idx2 = current_idx
+        E2 = exons[idx2]
         exon_start = E2.start
         read_len = alignment.rlen
         ali_len = 0
@@ -265,29 +265,37 @@ cdef int count_reads(list exons,object ckreads,bint multiple,bint stranded) exce
             if op in [0,2,3]:  # [BAM_CMATCH,BAM_CDEL,BAM_CREF_SKIP]
                 # If read crosses exon left bound
                 if ali_pos < exon_start:
-                    ali_pos = min(exon_start, ali_pos+shift)
-                    shift = max(0, ali_pos+shift-exon_start)  # part of the read overlapping
+                    pos = ali_pos
+                    ali_pos = min(exon_start, pos+shift)
+                    shift = max(0, pos+shift-exon_start)
                 # If read crosses exon right bound, maybe next exon(s)
                 while ali_pos+shift >= exon_end:
-                    if op == 0: ali_len += exon_end - ali_pos
-                    E2.increment(float(ali_len)/float(read_len), alignment, multiple,stranded)
-                    shift -= exon_end-ali_pos  # remaining part of the read
+                    # Score up to exon end, go to exon end, remove from shift and reset ali_len
+                    if op == 0:
+                        ali_len += exon_end - ali_pos
+                        E2.increment(float(ali_len)/float(read_len), alignment, multiple,stranded)
+                    shift -= exon_end-ali_pos
                     ali_pos = exon_end
                     ali_len = 0
-                    pos2 += 1
-                    if pos2 >= nexons: return 0
-                    E2 = exons[pos2]
+                    # Next exon
+                    idx2 += 1
+                    if idx2 >= nexons: return 0
+                    E2 = exons[idx2]
                     exon_start = E2.start
                     exon_end = E2.end
+                    # If op crosses exon left bound, go to exon start with rest of shift
+                    # I op ends before the next exon, go to end of op and reset shift
                     if ali_pos < exon_start:
-                        ali_pos = min(exon_start, ali_pos+shift)
-                        shift = max(0, ali_pos+shift-exon_start)  # from exon start to end of the read
-                ali_pos += shift
-                if op == 0: ali_len += shift
+                        pos = ali_pos
+                        ali_pos = min(exon_start, pos+shift)
+                        shift = max(0, pos+shift-exon_start)
+                # If a bit of op remains overlapping the next exon
+                if op == 0:
+                    ali_len += shift
+                ali_pos += shift   # got to start of next op in prevision for next round
             elif op == 1:  # BAM_CINS
                 ali_len += shift;
-        if ali_len < 1: return 0;
-        E2.increment(float(ali_len)/float(read_len), alignment, multiple,stranded)
+            E2.increment(float(ali_len)/float(read_len), alignment, multiple,stranded)
     return 0
 
 

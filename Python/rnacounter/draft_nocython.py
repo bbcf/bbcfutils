@@ -33,7 +33,7 @@ from scipy.optimize import nnls
 
 
 Ecounter = itertools.count(1)  # to give unique ids to undefined exons, see parse_gtf()
-def parse_gtf(row):
+def parse_gtf(line):
     """Parse one GTF line. Return None if not an 'exon'. Return False if row is empty."""
     # GTF fields = ['chr','source','name','start','end','score','strand','frame','attributes']
     def _score(x):
@@ -42,8 +42,8 @@ def parse_gtf(row):
     def _strand(x):
         smap = {'+':1, 1:1, '-':-1, -1:-1, '.':0, 0:0}
         return smap[x]
-    if not row: return False
-    row = row.strip().split("\t")
+    if not line: return False
+    row = line.strip().split("\t")
     if len(row) < 9:
         raise ValueError("\"Attributes\" field required in GFF.")
     if row[2] != 'exon':
@@ -269,52 +269,60 @@ def process_chunk(ckexons, sam, chrom, options):
     lastend = max(e.end for e in exons)
     ckreads = sam.fetch(chrom, exons[0].start, lastend)
 
-
-    #--- Count reads in each piece -- from rnacounter.cc
     def count_reads(exons,ckreads,multiple,stranded):
         """Adds (#aligned nucleotides/read length) to exon counts.
         Deals with indels, junctions etc.
         :param multiple: divide the count by the NH tag.
         :param standed: for strand-specific protocols, use the strand information."""
-        current_pos = 0
+        current_idx = 0
+        nexons = len(exons)
         for alignment in ckreads:
-            if current_pos >= len(exons): return 0
-            exon_end = exons[current_pos].end
+            if current_idx >= nexons: return 0
+            exon_end = exons[current_idx].end
             ali_pos = alignment.pos
             while exon_end <= ali_pos:
-                current_pos += 1
-                if current_pos >= len(exons): return 0
-                exon_end = exons[current_pos].end
-            pos2 = current_pos
-            exon_start = exons[pos2].start
+                current_idx += 1
+                if current_idx >= nexons: return 0
+                exon_end = exons[current_idx].end
+            idx2 = current_idx
+            exon_start = exons[idx2].start
             read_len = alignment.rlen
             ali_len = 0
             for op,shift in alignment.cigar:
+                # Deletion is "from the reference", insert is "to the reference"
                 if op in [0,2,3]:  # [BAM_CMATCH,BAM_CDEL,BAM_CREF_SKIP]
-                    # If read crosses exon left bound
+                    # If read crosses exon left bound, trim
                     if ali_pos < exon_start:
-                        ali_pos = min(exon_start, ali_pos+shift)
-                        shift = max(0, ali_pos+shift-exon_start)  # part of the read overlapping
+                        pos = ali_pos
+                        ali_pos = min(exon_start, pos+shift)
+                        shift = max(0, pos+shift-exon_start)
                     # If read crosses exon right bound, maybe next exon(s)
                     while ali_pos+shift >= exon_end:
-                        if op == 0: ali_len += exon_end - ali_pos
-                        exons[pos2].increment(float(ali_len)/float(read_len), alignment, multiple,stranded)
-                        shift -= exon_end-ali_pos  # remaining part of the read
+                        # Score up to exon end, go to exon end, remove from shift and reset ali_len
+                        if op == 0:
+                            ali_len += exon_end - ali_pos
+                            exons[idx2].increment(float(ali_len)/float(read_len), alignment, multiple,stranded)
+                        shift -= exon_end-ali_pos
                         ali_pos = exon_end
                         ali_len = 0
-                        pos2 += 1
-                        if pos2 >= len(exons): return 0
-                        exon_start = exons[pos2].start
-                        exon_end = exons[pos2].end
+                        # Next exon
+                        idx2 += 1
+                        if idx2 >= nexons: return 0
+                        exon_start = exons[idx2].start
+                        exon_end = exons[idx2].end
+                        # If op crosses exon left bound, go to exon start with rest of shift
+                        # If op ends before the next exon, go to end of op and reset shift
                         if ali_pos < exon_start:
-                            ali_pos = min(exon_start, ali_pos+shift)
-                            shift = max(0, ali_pos+shift-exon_start)  # from exon start to end of the read
-                    ali_pos += shift
-                    if op == 0: ali_len += shift
+                            pos = ali_pos
+                            ali_pos = min(exon_start, pos+shift)
+                            shift = max(0, pos+shift-exon_start)
+                    # If a bit of op remains overlapping the next exon
+                    if op == 0:
+                        ali_len += shift
+                    ali_pos += shift  # got to start of next op in prevision for next round
                 elif op == 1:  # BAM_CINS
                     ali_len += shift;
-            if ali_len < 1: return 0;
-            exons[pos2].increment(float(ali_len)/float(read_len), alignment, multiple,stranded)
+                exons[idx2].increment(float(ali_len)/float(read_len), alignment, multiple,stranded)
 
     count_reads(pieces,ckreads,options['multiple'],options['stranded'])
     #--- Calculate RPK
@@ -383,11 +391,12 @@ def rnacounter_main(bamname, annotname, options):
     else:
         chromosomes = sam.references
 
-    # Get total number of reads
+    ## Get total number of reads
     if options['normalize'] is None:
         options['normalize'] = get_total_nreads(sam) / 1.0e6
     else:
         options['normalize'] = float(options['normalize'])
+    options['normalize'] = 1.0
 
     # Initialize
     chrom = ''
