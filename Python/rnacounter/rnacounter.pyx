@@ -152,10 +152,11 @@ cdef class Exon(GenomicObject):
             x = x * NH
         if stranded:
             # read/exon stand mismatch
-            if alignment.is_reverse and self.strand != -1:
-                self.count_rev += x
-            else:
+            if (alignment.is_reverse is False and self.strand == 1) \
+            or (alignment.is_reverse is True and self.strand == -1):
                 self.count += x
+            else:
+                self.count_rev += x
         else:
             self.count += x
 
