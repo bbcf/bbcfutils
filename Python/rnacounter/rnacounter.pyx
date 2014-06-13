@@ -494,16 +494,16 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
     if 0 in options['type']:
         method = options['method'][0]
         if method == 0:    # raw
-            genes = estimate_expression_raw(Gene, pieces, gene_ids, exons, options['normalize'])
+            genes = estimate_expression_raw(Gene,pieces,gene_ids,exons,options['normalize'])
         elif method == 1:  # nnls
-            genes = estimate_expression_NNLS(Gene, pieces, gene_ids, exons, options['normalize'])
+            genes = estimate_expression_NNLS(Gene,pieces,gene_ids,exons,options['normalize'])
     # Transcripts - 1
     if 1 in options['type']:
         method = options['method'][1]
         if method == 1:    # nnls
-            transcripts = estimate_expression_NNLS(Transcript, pieces, transcript_ids, exons, options['normalize'])
+            transcripts = estimate_expression_NNLS(Transcript,pieces,transcript_ids,exons,options['normalize'])
         elif method == 0:  # raw
-            transcripts = estimate_expression_raw(Transcript, pieces, transcript_ids, exons, options['normalize'])
+            transcripts = estimate_expression_raw(Transcript,pieces,transcript_ids,exons,options['normalize'])
 
     #--- Print output
     for f in itertools.chain(genes,transcripts):

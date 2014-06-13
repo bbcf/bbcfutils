@@ -55,6 +55,11 @@ real	2m29.389s
 user	2m17.482s
 sys	0m4.198s
 
+
+            #############
+            #  13.06.14 #
+            #############
+
 Local:
 
 real	3m16.416s
@@ -68,3 +73,14 @@ sys	0m3.882s
 real	3m20.541s
 user	3m7.579s
 sys	0m4.194s
+
+
+V-IT
+
+real	2m39.494s
+user	1m57.164s
+sys	0m3.677s
+
+real	2m32.604s
+user	1m57.924s
+sys	0m2.232s
