@@ -438,8 +438,9 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
     """Distribute counts across transcripts and genes of a chunk *ckexons*
     of non-overlapping exons."""
     cdef int method, lastend
-    cdef Exon exon0, g, e, p
-    cdef list pieces, exons, gene_ids, genes, transcripts
+    cdef Exon exon0, g, p
+    cdef list pieces, exons, gene_ids, genes, transcripts, el
+    cdef tuple es
     cdef dict t2e, e2t, tx_replace
     cdef set filtered
     cdef str t
@@ -466,8 +467,8 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
             for t in p.transcripts:
                 t2e.setdefault(t,[]).append(p.id)
         e2t = {}
-        for t,e in t2e.iteritems():
-            es = tuple(sorted(e))              # combination of pieces indices
+        for t,el in t2e.iteritems():
+            es = tuple(sorted(el))             # combination of pieces indices
             e2t.setdefault(es,[]).append(t)    # {(pieces IDs combination): [transcripts with same struct]}
         # Replace too similar transcripts by the first of the list, arbitrarily
         tx_replace = dict((badt,tlist[0]) for tlist in e2t.values() for badt in tlist[1:] if len(tlist)>1)
