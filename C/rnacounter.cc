@@ -57,14 +57,60 @@ inline int mapreads( const samtools::bam1_t *b, void *_d ) {
     return 0;
 }
 
+inline void exon_list::print( std::string filename, double *x, 
+			      std::ios_base::openmode mode=std::ios_base::out ) {
+    std::ofstream outfile;
+    std::ostream* outstr = &std::cout;
+    if (filename.size()) {
+	outfile.open( filename.c_str(), mode );
+	if (outfile.is_open()) outstr = &outfile;
+	else std::cerr << "Could not open " << filename
+		       << ", writing to stdout\n";
+    }
+    double norm = 1e9/(double)reads_total;
+/**** This is to keep the order of x (and of the matrix A) ***/
+    std::vector< std::string > txlist( txids.size() );
+    for ( std::map< std::string, int >::iterator Im = txids.begin();
+	  Im !=  txids.end(); Im++ ) txlist[Im->second] = Im->first;
+    for ( size_t n = 0; n < txlist.size(); n++ )
+	(*outstr) << txlist[n] << '\t' << norm*x[n] << "\n";
+    txlist.clear();
+    if (outfile.is_open()) outfile.close();
+}
 
+inline void exon_list::save_vec_mat( std::string filename,
+				     taucs_ccs_matrix *A, double *b1, double *b2,
+				     std::ios_base::openmode mode=std::ios_base::out ) {
+    std::ofstream outfile;
+    std::ostream* outstr;
+    if (filename.size()) {
+	outfile.open( (filename+std::string("_exoncounts.txt")).c_str(), mode );
+	if (outfile.is_open()) outstr = &outfile;
+	else return;
+    } else return;
+    int rows = A->m, cols = A->n, nnz = A->colptr[A->n];
+    for ( int n = 0; n < rows; n++ ) {
+	(*outstr) << chrom << ":" << (*this)[n].start << "-" << (*this)[n].end << ":" 
+		  << ((*this)[n].revstrand ? "-" : "+") << "\t" << b1[n];
+	if (b2) (*outstr) << "\t" << b2[n];
+	(*outstr) << "\n";
+    }
+    outfile.close();
+    outfile.open( (filename+std::string("_exonmap.txt")).c_str(), mode );
+    if (outfile.is_open()) outstr = &outfile;
+    else return;
+    (*outstr) << "SPARSE\n" << rows << " " << cols << "\n" << nnz << "\n";
+    int ncol = 1;
+    for ( int n = 0; n < nnz; n++ ) {
+	if (n == A->colptr[ncol]) ncol++;
+	(*outstr) << A->rowind[n]+1 << " " << ncol << " " << A->values.d[n] << "\n";
+    }
+    outfile.close();
+}
 
 /**************** non-negative least-squares ***************/
-#include <libtsnnls/tsnnls.h>
-#include <libtsnnls/lsqr.h>
-
 inline void sparse_lsqr_mult( long mode, dvec* x, dvec* y, void* prod ) {
-    taucs_ccs_matrix* A = (taucs_ccs_matrix*)prod;
+    taucs_ccs_matrix *A = (taucs_ccs_matrix*)prod;
     if ( mode == 0 ) 
 	for ( int j = 0; j < A->n; j++) 
 	    for ( int i = (A->colptr)[j]; i < (A->colptr[j+1]); i++ )
@@ -81,8 +127,9 @@ void exon_list::nnls_solve( std::string filename, std::ios_base::openmode mode, 
 /***** rows = #exons, cols = #transcripts *****/
     int rows = size(), cols = txids.size();
     taucs_logfile((char*)"TAUCS.err");
+    tsnnls_verbosity(1);
     int nnz = 0;
-    std::vector< int > txcounts(cols);
+    std::vector< int > txcounts(cols,0);
     for ( int n = 0; n < rows; n++ ) {
 	nnz += (*this)[n].tmap.size();
 	for ( std::vector< int >::iterator I = (*this)[n].tmap.begin();
@@ -90,57 +137,60 @@ void exon_list::nnls_solve( std::string filename, std::ios_base::openmode mode, 
 	      I++ )
 	    txcounts[*I]++;
     }
-    taucs_ccs_matrix *Avals = taucs_dccs_create(rows, cols, nnz);
+    taucs_ccs_matrix *Avals = taucs_ccs_new(rows, cols, nnz);
     int ncol = 0;
     for ( int n = 0; n < cols; n++ ) {
 	Avals->colptr[n] = ncol;
 	ncol += txcounts[n];
-	txcounts[n] = 0;
     }
     Avals->colptr[cols] = nnz;
-    Avals->flags = TAUCS_DOUBLE;
-    double norm = 1e3/(double)reads_total;  // normalize to RPKM *= 10^6/rtotal/10^3
-    double *bvals_sense, *bvals_anti, *bvals_both; 
-    if (stranded) {
-	bvals_sense = (double *)(calloc(rows,sizeof(double)));
-	bvals_anti = (double *)(calloc(rows,sizeof(double)));
-	for ( int n = 0; n < rows; n++ ) {
-	    bvals_sense[n] = norm*counts_sense[n];
-	    bvals_anti[n]  = norm*counts_antisense[n];
-	}
-    } else {
-	bvals_both = (double *)(calloc(rows,sizeof(double)));
-	for ( int n = 0; n < rows; n++ ) bvals_both[n] = norm*counts_both[n];
-    }
+    std::vector< int > txdone(cols,0);
     for ( int n = 0; n < rows; n++ ) {
 	double exlen = (double)((*this)[n].end-(*this)[n].start);
 	for ( std::vector< int >::iterator I = (*this)[n].tmap.begin();
 	      I != (*this)[n].tmap.end();
 	      I++ ) {
-	    int pos = txcounts[*I]+Avals->colptr[*I];
+	    int pos = txdone[*I]+Avals->colptr[*I];
 	    Avals->rowind[pos] = n;
-// should remove 1/2 fragment size (opts) from first and last exon of each transcript 
 	    Avals->values.d[pos] = exlen;
-	    txcounts[*I]++;
+	    if ( txdone[*I] == 0 || txdone[*I] == txcounts[*I]-1 )
+		Avals->values.d[pos] -= 0.5*std::min((double)fraglen,exlen);
+	    txdone[*I]++;
 	}
     }
-/* DEBUG
-   std::cout << "# rows: " << rows << "\n# columns: 1\n";
-   for ( int n = 0; n < rows; n++ ) std::cout << bvals[n] << "\n";
-   std::cout << "SPARSE\n" << rows << " " << cols << "\n" << nnz << "\n";
-   ncol = 1;
-   for ( int n = 0; n < nnz; n++ ) {
-       if (n == Avals->colptr[ncol]) ncol++;
-       std::cout << Avals->rowind[n]+1 << " " << ncol << " " << Avals->values.d[n] << "\n";
-   }
-    double *xvals, *residual;
-    xvals = t_snnls(Avals, bvals, residual, 0.0, 0);
-//    xvals = t_lsqr(Avals, bvals);
-  if ( lsqr_out->sol_vec->elements == 0 ) {
-  std::cerr << "NNLS failed\n";
-  *err = 22;
-  }
-***************************************************/
+    txdone.clear();
+    txcounts.clear();
+
+    if (savecounts) {
+	double *b2 = stranded ? &counts_antisense[0] : 0;
+	save_vec_mat(filename, Avals, &counts_sense[0], b2, mode);
+    }
+
+/* ********** NNLS: NOT WORKING NOW
+    double *xvals = 0, *residual = 0;
+//	xvals = t_snnls(Avals, counts_sense, residual, 1.1, 1);
+	xvals = t_snnls_pjv(Avals, &counts_sense[0], residual, 1.1, 1);
+	if ( xvals == 0 ) *err = 22;
+	else {
+	    print( filename.size() ? filename+std::string(".sense") : std::string(), xvals, mode );
+	    free(xvals);
+	    xvals = 0;
+	}
+    if (stranded) {
+//	xvals = t_snnls(Avals, counts_anti, residual, 1.1, 1);
+	xvals = t_snnls_pjv(Avals, &counts_antisense[0], residual, 1.1, 1);
+	if ( xvals == 0 ) *err = 22;
+	else {
+	    print( filename.size() ? filename+std::string(".antisense") : std::string(), xvals, mode );
+	    free(xvals);
+	    xvals = 0;
+	}
+    }
+    taucs_dccs_free(Avals);
+    if (*err == 22 ) std::cerr << "NNLS failed\n";
+*/
+
+/***************************************************/
 // ---------- LSQR WRAPPER
     lsqr_input   *lsqr_in;
     lsqr_output  *lsqr_out;
@@ -155,32 +205,24 @@ void exon_list::nnls_solve( std::string filename, std::ios_base::openmode mode, 
     lsqr_in->cond_lim = 1/sqrt(100*std::numeric_limits<double>::epsilon());
     lsqr_in->max_iter = 4*lsqr_in->num_cols;
     lsqr_in->lsqr_fp_out = NULL;
+    for ( int n = 0; n < rows; n++ ) lsqr_in->rhs_vec->elements[n] = counts_sense[n];
+    for ( int n = 0; n < cols; n++ ) lsqr_in->sol_vec->elements[n] = 0;
+    lsqr_func->mat_vec_prod = sparse_lsqr_mult;
+    lsqr( lsqr_in, lsqr_out, lsqr_work, lsqr_func, Avals );
+    std::string f1( filename );
+    if (stranded && filename.size()) f1 += std::string(".sense");
+    print( f1, lsqr_out->sol_vec->elements, mode );
     if (stranded) {
-	for ( int n = 0; n < rows; n++ ) lsqr_in->rhs_vec->elements[n] = bvals_sense[n];
+	for ( int n = 0; n < rows; n++ ) lsqr_in->rhs_vec->elements[n] = counts_antisense[n];
 	for ( int n = 0; n < cols; n++ ) lsqr_in->sol_vec->elements[n] = 0;
 	lsqr_func->mat_vec_prod = sparse_lsqr_mult;
 	lsqr( lsqr_in, lsqr_out, lsqr_work, lsqr_func, Avals );
-	print( filename.size() ? filename+std::string(".sense") : std::string(), 
+	print( filename.size() ? filename+std::string(".antisense") : filename, 
 	       lsqr_out->sol_vec->elements, mode );
-	free( bvals_sense );
-	for ( int n = 0; n < rows; n++ ) lsqr_in->rhs_vec->elements[n] = bvals_anti[n];
-	for ( int n = 0; n < cols; n++ ) lsqr_in->sol_vec->elements[n] = 0;
-	lsqr_func->mat_vec_prod = sparse_lsqr_mult;
-	lsqr( lsqr_in, lsqr_out, lsqr_work, lsqr_func, Avals );
-	print( filename.size() ? filename+std::string(".antisense") : std::string(), 
-	       lsqr_out->sol_vec->elements, mode );
-	free( bvals_anti );
-    } else {
-	for ( int n = 0; n < rows; n++ ) lsqr_in->rhs_vec->elements[n] = bvals_both[n];
-	for ( int n = 0; n < cols; n++ ) lsqr_in->sol_vec->elements[n] = 0;
-	lsqr_func->mat_vec_prod = sparse_lsqr_mult;
-	lsqr( lsqr_in, lsqr_out, lsqr_work, lsqr_func, Avals );
-	print( filename, lsqr_out->sol_vec->elements, mode );
-	free( bvals_both );
     }
-// -----------------------
     free_lsqr_mem( lsqr_in, lsqr_out, lsqr_work, lsqr_func );
     taucs_dccs_free(Avals);
+// -----------------------
 }
 
 int main( int argc, char **argv )

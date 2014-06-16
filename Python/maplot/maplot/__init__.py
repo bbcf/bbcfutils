@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 """
 Creates an `MA-plot` to compare transcription levels of a set of genes
 (or other features) in two different conditions, from a CSV file.
@@ -352,7 +350,6 @@ class AnnoteFinder:
     self.xtol = xtol
     self.ytol = ytol
     if axis is None:
-      from matplotlib import pyplot as plt
       self.axis = plt.gca()
     else:
       self.axis= axis

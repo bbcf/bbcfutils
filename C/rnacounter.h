@@ -15,15 +15,20 @@ typedef unsigned int uint32_t;
 namespace samtools {
 #include <samtools/sam.h>
 }
+#include <libtsnnls/tsnnls.h>
+#include <libtsnnls/lsqr.h>
+#undef min
+#undef max
 
-#define __FLEN__ 350
+
+#define __FLEN__ 300
 /*********************** Command-line options ******************/
 
 class options {
 
 public:
     options( int, char**, int* );
-    bool stranded;
+    bool stranded, savecounts;
     int fraglen, normal;
     std::string bamfile, bedfile, outfile;
     std::set< std::string > chroms;
@@ -46,6 +51,8 @@ option : write exon-level (bed) output
 	cmd.add( ch );
 	TCLAP::SwitchArg st( "s", "stranded", "Compute sense and antisense reads separately (false)",  false );
 	cmd.add( st );
+	TCLAP::SwitchArg si( "i", "intermediate", "Save intermediate values (false)",  false );
+	cmd.add( si );
 	char buffer [35];
 	sprintf(buffer,"Average fragment length (%i)",__FLEN__);
 	TCLAP::ValueArg< int > fl( "l", "fraglength", buffer, false, __FLEN__, "int" );
@@ -57,6 +64,7 @@ option : write exon-level (bed) output
 	cmd.parse( argc, argv );
 
 	stranded = st.getValue();
+	savecounts = si.getValue();
 	fraglen = fl.getValue();
 	normal = nm.getValue();
 	bamfile = bf.getValue();
@@ -79,10 +87,13 @@ option : write exon-level (bed) output
 1       23415   24451   AT1G01040.1|AT1G01040.2 +
 1       24541   24655   AT1G01040.1|AT1G01040.2 +
  
-    The "mapreads" function will be passed to samtools::bam_fetch and call the "increment"
-    member function and fills the counts_* vectors.
-    "nnls_solve" solves the problem exon_counts = transcript_mapping * transcript_expression
+    The "mapreads" function will be passed to samtools::bam_fetch, call the "increment"
+    member function on evry fetched alignment and fill the vectors counts_[sense,antisense,both].
+    At the end, "nnls_solve" solves the problem 
+             exon_counts = exon_to_transcript_map * transcript_expression
     by least-squares. 
+    The exon_to_transcript info (derived from the bedfile's name field as above) is stored in 
+    the  
  **************************************************************************************/
 
 typedef struct { int start; int end; std::vector< int > tmap; bool revstrand; } exon;
@@ -95,26 +106,26 @@ public:
     bool append( std::string, std::set< std::string > );
     void increment( double, size_type, bool );
     void reset() {
-	counts_sense.clear(); counts_antisense.clear(); counts_both.clear();
-	if (stranded) {
-	    counts_sense.resize(size(),0.0); counts_antisense.resize(size(),0.0);
-	} else counts_both.resize(size(),0.0);
+	counts_sense.clear(); counts_antisense.clear();
+	if (stranded) counts_antisense.resize(size(),0.0);
+	counts_sense.resize(size(),0.0); 
 	current_pos = 0;
     }
     void next();
     void nnls_solve( std::string, std::ios_base::openmode, int* );
-    void print( std::string, double*, std::ios_base::openmode );
 
-    bool stranded;
+    bool stranded, savecounts;
     size_type current_pos;
     int fraglen;
     std::string chrom;
 
 private:
+    void print( std::string, double*, std::ios_base::openmode );
+    void save_vec_mat( std::string, taucs_ccs_matrix*, double*, double*, std::ios_base::openmode );
+
     long reads_total;
-    std::vector< double > counts_sense;
-    std::vector< double > counts_antisense;
-    std::vector< double > counts_both;
+    std::vector< double > counts_sense; // used for both strands if not stranded
+    std::vector< double > counts_antisense; // used only if stranded
     std::map< std::string, int > txids;
     std::string next_chrom, next_name;
     exon next_exon;
@@ -123,6 +134,7 @@ private:
 
 exon_list::exon_list( const options *o ) {
     stranded = o->stranded;
+    savecounts = o->savecounts;
     fraglen = o->fraglen > -1 ? o->fraglen : __FLEN__;
     reads_total = o->normal > -1 ? o->normal : 0;
     chrom = std::string("");
@@ -144,13 +156,9 @@ inline void exon_list::update_total( std::map< int, size_t > *_n ) {
 }
 
 inline void exon_list::increment( double x, size_type index, bool read_rev ) {
-    if (stranded) {
 // ----------- read/exon strand mismatch:
-	if (read_rev ^ (*this)[index].revstrand)
-	    counts_antisense[index] += x;
-	else 
-	    counts_sense[index] += x;
-    } else counts_both[index] += x;
+    if (stranded && (read_rev ^ (*this)[index].revstrand)) counts_antisense[index] += x;
+    else                                                   counts_sense[index] += x;
 }
 
 inline bool exon_list::append( std::string line, std::set< std::string > chr_select ) {
@@ -203,20 +211,5 @@ inline void exon_list::next() {
     push_back( next_exon );
 }
 
-inline void exon_list::print( std::string filename, double *x, 
-			      std::ios_base::openmode mode=std::ios_base::out ) {
-    std::ofstream outfile;
-    std::ostream* outstr = &std::cout;
-    if (filename.size()) {
-	outfile.open( filename.c_str(), mode );
-	if (outfile.is_open()) outstr = &outfile;
-	else std::cerr << "Could not open " << filename
-		       << ", writing to stdout\n";
-    }
-    for ( std::map< std::string, int >::iterator Im = txids.begin();
-	  Im !=  txids.end(); Im++ )
-	(*outstr) << Im->first << '\t' << x[Im->second] << "\n";
-    if (outfile.is_open()) outfile.close();
-}
 
 

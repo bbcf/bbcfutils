@@ -130,13 +130,17 @@ class SnpWorkflow(Workflow):
                 ("--mincov", "Minimum coverage to call the SNP.",
                  {'default':5}),
                 ("--minsnp", "Minimum percentage of reads per allele to call the SNP.",
-                 {'default':40}))
+                 {'default':40}),
+                ("-b","--make_bigwigs", "Create genome-wide coverage, heterozygosity and quality bigwigs.",
+                 {'action':"store_true"}))
         usage = "[-m mapseq_minilims] [--mincov --minsnp]"
         desc = """Compares sequencing data to a reference assembly to detect SNPs."""
         Workflow.__init__(self,module="snp",opts=opts,usage=usage,desc=desc)
 
     def check_options(self):
-        more_defs = {'bowtie2': (True,)}
+        _mbw = str(self.job.options.get('compute_densities_snp','1')).lower()
+        more_defs = {'bowtie2': (True,), 
+                     'make_bigwigs': (True,_mbw in ['1','true','t'])}
         Workflow.check_options(self, more_defs)
         mincov = int(self.job.options.get('mincov') or self.opts.mincov)
         minsnp = int(self.job.options.get('minsnp') or self.opts.minsnp)
