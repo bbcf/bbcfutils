@@ -24,7 +24,7 @@ Options:
    -m, --multiple                   Divide count by NH flag for multiply mapping reads [default: False].
    -c CHROMS, --chromosomes CHROMS  Selection of chromosome names (comma-separated list).
    -o OUTPUT, --output OUTPUT       Output file to redirect stdout.
-   --method METHOD                  Choose from 'nnls', 'raw', ('likelihood'-soon) [default: nnls].
+   --method METHOD                  Choose from 'nnls', 'raw', ('likelihood'-soon) [default: raw].
    -v, --version                    Displays version information and exits.
    -h, --help                       Displays usage information and exits.
 """
@@ -366,7 +366,8 @@ cdef list estimate_expression_NNLS(object feat_class,list pieces,list ids,list e
 
 cdef list estimate_expression_raw(object feat_class,list pieces,list ids,list exons,double norm_cst):
     """For each feature ID in *ids*, just sum the score of its components as one
-    commonly does for genes from exon counts."""
+    commonly does for genes from exon counts. Discard ambiguous pieces that are part of
+    more than one gene."""
     cdef int flen,i,j
     cdef double fcount, frpk
     cdef str f
@@ -375,7 +376,7 @@ cdef list estimate_expression_raw(object feat_class,list pieces,list ids,list ex
     feats = []
     for i,f in enumerate(ids):
         exs = sorted([e for e in exons if is_in(feat_class,e,f)], key=attrgetter('start','end'))
-        inner = [p for p in pieces if is_in(feat_class,p,f)]
+        inner = [p for p in pieces if (len(p.gene_id.split('|'))==1 and is_in(feat_class,p,f))]
         flen = sum([p.length for p in inner])
         fcount = sum([p.count for p in inner])
         frpk = toRPK(fcount,flen,norm_cst)
