@@ -13,10 +13,12 @@ If not specified, `gene_id`, `transcript_id` and `exon_id` will all get the valu
 of `exon_id` and be considered as independant features.
 
 Usage:
-   rnacounter  [-t TYPE] [-n <int>] [-l <int>] [-s] [-m] [-c CHROMS] [-o OUTPUT] [--method METHOD] BAM GTF
+   rnacounter  [-t TYPE] [-n <int>] [-l <int>] [-s] [-m] [-c CHROMS] [-o OUTPUT]
+               [--format FORMAT] [--method METHOD] BAM GTF
                [--version] [-h]
 
 Options:
+   -f FORMAT, --format FORMAT       Format of the annotation file: 'gtf' or 'bed' [default: gtf].
    -t TYPE, --type TYPE             Type of genomic feature to count on: 'genes' or 'transcripts' [default: genes].
    -n <int>, --normalize <int>      Normalization constant for RPKM. Default: (total number of mapped reads)/10^6.
    -l <int>, --fraglength <int>     Average fragment length [default: 350].
@@ -50,17 +52,17 @@ cdef extern from "math.h":
 
 cdef inline double _score(x):
     if x == '.': return 0.0
-    else: return <double>x
+    else: return float(x)
 cdef inline int _strand(x):
     smap = {'+':1, 1:1, '-':-1, -1:-1, '.':0, 0:0}
     return smap[x]
 Ecounter = itertools.count(1)  # to give unique ids to undefined exons, see parse_gtf()
 
 def parse_gtf(str line):
-    """Parse one GTF line. Return None if not an 'exon'. Return False if row is empty."""
+    """Parse one GTF line. Return None if not an 'exon'. Return False if *line* is empty."""
     # GTF fields = ['chr','source','name','start','end','score','strand','frame','attributes']
     cdef list row
-    if not line: return False
+    if (not line): return False
     row = line.strip().split("\t")
     if len(row) < 9:
         raise ValueError("\"Attributes\" field required in GFF.")
@@ -74,6 +76,24 @@ def parse_gtf(str line):
         chrom=row[0], start=int(row[3])-1, end=int(row[4]),
         name=exon_id, score=_score(row[5]), strand=_strand(row[6]),
         transcripts=[attrs.get('transcript_id',exon_id)], exon_number=int(attrs.get('exon_number',1)))
+
+def parse_bed(str line):
+    """Parse one BED line. Return False if *line* is empty."""
+    cdef list row
+    cdef int start,end,strand
+    cdef str name
+    cdef double score
+    if (not line) or (line[0]=='#') or (line[:5]=='track'): return False
+    row = line.strip().split('\t')
+    chrom = row[0]; start = int(row[1]); end = int(row[2]); name = row[3]
+    if len(row) > 4:
+        if len(row) > 5: strand = _strand(row[5])
+        else: strand = 0
+        score = _score(row[4])
+    else: score = 0.0
+    exon_id = 'E%d'%Ecounter.next()
+    return Exon(id=exon_id, gene_id=name, gene_name=name, chrom=chrom, start=start, end=end,
+                name=name, score=score, strand=strand, transcripts=[name], exon_number=1)
 
 
 #########################  Global classes  ##########################
@@ -533,13 +553,18 @@ def rnacounter_main(bamname, annotname, options):
     else:
         options['normalize'] = float(options['normalize'])
 
+    if options['format'] == 'gtf':
+        parse = parse_gtf
+    elif options['format'] == 'bed':
+        parse = parse_bed
+
     # Initialize
     chrom = ''
     while chrom not in chromosomes:
         exon = None
         while exon is None:
             row = annot.readline().strip()
-            exon = parse_gtf(row)  # None if not an exon, False if EOF
+            exon = parse(row)  # None if not an exon, False if EOF
         if not row: break
         chrom = exon.chrom
     if chrom == '':
@@ -556,7 +581,7 @@ def rnacounter_main(bamname, annotname, options):
             exon = None
             while exon is None:
                 row = annot.readline().strip()
-                exon = parse_gtf(row)  # None if not an exon, False if EOF
+                exon = parse(row)  # None if not an exon, False if EOF
             if not row: break
             chrom = exon.chrom
         if len(chrexons) > 0:
@@ -587,6 +612,9 @@ def parse_args(args):
     if args['--chromosomes'] is None: args['--chromosomes'] = []
     else: args['--chromosomes'] = args['--chromosomes'].split(',')
 
+    assert args['--format'].lower() in ['gtf','bed'], \
+        "FORMAT must be one of 'gtf' or 'bed'."
+
     # Type: one can actually give both as "-t genes,transcripts" but they
     # will be mixed in the output stream. Split the output using the last field ("Type").
     args['--type'] = [x.lower() for x in args['--type'].split(',')]
@@ -605,7 +633,7 @@ def parse_args(args):
     args['--method'] = [method_map[x] for x in args['--method']]
     args['--method'] = dict(zip(args['--type'],args['--method']))
 
-    options = dict((k.lstrip('-'),v) for k,v in args.iteritems())
+    options = dict((k.lstrip('-').lower(), v) for k,v in args.iteritems())
     return bamname, annotname, options
 
 
