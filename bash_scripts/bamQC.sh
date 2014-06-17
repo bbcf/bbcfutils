@@ -1,4 +1,8 @@
 #!/bin/bash
-bamname=$1
-plotname=$2
-bam2density -q 1 -p 0 --no_nh -s $bamname | cut -f 4 | sort -n | uniq -c | bamQC.R $plotname
+if [ $# -lt 4 ]
+then
+  echo "Usage: $0 bam pdf genome_size title"
+  exit
+fi
+
+bam2density --noheaders -p 0 --no_nh -s $1 | bamQC.R $2 $3 $4
