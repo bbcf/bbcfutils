@@ -1,16 +1,7 @@
 #!/usr/bin/env python
 
 import os, sys, optparse
-
-try:
-    from maplot import MAplot
-except ImportError:
-    print ("You do not seem to have the \"maplot\" package installed. "
-           "Either you never installed it or your PYTHON_PATH is not set correctly. "
-           "To install the package, cou can use the command \"easy_install maplot\". "
-           "For more instructions see the README.txt file.")
-    sys.exit()
-
+from bbcflib.maplot import MAplot
 
 usage = """
 
