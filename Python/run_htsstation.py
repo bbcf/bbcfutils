@@ -192,6 +192,24 @@ class MicrobiomeWorkflow(Workflow):
         return True
 
 
+############################### Microbiome ###############################
+class DnaseseqWorkflow(Workflow):
+
+    def __init__(self):
+        opts = (_mapseq_lims_opt,)
+        usage = "[-m mapseq_minilims]"
+        desc = """A High-throughput DNAseI-seq analysis workflow."""
+        Workflow.__init__(self,module="dnaseseq",name="dnaseseq",opts=opts,usage=usage,desc=desc)
+
+    def check_options(self):
+        Workflow.check_options(self)
+        self.main_args = {"job": self.job,
+                          "assembly": self.job.assembly,
+                          "logfile": self.logfile,
+                          "via": self.opts.via}
+        return True
+
+
 ############################### MAIN ###############################
 def main():
     parser = None
@@ -212,6 +230,8 @@ def main():
             WF = C4seqWorkflow()
         elif module[:5] == "micro":
             WF = MicrobiomeWorkflow()
+        elif module[:5] == "dnase":
+            WF = DnaseseqWorkflow()
         else:
             m = "No such operation: %s, choose one of %s." %(module,str(_module_list)) if module else ''
             raise Usage(m)
