@@ -1,5 +1,6 @@
 #cython: wraparound=False
 #cython: boundscheck=False
+#cython: cdivision=True
 """
 Count reads on genes and transcripts from a genome-level BAM file and a
 GTF/GFF file describing the exons, such as those provided by Emsembl or GenRep.
