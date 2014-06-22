@@ -84,3 +84,16 @@ sys	0m3.677s
 real	2m32.604s
 user	1m57.924s
 sys	0m2.232s
+
+
+            #############
+            #  13.06.14 #
+            #############
+
+V-IT, cdivision=True
+
+real    1m40.878s
+user    1m35.416s
+sys 0m2.097s
+
+
