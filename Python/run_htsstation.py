@@ -109,7 +109,6 @@ class RnaseqWorkflow(Workflow):
                      'stranded': (False,)}
         Workflow.check_options(self, more_defs)
         self.main_args = {"job": self.job,
-                          "assembly": self.job.assembly,
                           "pileup_level": self.opts.pileup_level.split(','),
                           "via": self.opts.via,
                           "rpath": self.globals.get('script_path',''),
@@ -139,7 +138,7 @@ class SnpWorkflow(Workflow):
 
     def check_options(self):
         _mbw = str(self.job.options.get('compute_densities_snp','1')).lower()
-        more_defs = {'bowtie2': (True,), 
+        more_defs = {'bowtie2': (True,),
                      'make_bigwigs': (True,_mbw in ['1','true','t'])}
         Workflow.check_options(self, more_defs)
         mincov = int(self.job.options.get('mincov') or self.opts.mincov)

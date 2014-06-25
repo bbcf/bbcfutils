@@ -74,7 +74,7 @@ def parse_gtf(str line):
     exon_id = attrs.get('exon_id', 'E%d'%Ecounter.next())
     return Exon(id=exon_id,
         gene_id=attrs.get('gene_id',exon_id), gene_name=attrs.get('gene_name',exon_id),
-        chrom=row[0], start=int(row[3])-1, end=int(row[4]),
+        chrom=row[0], start=max(int(row[3])-1,0), end=max(int(row[4]),0),
         name=exon_id, score=_score(row[5]), strand=_strand(row[6]),
         transcripts=[attrs.get('transcript_id',exon_id)], exon_number=int(attrs.get('exon_number',1)))
 
