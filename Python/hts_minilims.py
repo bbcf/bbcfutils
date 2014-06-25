@@ -23,7 +23,7 @@ class TextWrapper:
 
 optparse.textwrap = TextWrapper()
 
-module_list = ["demultiplexing","mapseq","chipseq","rnaseq","snp","4cseq","microbiome"]
+module_list = ["demultiplexing","mapseq","chipseq","rnaseq","snp","4cseq","microbiome","dnaseseq"]
 usage = "hts_minilims.py [OPTIONS]"
 description = """Command-line interface to HTSstation minilims: list, copy or link selected files from given execution.
 Typical example:
