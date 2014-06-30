@@ -14,7 +14,7 @@ If not specified, `gene_id`, `transcript_id` and `exon_id` will all get the valu
 of `exon_id` and be considered as independant features.
 
 Usage:
-   rnacounter  [-t TYPE] [-n <int>] [-l <int>] [-s] [-m] [-c CHROMS] [-o OUTPUT]
+   rnacounter  [-t TYPE] [-n <int>] [-l <int>] [-s] [--nh] [-c CHROMS] [-o OUTPUT]
                [--format FORMAT] [--method METHOD] BAM GTF
                [--version] [-h]
 
@@ -24,10 +24,10 @@ Options:
    -n <int>, --normalize <int>      Normalization constant for RPKM. Default: (total number of mapped reads)/10^6.
    -l <int>, --fraglength <int>     Average fragment length [default: 350].
    -s, --stranded                   Compute sense and antisense reads separately [default: False].
-   -m, --multiple                   Divide count by NH flag for multiply mapping reads [default: False].
+   --nh                             Divide count by NH flag for multiply mapping reads [default: False].
    -c CHROMS, --chromosomes CHROMS  Selection of chromosome names (comma-separated list).
    -o OUTPUT, --output OUTPUT       Output file to redirect stdout.
-   --method METHOD                  Choose from 'nnls', 'raw', ('likelihood'-soon) [default: raw].
+   -m METHOD, --method METHOD       Choose from 'nnls', 'raw', ('likelihood'-soon) [default: raw].
    -v, --version                    Displays version information and exits.
    -h, --help                       Displays usage information and exits.
 """
@@ -250,11 +250,6 @@ cdef inline double toRPK(double count,double length,double norm_cst):
     return 1000.0 * count / (length * norm_cst)
 cdef inline double fromRPK(double rpk,double length,double norm_cst):
     return length * norm_cst * rpk / 1000.0
-
-cdef inline double toSQRPK(double count,double length,double norm_cst):
-    return 1000.0 * sqrt(count) / (length * norm_cst)
-cdef inline double fromSQRPK(double sqrpk,double length,double norm_cst):
-    return pow(length * norm_cst * sqrpk / 1000.0 , 2.0)
 
 
 cdef int count_reads(list exons,object ckreads,bint multiple,bint stranded) except -1:
@@ -505,7 +500,7 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
     ckreads = sam.fetch(chrom, exons[0].start, lastend)
 
     #--- Count reads in each piece -- from rnacounter.cc
-    count_reads(pieces,ckreads,options['multiple'],options['stranded'])
+    count_reads(pieces,ckreads,options['nh'],options['stranded'])
 
     #--- Calculate RPK
     for p in pieces:
