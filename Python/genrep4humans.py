@@ -112,8 +112,12 @@ def main():
             for gcoord in feats:
                 fout.write("\t".join([str(x) for x in gcoord])+"\n")
         if opt.stats:
-            stats = assembly.statistics(frequency=True)
-            fout.write("\n".join([k+":\t"+str(stats[k]) for k in sorted(stats.keys())])+"\n")
+            if opt.output:
+                stats = assembly.statistics(frequency=True)
+            else:
+                stats = assembly.statistics(frequency=True)
+                fout.write("\n".join([k+"\t"+str(stats[k]) 
+                                      for k in sorted(stats.keys())])+"\n")
         fout.close()
         if opt.convert:
             if not(os.path.exists(opt.convert)):
