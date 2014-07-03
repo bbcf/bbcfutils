@@ -11,18 +11,20 @@ If not specified, `gene_id`, `transcript_id` and `exon_id` will all get the valu
 of `exon_id` and be considered as independant features.
 
 Usage:
-   rnacounter  [-t TYPE] [-n <int>] [-l <int>] [-s] [-m] [-c CHROMS] [-o OUTPUT] [--method METHOD] BAM GTF
+   rnacounter  [-t TYPE] [-n <int>] [-l <int>] [-s] [--nh] [-c CHROMS] [-o OUTPUT]
+               [--format FORMAT] [--method METHOD] BAM GTF
                [--version] [-h]
 
 Options:
+   -f FORMAT, --format FORMAT       Format of the annotation file: 'gtf' or 'bed' [default: gtf].
    -t TYPE, --type TYPE             Type of genomic feature to count on: 'genes' or 'transcripts' [default: genes].
    -n <int>, --normalize <int>      Normalization constant for RPKM. Default: (total number of mapped reads)/10^6.
    -l <int>, --fraglength <int>     Average fragment length [default: 350].
    -s, --stranded                   Compute sense and antisense reads separately [default: False].
-   -m, --multiple                   Divide count by NH flag for multiply mapping reads [default: False].
+   --nh                             Divide count by NH flag for multiply mapping reads [default: False].
    -c CHROMS, --chromosomes CHROMS  Selection of chromosome names (comma-separated list).
    -o OUTPUT, --output OUTPUT       Output file to redirect stdout.
-   --method METHOD                  Choose from 'nnls', 'raw', ('likelihood'-soon) [default: nnls].
+   -m METHOD, --method METHOD       Choose from 'nnls', 'raw', ('likelihood'-soon) [default: raw].
    -v, --version                    Displays version information and exits.
    -h, --help                       Displays usage information and exits.
 """
@@ -34,16 +36,20 @@ from scipy.optimize import nnls
 from operator import attrgetter
 
 
+##########################  GTF parsing  #############################
+
+
+def _score(x):
+    if x == '.': return 0.0
+    else: return float(x)
+def _strand(x):
+    smap = {'+':1, 1:1, '-':-1, -1:-1, '.':0, 0:0}
+    return smap[x]
+
 Ecounter = itertools.count(1)  # to give unique ids to undefined exons, see parse_gtf()
 def parse_gtf(line):
     """Parse one GTF line. Return None if not an 'exon'. Return False if row is empty."""
     # GTF fields = ['chr','source','name','start','end','score','strand','frame','attributes']
-    def _score(x):
-        if x == '.': return 0.0
-        else: return float(x)
-    def _strand(x):
-        smap = {'+':1, 1:1, '-':-1, -1:-1, '.':0, 0:0}
-        return smap[x]
     if not line: return False
     row = line.strip().split("\t")
     if len(row) < 9:
@@ -58,6 +64,23 @@ def parse_gtf(line):
         chrom=row[0], start=max(int(row[3])-1,0), end=max(int(row[4]),0),
         name=exon_id, score=_score(row[5]), strand=_strand(row[6]),
         transcripts=[attrs.get('transcript_id',exon_id)], exon_number=int(attrs.get('exon_number',1)))
+
+def parse_bed(line):
+    """Parse one BED line. Return False if *line* is empty."""
+    if (not line) or (line[0]=='#') or (line[:5]=='track'): return False
+    row = line.strip().split('\t')
+    chrom = row[0]; start = int(row[1]); end = int(row[2]); name = row[3]
+    if len(row) > 4:
+        if len(row) > 5: strand = _strand(row[5])
+        else: strand = 0
+        score = _score(row[4])
+    else: score = 0.0
+    exon_id = 'E%d'%Ecounter.next()
+    return Exon(id=exon_id, gene_id=name, gene_name=name, chrom=chrom, start=start, end=end,
+                name=name, score=score, strand=strand, transcripts=[name], exon_number=1)
+
+
+#########################  Global classes  ##########################
 
 
 class Counter(object):
@@ -141,6 +164,9 @@ class Gene(GenomicObject):
         self.transcripts = transcripts   # list of transcripts contained
 
 
+#####################  Operations on intervals  #####################
+
+
 def intersect_exons_list(feats, multiple=False):
     """The intersection of a list *feats* of GenomicObjects.
     If *multiple* is True, permits multiplicity: if the same exon E1 is
@@ -176,7 +202,131 @@ def cobble(exons, multiple=False):
     return cobbled
 
 
-######################################################################
+#############################  Counting  ############################
+
+
+def toRPK(count,length,norm_cst):
+    return 1000.0 * count / (length * norm_cst)
+def fromRPK(rpk,length,norm_cst):
+    return length * norm_cst * rpk / 1000.
+
+
+def count_reads(exons,ckreads,multiple,stranded):
+    """Adds (#aligned nucleotides/read length) to exon counts.
+    Deals with indels, junctions etc.
+    :param multiple: divide the count by the NH tag.
+    :param standed: for strand-specific protocols, use the strand information."""
+    current_idx = 0
+    nexons = len(exons)
+    for alignment in ckreads:
+        if current_idx >= nexons: return 0
+        exon_end = exons[current_idx].end
+        ali_pos = alignment.pos
+        while exon_end <= ali_pos:
+            current_idx += 1
+            if current_idx >= nexons: return 0
+            exon_end = exons[current_idx].end
+        idx2 = current_idx
+        exon_start = exons[idx2].start
+        read_len = alignment.rlen
+        ali_len = 0
+        for op,shift in alignment.cigar:
+            # Deletion is "from the reference", insert is "to the reference"
+            if op in [0,2,3]:  # [BAM_CMATCH,BAM_CDEL,BAM_CREF_SKIP]
+                # If read crosses exon left bound, trim
+                if ali_pos < exon_start:
+                    pos = ali_pos
+                    ali_pos = min(exon_start, pos+shift)
+                    shift = max(0, pos+shift-exon_start)
+                # If read crosses exon right bound, maybe next exon(s)
+                while ali_pos+shift >= exon_end:
+                    # Score up to exon end, go to exon end, remove from shift and reset ali_len
+                    if op == 0:
+                        ali_len += exon_end - ali_pos
+                        exons[idx2].increment(float(ali_len)/float(read_len), alignment, multiple,stranded)
+                    shift -= exon_end-ali_pos
+                    ali_pos = exon_end
+                    ali_len = 0
+                    # Next exon
+                    idx2 += 1
+                    if idx2 >= nexons: return 0
+                    exon_start = exons[idx2].start
+                    exon_end = exons[idx2].end
+                    # If op crosses exon left bound, go to exon start with rest of shift
+                    # If op ends before the next exon, go to end of op and reset shift
+                    if ali_pos < exon_start:
+                        pos = ali_pos
+                        ali_pos = min(exon_start, pos+shift)
+                        shift = max(0, pos+shift-exon_start)
+                # If a bit of op remains overlapping the next exon
+                if op == 0:
+                    ali_len += shift
+                ali_pos += shift  # got to start of next op in prevision for next round
+            elif op == 1:  # BAM_CINS
+                ali_len += shift;
+            exons[idx2].increment(float(ali_len)/float(read_len), alignment, multiple,stranded)
+
+
+def get_total_nreads(sam):
+    Ncounter = Counter()
+    for ref,length in itertools.izip(sam.references,sam.lengths):
+        sam.fetch(ref,0,length, callback=Ncounter)
+    return Ncounter.n
+
+
+######################  Expression inference  #######################
+
+
+def is_in(feat_class,x,feat_id):
+    """Returns True if Exon *x* is part of the gene/transcript *feat_id*."""
+    if feat_class == Transcript:
+        return feat_id in x.transcripts
+    elif feat_class == Gene:
+        return feat_id in x.gene_id.split('|')
+
+
+def estimate_expression_NNLS(feat_class, pieces, ids, exons, norm_cst):
+    #--- Build the exons-transcripts structure matrix:
+    # Lines are exons, columns are transcripts,
+    # so that A[i,j]!=0 means "transcript Tj contains exon Ei".
+    n = len(pieces)
+    m = len(ids)
+    A = zeros((n,m))
+    for i,p in enumerate(pieces):
+        for j,f in enumerate(ids):
+            A[i,j] = 1. if is_in(feat_class,p,f) else 0.
+    #--- Build the exons scores vector
+    E = asarray([p.rpk for p in pieces])
+    #--- Solve for RPK
+    T,rnorm = nnls(A,E)
+    #--- Store result in *feat_class* objects
+    feats = []
+    for i,f in enumerate(ids):
+        exs = sorted([e for e in exons if is_in(feat_class,e,f)], key=lambda x:(x.start,x.end))
+        flen = sum(p.length for p in pieces if is_in(feat_class,p,f))
+        feats.append(feat_class(name=f, start=exs[0].start, end=exs[-1].end,
+                length=flen, rpk=T[i], count=fromRPK(T[i],flen,norm_cst),
+                chrom=exs[0].chrom, gene_id=exs[0].gene_id, gene_name=exs[0].gene_name))
+    return feats
+
+
+def estimate_expression_raw(feat_class, pieces, ids, exons, norm_cst):
+    """For each feature ID in *ids*, just sum the score of its components as one
+    commonly does for genes from exon counts."""
+    feats = []
+    for i,f in enumerate(ids):
+        exs = sorted([e for e in exons if is_in(feat_class,e,f)], key=attrgetter('start','end'))
+        inner = [p for p in pieces if is_in(feat_class,p,f)]
+        flen = sum([p.length for p in inner])
+        fcount = sum([p.count for p in inner])
+        frpk = toRPK(fcount,flen,norm_cst)
+        feats.append(feat_class(name=f, length=flen, rpk=frpk, count=fcount,
+                chrom=exs[0].chrom, start=exs[0].start, end=exs[len(exs)-1].end,
+                gene_id=exs[0].gene_id, gene_name=exs[0].gene_name))
+    return feats
+
+
+###########################  Main script  ###########################
 
 
 def partition_chrexons(chrexons):
@@ -220,191 +370,75 @@ def partition_chrexons(chrexons):
     return partition
 
 
-def toRPK(count,length,norm_cst):
-    return 1000.0 * count / (length * norm_cst)
-def fromRPK(rpk,length,norm_cst):
-    return length * norm_cst * rpk / 1000.
-
-
-def is_in(feat_class,x,feat_id):
-    """Returns True if Exon *x* is part of the gene/transcript *feat_id*."""
-    if feat_class == Transcript:
-        return feat_id in x.transcripts
-    elif feat_class == Gene:
-        return feat_id in x.gene_id.split('|')
-
 def process_chunk(ckexons, sam, chrom, options):
     """Distribute counts across transcripts and genes of a chunk *ckexons*
     of non-overlapping exons."""
-
     #--- Regroup occurrences of the same Exon from a different transcript
     exons = []
-    for key,group in itertools.groupby(ckexons, lambda x:x.id):
-        # ckexons are sorted because chrexons were sorted by chrom,start,end
+    for key,group in itertools.groupby(ckexons, attrgetter('id')):
+        # ckexons are sorted by id because chrexons were sorted by chrom,start,end
         exon0 = group.next()
         for g in group:
             exon0.transcripts.append(g.transcripts[0])
         exons.append(exon0)
-    del ckexons
-
+    gene_ids = list(set(e.gene_id for e in exons))
 
     #--- Cobble all these intervals
     pieces = cobble(exons)
 
-
     #--- Filter out too similar transcripts, e.g. made of the same exons up to 100bp.
-    t2e = {}                               # map {transcript: [pieces IDs]}
-    for p in pieces:
-        if p.length < 100: continue        # filter out cobbled pieces of less that read length
-        for t in p.transcripts:
-            t2e.setdefault(t,[]).append(p.id)
-    e2t = {}
-    for t,e in t2e.iteritems():
-        es = tuple(sorted(e))              # combination of pieces indices
-        e2t.setdefault(es,[]).append(t)    # {(pieces IDs combination): [transcripts with same struct]}
-    # Replace too similar transcripts by the first of the list, arbitrarily
-    transcript_ids = set()  # full list of remaining transcripts
-    tx_replace = dict((badt,tlist[0]) for tlist in e2t.values() for badt in tlist[1:] if len(tlist)>1)
-    for p in pieces:
-        filtered = set([tx_replace.get(t,t) for t in p.transcripts])
-        transcript_ids |= filtered
-        p.transcripts = list(filtered)
-    transcript_ids = list(transcript_ids)
-    gene_ids = list(set(e.gene_id for e in exons))
-
-    #print ">> Process chunk with genes:", gene_ids
+    if 1 in options['type']:  # transcripts
+        transcript_ids = set()  # full list of remaining transcripts
+        t2e = {}                               # map {transcript: [pieces IDs]}
+        for p in pieces:
+            if p.length < 100: continue        # filter out cobbled pieces of less that read length
+            for t in p.transcripts:
+                t2e.setdefault(t,[]).append(p.id)
+        e2t = {}
+        for t,el in t2e.iteritems():
+            es = tuple(sorted(el))             # combination of pieces indices
+            e2t.setdefault(es,[]).append(t)    # {(pieces IDs combination): [transcripts with same struct]}
+        # Replace too similar transcripts by the first of the list, arbitrarily
+        tx_replace = dict((badt,tlist[0]) for tlist in e2t.values() for badt in tlist[1:] if len(tlist)>1)
+        for p in pieces:
+            filtered = set(tx_replace.get(t,t) for t in p.transcripts)
+            transcript_ids |= filtered
+            p.transcripts = list(filtered)
+        transcript_ids = list(transcript_ids)
 
     #--- Get all reads from this chunk - iterator
     lastend = max(e.end for e in exons)
     ckreads = sam.fetch(chrom, exons[0].start, lastend)
 
-    def count_reads(exons,ckreads,multiple,stranded):
-        """Adds (#aligned nucleotides/read length) to exon counts.
-        Deals with indels, junctions etc.
-        :param multiple: divide the count by the NH tag.
-        :param standed: for strand-specific protocols, use the strand information."""
-        current_idx = 0
-        nexons = len(exons)
-        for alignment in ckreads:
-            if current_idx >= nexons: return 0
-            exon_end = exons[current_idx].end
-            ali_pos = alignment.pos
-            while exon_end <= ali_pos:
-                current_idx += 1
-                if current_idx >= nexons: return 0
-                exon_end = exons[current_idx].end
-            idx2 = current_idx
-            exon_start = exons[idx2].start
-            read_len = alignment.rlen
-            ali_len = 0
-            for op,shift in alignment.cigar:
-                # Deletion is "from the reference", insert is "to the reference"
-                if op in [0,2,3]:  # [BAM_CMATCH,BAM_CDEL,BAM_CREF_SKIP]
-                    # If read crosses exon left bound, trim
-                    if ali_pos < exon_start:
-                        pos = ali_pos
-                        ali_pos = min(exon_start, pos+shift)
-                        shift = max(0, pos+shift-exon_start)
-                    # If read crosses exon right bound, maybe next exon(s)
-                    while ali_pos+shift >= exon_end:
-                        # Score up to exon end, go to exon end, remove from shift and reset ali_len
-                        if op == 0:
-                            ali_len += exon_end - ali_pos
-                            exons[idx2].increment(float(ali_len)/float(read_len), alignment, multiple,stranded)
-                        shift -= exon_end-ali_pos
-                        ali_pos = exon_end
-                        ali_len = 0
-                        # Next exon
-                        idx2 += 1
-                        if idx2 >= nexons: return 0
-                        exon_start = exons[idx2].start
-                        exon_end = exons[idx2].end
-                        # If op crosses exon left bound, go to exon start with rest of shift
-                        # If op ends before the next exon, go to end of op and reset shift
-                        if ali_pos < exon_start:
-                            pos = ali_pos
-                            ali_pos = min(exon_start, pos+shift)
-                            shift = max(0, pos+shift-exon_start)
-                    # If a bit of op remains overlapping the next exon
-                    if op == 0:
-                        ali_len += shift
-                    ali_pos += shift  # got to start of next op in prevision for next round
-                elif op == 1:  # BAM_CINS
-                    ali_len += shift;
-                exons[idx2].increment(float(ali_len)/float(read_len), alignment, multiple,stranded)
+    #--- Count reads in each piece -- from rnacounter.cc
+    count_reads(pieces,ckreads,options['nh'],options['stranded'])
 
-    count_reads(pieces,ckreads,options['multiple'],options['stranded'])
     #--- Calculate RPK
     for p in pieces:
         p.rpk = toRPK(p.count,p.length,options['normalize'])
 
-
-    def estimate_expression_NNLS(feat_class, pieces, ids, exons, norm_cst):
-        #--- Build the exons-transcripts structure matrix:
-        # Lines are exons, columns are transcripts,
-        # so that A[i,j]!=0 means "transcript Tj contains exon Ei".
-        n = len(pieces)
-        m = len(ids)
-        A = zeros((n,m))
-        for i,p in enumerate(pieces):
-            for j,f in enumerate(ids):
-                A[i,j] = 1. if is_in(feat_class,p,f) else 0.
-        #--- Build the exons scores vector
-        E = asarray([p.rpk for p in pieces])
-        #--- Solve for RPK
-        T,rnorm = nnls(A,E)
-        #--- Store result in *feat_class* objects
-        feats = []
-        for i,f in enumerate(ids):
-            exs = sorted([e for e in exons if is_in(feat_class,e,f)], key=lambda x:(x.start,x.end))
-            flen = sum(p.length for p in pieces if is_in(feat_class,p,f))
-            feats.append(feat_class(name=f, start=exs[0].start, end=exs[-1].end,
-                    length=flen, rpk=T[i], count=fromRPK(T[i],flen,norm_cst),
-                    chrom=exs[0].chrom, gene_id=exs[0].gene_id, gene_name=exs[0].gene_name))
-        return feats
-
-    def estimate_expression_raw(feat_class, pieces, ids, exons, norm_cst):
-        """For each feature ID in *ids*, just sum the score of its components as one
-        commonly does for genes from exon counts."""
-        feats = []
-        for i,f in enumerate(ids):
-            exs = sorted([e for e in exons if is_in(feat_class,e,f)], key=attrgetter('start','end'))
-            inner = [p for p in pieces if is_in(feat_class,p,f)]
-            flen = sum([p.length for p in inner])
-            fcount = sum([p.count for p in inner])
-            frpk = toRPK(fcount,flen,norm_cst)
-            feats.append(feat_class(name=f, length=flen, rpk=frpk, count=fcount,
-                    chrom=exs[0].chrom, start=exs[0].start, end=exs[len(exs)-1].end,
-                    gene_id=exs[0].gene_id, gene_name=exs[0].gene_name))
-        return feats
-
     #--- Infer gene/transcript counts
     genes = []; transcripts = []
-    if 'genes' in options['type']:
-        method = options['method']['genes']
-        if method == 'raw':
-            genes = estimate_expression_raw(Gene, pieces, gene_ids, exons, options['normalize'])
-        elif method == 'nnls':
-            genes = estimate_expression_NNLS(Gene, pieces, gene_ids, exons, options['normalize'])
-    if 'transcripts' in options['type']:
-        method = options['method']['transcripts']
-        if method == 'nnls':
-            transcripts = estimate_expression_NNLS(Transcript, pieces, transcript_ids, exons, options['normalize'])
-        elif method == 'raw':
-            transcripts = estimate_expression_raw(Transcript, pieces, transcript_ids, exons, options['normalize'])
+    # Genes - 0
+    if 0 in options['type']:
+        method = options['method'][0]
+        if method == 0:    # raw
+            genes = estimate_expression_raw(Gene,pieces,gene_ids,exons,options['normalize'])
+        elif method == 1:  # nnls
+            genes = estimate_expression_NNLS(Gene,pieces,gene_ids,exons,options['normalize'])
+    # Transcripts - 1
+    if 1 in options['type']:
+        method = options['method'][1]
+        if method == 1:    # nnls
+            transcripts = estimate_expression_NNLS(Transcript,pieces,transcript_ids,exons,options['normalize'])
+        elif method == 0:  # raw
+            transcripts = estimate_expression_raw(Transcript,pieces,transcript_ids,exons,options['normalize'])
 
     #--- Print output
     for f in itertools.chain(genes,transcripts):
         towrite = [str(x) for x in [f.name,f.count,f.rpk,f.chrom,f.start,f.end,
                                     f.strand,f.gene_name,f.__class__.__name__.lower()]]
         options['output'].write('\t'.join(towrite)+'\n')
-
-
-def get_total_nreads(sam):
-    Ncounter = Counter()
-    for ref,length in itertools.izip(sam.references,sam.lengths):
-        sam.fetch(ref,0,length, callback=Ncounter)
-    return Ncounter.n
 
 
 def rnacounter_main(bamname, annotname, options):
@@ -474,17 +508,22 @@ def usage_string():
 def parse_args(args):
     bamname = os.path.abspath(args['BAM'])
     annotname = os.path.abspath(args['GTF'])
-    assert(os.path.exists(bamname))
-    assert(os.path.exists(annotname))
+    assert os.path.exists(bamname), "BAM file not found: %s" %bamname
+    assert os.path.exists(annotname), "GTF file not found: %s" %annotname
 
     if args['--chromosomes'] is None: args['--chromosomes'] = []
     else: args['--chromosomes'] = args['--chromosomes'].split(',')
 
-    # Type: one can actually give both as `-t genes,transcripts` but they
+    assert args['--format'].lower() in ['gtf','bed'], \
+        "FORMAT must be one of 'gtf' or 'bed'."
+
+    # Type: one can actually give both as "-t genes,transcripts" but they
     # will be mixed in the output stream. Split the output using the last field ("Type").
     args['--type'] = [x.lower() for x in args['--type'].split(',')]
     assert all(x in ["genes","transcripts"] for x in args['--type']), \
         "TYPE must be one of 'genes' or 'transcripts'"
+    type_map = {'genes':0, 'transcripts':1, 'exons':2}  # avoid comparing strings later
+    args['--type'] = [type_map[x] for x in args['--type']]
 
     # Same for methods. If given as a list, the length must be that of `--type`,
     # the method at index i will be applied to feature type at index i.
@@ -492,9 +531,11 @@ def parse_args(args):
     assert len(args['--method']) == len(args['--type'])
     assert all(x in ["raw","nnls","likelihood"] for x in args['--method']), \
         "METHOD must be one of 'raw', 'nnls' or 'likelihood'."
+    method_map = {'raw':0, 'nnls':1, 'likelihood':2}  # avoid comparing strings later
+    args['--method'] = [method_map[x] for x in args['--method']]
     args['--method'] = dict(zip(args['--type'],args['--method']))
 
-    options = dict((k.lstrip('-'),v) for k,v in args.iteritems())
+    options = dict((k.lstrip('-').lower(), v) for k,v in args.iteritems())
     return bamname, annotname, options
 
 
