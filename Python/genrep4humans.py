@@ -116,7 +116,7 @@ def main():
             bases = ["A","C","G","T"]
             fout.write("#Assembly: %s\n" % assembly.name)
             [fout.write("%s\t%s\n" % (x,stats[x])) for x in bases]
-            fout.write("#N\t%s\n" % (x,stats["N"])) )
+            fout.write("#N\t%s\n" % stats["N"] )
             [[fout.write("%s\t%s\n" % (x+y,stats[x+y])) for y in bases] 
              for x in bases]
         fout.close()
