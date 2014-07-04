@@ -376,7 +376,7 @@ cdef list estimate_expression_NNLS(object feat_class,list pieces,list ids,list e
         #frpk = toRPK(fcount,flen,norm_cst)
         feats.append(feat_class(name=f, length=flen, rpk=frpk, count=fcount,
                 chrom=exs[0].chrom, start=exs[0].start, end=exs[len(exs)-1].end,
-                gene_id=exs[0].gene_id, gene_name=exs[0].gene_name))
+                gene_id=exs[0].gene_id, gene_name=exs[0].gene_name, strand=exs[0].strand))
     return feats
 
 
@@ -398,7 +398,7 @@ cdef list estimate_expression_raw(object feat_class,list pieces,list ids,list ex
         frpk = toRPK(fcount,flen,norm_cst)
         feats.append(feat_class(name=f, length=flen, rpk=frpk, count=fcount,
                 chrom=exs[0].chrom, start=exs[0].start, end=exs[len(exs)-1].end,
-                gene_id=exs[0].gene_id, gene_name=exs[0].gene_name))
+                gene_id=exs[0].gene_id, gene_name=exs[0].gene_name, strand=exs[0].strand))
     return feats
 
 

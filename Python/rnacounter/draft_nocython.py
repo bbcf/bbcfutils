@@ -302,11 +302,13 @@ def estimate_expression_NNLS(feat_class, pieces, ids, exons, norm_cst):
     #--- Store result in *feat_class* objects
     feats = []
     for i,f in enumerate(ids):
-        exs = sorted([e for e in exons if is_in(feat_class,e,f)], key=lambda x:(x.start,x.end))
-        flen = sum(p.length for p in pieces if is_in(feat_class,p,f))
-        feats.append(feat_class(name=f, start=exs[0].start, end=exs[-1].end,
-                length=flen, rpk=T[i], count=fromRPK(T[i],flen,norm_cst),
-                chrom=exs[0].chrom, gene_id=exs[0].gene_id, gene_name=exs[0].gene_name))
+        exs = sorted([e for e in exons if is_in(feat_class,e,f)], key=attrgetter('start','end'))
+        flen = sum([p.length for p in pieces if is_in(feat_class,p,f)])
+        frpk = T[i]
+        fcount = fromRPK(T[i],flen,norm_cst)
+        feats.append(feat_class(name=f, length=flen, rpk=frpk, count=fcount,
+                chrom=exs[0].chrom, start=exs[0].start, end=exs[len(exs)-1].end,
+                gene_id=exs[0].gene_id, gene_name=exs[0].gene_name, strand=exs[0].strand))
     return feats
 
 
@@ -322,7 +324,7 @@ def estimate_expression_raw(feat_class, pieces, ids, exons, norm_cst):
         frpk = toRPK(fcount,flen,norm_cst)
         feats.append(feat_class(name=f, length=flen, rpk=frpk, count=fcount,
                 chrom=exs[0].chrom, start=exs[0].start, end=exs[len(exs)-1].end,
-                gene_id=exs[0].gene_id, gene_name=exs[0].gene_name))
+                gene_id=exs[0].gene_id, gene_name=exs[0].gene_name, strand=exs[0].strand))
     return feats
 
 
