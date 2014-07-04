@@ -1,0 +1,9 @@
+
+* Implement frag length correction
+* Sum transcript counts to get gene counts?
+* Cython profiling
+* "strict" to become an option (reads at the intersection of 2 genes discarded by default now)
+* 'type' field option as in HTSeq (!= 'exon')
+* Read annotation from fasta headers if present (regexp)
+* Stranded reporting
+* Count in introns

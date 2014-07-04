@@ -11,8 +11,7 @@ If not specified, `gene_id`, `transcript_id` and `exon_id` will all get the valu
 of `exon_id` and be considered as independant features.
 
 Usage:
-   rnacounter  [-t TYPE] [-n <int>] [-l <int>] [-s] [--nh] [-c CHROMS] [-o OUTPUT]
-               [--format FORMAT] [--method METHOD] BAM GTF
+   rnacounter  [-t TYPE] [-n <int>] [-l <int>] [-s] [--nh] [-c CHROMS] [-o OUTPUT] [--format FORMAT] BAM GTF
                [--version] [-h]
 
 Options:

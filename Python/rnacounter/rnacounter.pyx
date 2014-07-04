@@ -251,6 +251,7 @@ cdef inline double toRPK(double count,double length,double norm_cst):
 cdef inline double fromRPK(double rpk,double length,double norm_cst):
     return length * norm_cst * rpk / 1000.0
 
+### if read.is_paired:
 
 cdef int count_reads(list exons,object ckreads,bint multiple,bint stranded) except -1:
     """Adds (#aligned nucleotides/read length) to exon counts.
@@ -537,6 +538,11 @@ def rnacounter_main(bamname, annotname, options):
     if options['output'] is None: options['output'] = sys.stdout
     else: options['output'] = open(options['output'], "wb")
 
+    if options['format'] == 'gtf':
+        parse = parse_gtf
+    elif options['format'] == 'bed':
+        parse = parse_bed
+
     # Cross 'chromosomes' option with available BAM headers
     if len(options['chromosomes']) > 0:
         chromosomes = [c for c in sam.references if c in options['chromosomes']]
@@ -548,11 +554,6 @@ def rnacounter_main(bamname, annotname, options):
         options['normalize'] = get_total_nreads(sam) / 1.0e6
     else:
         options['normalize'] = float(options['normalize'])
-
-    if options['format'] == 'gtf':
-        parse = parse_gtf
-    elif options['format'] == 'bed':
-        parse = parse_bed
 
     # Initialize
     chrom = ''
