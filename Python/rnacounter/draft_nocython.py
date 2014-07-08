@@ -329,24 +329,34 @@ def estimate_expression_raw(feat_class, pieces, ids, exons, norm_cst):
 
 ###########################  Main script  ###########################
 
+def _fuse(intervals):
+    """Fuses overlapping *intervals* - a list [(a,b),(c,d),...]."""
+    fused = []
+    x = intervals[0]
+    for y in intervals[1:]:
+        if y[0] < x[1]:
+            x[1] = max(x[1], y[1])
+        else:
+            fused.append(x)
+            x = y
+    fused.append(x)
+    return fused
 
 def partition_chrexons(chrexons):
     """Partition chrexons in non-overlapping chunks with distinct genes.
     The problem is that exons are sorted wrt start,end, and so the first
     exon of a gene can be separate from the second by exons of other genes
     - from the GTF we don't know how many and how far."""
-    # Cut where disjoint and if the same gene continues
     lastend = chrexons[0].end
     lastgeneids = set([chrexons[0].gene_id])
     lastindex = 0
     partition = []
-    pinvgenes = {}  # map {gene_id: partitions it is in}
-    npart = 0       # number of partitions
+    pinvgenes = {}  # map {gene_id: partitions it is found in}
+    npart = 0       # partition index
+    # First cut - where disjoint except if the same gene continues
     for i,exon in enumerate(chrexons):
         if (exon.start > lastend) and (exon.gene_id not in lastgeneids):
             lastend = max(exon.end,lastend)
-            if exon.gene_id=='ENSMUSG00000074006':
-                print "partition.append",(lastindex,i)
             partition.append((lastindex,i))
             # Record in which parts the gene was found, fuse them later
             for g in lastgeneids:
@@ -360,48 +370,13 @@ def partition_chrexons(chrexons):
     partition.append((lastindex,len(chrexons)))
     for g in lastgeneids:
         pinvgenes.setdefault(g,[]).append(npart)
-    npart += 1
-
-    # test: the partition still contains Omp
-    print pinvgenes['ENSMUSG00000074006']  # [2170]
-    #print 'part2170',partition[2170]
-    #print any(p.gene_id=='ENSMUSG00000074006' for p in chrexons[partition[2170][0]:partition[2170][1]])
-
-    print partition
-
-    def _fuse(mparts):
-        fused = []
-        x = mparts[0]
-        for y in mparts[1:]:
-            if y[0] < x[1]:
-                x[1] = max(x[1], y[1])
-            else:
-                fused.append(x)
-                x = y
-        fused.append(x)
-        return fused
-
-    mparts = sorted([p[0],p[len(p)-1]] for p in pinvgenes.itervalues() if len(p)>1)
-    print 'mparts:',mparts
-    tofuse = _fuse(mparts)
-    print 'tofuse:',tofuse
-
+    # Put together intervals containing the same gene
+    mparts = _fuse(sorted([p[0],p[len(p)-1]] for p in pinvgenes.itervalues() if len(p)>1))
     toremove = set()
-    for (a,b) in tofuse:
-        print a,b
-        print partition[a]
+    for (a,b) in mparts:
         partition[b] = (partition[a][0],partition[b][1])
-        print partition
         toremove |= set(xrange(a,b))
-
     partition = [p for i,p in enumerate(partition) if i not in toremove]
-    print partition
-
-    # test: the partition still contains Omp ?
-    for (a,b) in partition:
-        if any(p.gene_id=='ENSMUSG00000074006' for p in chrexons[a:b]):
-            print "Yes:", a,b
-
     return partition
 
 
