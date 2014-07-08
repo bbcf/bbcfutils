@@ -11,7 +11,7 @@ If not specified, `gene_id`, `transcript_id` and `exon_id` will all get the valu
 of `exon_id` and be considered as independant features.
 
 Usage:
-   rnacounter  [-t TYPE] [-n <int>] [-l <int>] [-s] [--nh] [-c CHROMS] [-o OUTPUT] [--format FORMAT] BAM GTF
+   rnacounter  [-t TYPE] [-n <int>] [-l <int>] [-s] [--nh] [-c CHROMS] [-o OUTPUT] [-m METHOD] [--format FORMAT] BAM GTF
                [--version] [-h]
 
 Options:
@@ -32,7 +32,7 @@ import pysam
 import os, sys, itertools, copy
 from numpy import asarray, zeros
 from scipy.optimize import nnls
-from operator import attrgetter
+from operator import itemgetter, attrgetter
 
 
 ##########################  GTF parsing  #############################
@@ -345,7 +345,10 @@ def partition_chrexons(chrexons):
     for i,exon in enumerate(chrexons):
         if (exon.start > lastend) and (exon.gene_id not in lastgeneids):
             lastend = max(exon.end,lastend)
+            if exon.gene_id=='ENSMUSG00000074006':
+                print "partition.append",(lastindex,i)
             partition.append((lastindex,i))
+            # Record in which parts the gene was found, fuse them later
             for g in lastgeneids:
                 pinvgenes.setdefault(g,[]).append(npart)
             npart += 1
@@ -359,14 +362,45 @@ def partition_chrexons(chrexons):
         pinvgenes.setdefault(g,[]).append(npart)
     npart += 1
 
-    # Merge intervals containing parts of the same gene mixed with others
+    # test: the partition still contains Omp
+    print pinvgenes['ENSMUSG00000074006']  # [2170]
+    #print 'part2170',partition[2170]
+    #print any(p.gene_id=='ENSMUSG00000074006' for p in chrexons[partition[2170][0]:partition[2170][1]])
+
+    print partition
+
+    def _fuse(mparts):
+        fused = []
+        x = mparts[0]
+        for y in mparts[1:]:
+            if y[0] < x[1]:
+                x[1] = max(x[1], y[1])
+            else:
+                fused.append(x)
+                x = y
+        fused.append(x)
+        return fused
+
+    mparts = sorted([p[0],p[len(p)-1]] for p in pinvgenes.itervalues() if len(p)>1)
+    print 'mparts:',mparts
+    tofuse = _fuse(mparts)
+    print 'tofuse:',tofuse
+
     toremove = set()
-    for g,parts in pinvgenes.iteritems():
-        if len(parts)>1:
-            a = parts[0]; b = parts[-1]
-            partition[b] = (partition[a][0], partition[b][1])
-            toremove |= set(range(a,b))
+    for (a,b) in tofuse:
+        print a,b
+        print partition[a]
+        partition[b] = (partition[a][0],partition[b][1])
+        print partition
+        toremove |= set(xrange(a,b))
+
     partition = [p for i,p in enumerate(partition) if i not in toremove]
+    print partition
+
+    # test: the partition still contains Omp ?
+    for (a,b) in partition:
+        if any(p.gene_id=='ENSMUSG00000074006' for p in chrexons[a:b]):
+            print "Yes:", a,b
 
     return partition
 
