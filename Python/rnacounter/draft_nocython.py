@@ -329,7 +329,8 @@ def estimate_expression_raw(feat_class, pieces, ids, exons, norm_cst):
 
 ###########################  Main script  ###########################
 
-def _fuse(intervals):
+
+def fuse(intervals):
     """Fuses overlapping *intervals* - a list [(a,b),(c,d),...]."""
     fused = []
     x = intervals[0]
@@ -362,7 +363,7 @@ def partition_chrexons(chrexons):
             for g in lastgeneids:
                 pinvgenes.setdefault(g,[]).append(npart)
             npart += 1
-            lastgeneids = set()
+            lastgeneids.clear()
             lastindex = i
         else:
             lastend = max(exon.end,lastend)
@@ -370,13 +371,15 @@ def partition_chrexons(chrexons):
     partition.append((lastindex,len(chrexons)))
     for g in lastgeneids:
         pinvgenes.setdefault(g,[]).append(npart)
-    # Put together intervals containing the same gene
-    mparts = _fuse(sorted([p[0],p[len(p)-1]] for p in pinvgenes.itervalues() if len(p)>1))
-    toremove = set()
-    for (a,b) in mparts:
-        partition[b] = (partition[a][0],partition[b][1])
-        toremove |= set(xrange(a,b))
-    partition = [p for i,p in enumerate(partition) if i not in toremove]
+    # Put together intervals containing parts of the same gene mixed with others - if any
+    mparts = [[p[0],p[len(p)-1]] for p in pinvgenes.itervalues() if len(p)>1]
+    if len(mparts) > 0:
+        mparts = fuse(sorted(mparts))
+        toremove = set()
+        for (a,b) in mparts:
+            partition[b] = (partition[a][0],partition[b][1])
+            toremove |= set(xrange(a,b))
+        partition = [p for i,p in enumerate(partition) if i not in toremove]
     return partition
 
 

@@ -406,6 +406,20 @@ cdef list estimate_expression_raw(object feat_class,list pieces,list ids,list ex
 ###########################  Main script  ###########################
 
 
+cdef list fuse(list intervals):
+    """Fuses overlapping *intervals* - a list [(a,b),(c,d),...]."""
+    cdef list x,y,fused
+    fused = []
+    x = intervals[0]
+    for y in intervals[1:]:
+        if y[0] < x[1]:
+            x[1] = max(x[1], y[1])
+        else:
+            fused.append(x)
+            x = y
+    fused.append(x)
+    return fused
+
 cdef list partition_chrexons(list chrexons):
     """Partition chrexons in non-overlapping chunks with distinct genes.
     The problem is that exons are sorted wrt start,end, and so the first
@@ -417,17 +431,18 @@ cdef list partition_chrexons(list chrexons):
     cdef set lastgeneids, toremove
     cdef Exon exon
     cdef str g
-    # Cut where disjoint except if the same gene continues
     lastend = chrexons[0].end
-    lastgeneids = set(chrexons[0].gene_id)
+    lastgeneids = set([chrexons[0].gene_id])
     lastindex = 0
     partition = []
-    pinvgenes = {}  # map {gene_id: partitions it is in}
-    npart = 0       # number of partitions
+    pinvgenes = {}  # map {gene_id: partitions it is found in}
+    npart = 0       # partition index
+    # First cut - where disjoint except if the same gene continues
     for i,exon in enumerate(chrexons):
         if (exon.start > lastend) and (exon.gene_id not in lastgeneids):
             lastend = max(exon.end,lastend)
             partition.append((lastindex,i))
+            # Record in which parts the gene was found, fuse them later
             for g in lastgeneids:
                 pinvgenes.setdefault(g,[]).append(npart)
             npart += 1
@@ -439,16 +454,15 @@ cdef list partition_chrexons(list chrexons):
     partition.append((lastindex,len(chrexons)))
     for g in lastgeneids:
         pinvgenes.setdefault(g,[]).append(npart)
-    npart += 1
-    # Merge intervals containing parts of the same gene mixed with others
-    toremove = set()
-    for g,parts in pinvgenes.iteritems():
-        lp = len(parts)
-        if lp>1:
-            a = parts[0]; b = parts[lp-1]
-            partition[b] = (partition[a][0], partition[b][1])
+    # Put together intervals containing parts of the same gene mixed with others - if any
+    mparts = [[p[0],p[len(p)-1]] for p in pinvgenes.itervalues() if len(p)>1]
+    if len(mparts) > 0:
+        mparts = fuse(sorted(mparts))
+        toremove = set()
+        for (a,b) in mparts:
+            partition[b] = (partition[a][0],partition[b][1])
             toremove |= set(xrange(a,b))
-    partition = [p for i,p in enumerate(partition) if i not in toremove]
+        partition = [p for i,p in enumerate(partition) if i not in toremove]
     return partition
 
 
