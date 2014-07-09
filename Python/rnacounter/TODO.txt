@@ -2,7 +2,7 @@
 * Implement frag length correction
 * Sum transcript counts to get gene counts?
 * Cython profiling
-* "strict" to become an option (reads at the intersection of 2 genes discarded by default now)
-* Read annotation from fasta headers if present (regexp)
+* "strict" to become an option? (reads at the intersection of 2 genes discarded by default now)
+* rnaseq.py: Read annotation from fasta headers if present (regexp)
 * Count in introns
 * Max likelihood method

@@ -718,7 +718,8 @@ def parse_args(args):
     # Same for methods. If given as a list, the length must be that of `--type`,
     # the method at index i will be applied to feature type at index i.
     args['--method'] = [x.lower() for x in args['--method'].split(',')]
-    assert len(args['--method']) == len(args['--type'])
+    assert len(args['--method']) == len(args['--type']), \
+        "TYPE and METHOD arguments must have the same number of elements."
     assert all(x in ["raw","nnls","likelihood"] for x in args['--method']), \
         "METHOD must be one of 'raw', 'nnls' or 'likelihood'."
     method_map = {'raw':0, 'nnls':1, 'likelihood':2}  # avoid comparing strings later
