@@ -3,15 +3,43 @@
 
 """
 Count reads on genes and transcripts from a genome-level BAM file and a
-GTF/GFF file describing the exons, such as those provided by Emsembl or GenRep.
+GTF/GFF file describing the exon structure, such as those provided by Ensembl or GenRep.
 The GTF is assumed to be sorted at least w.r.t. chromosome name,
 and the chromosome identifiers in the GTF must be the same as the BAM references.
 
+Output:
+-------
+The fact that some reads cross exon boundaries as well as considering the NH flag
+make the reported number not be integers. They still represent count data and can
+be rounded afterwards if necessary.
+Gene and transcript counts are inferred from the counts on (slices) of exons
+with the chosen `method`: "raw" (HTSeq-like) or "nnls" (non-negative least squares).
+
+Because annotated exons overlap a lot, in "raw" mode, "exon" counts are actually
+that of their disjoint slices, and their name in the output table is formatted as
+"exon1|exon2" if a slice is spanned by exon1 and exon2. In "nnls" mode the counts
+are inferred from disjoint slices as for genes.
+
+If the protocol was strand-specific and the `stranded` option is provided,
+sense and antisense counts are both reported in two consecutive lines.
+They can be split afterwards by piping the result as for instance in
+``rnacounter --stranded BAM GTF | grep 'antisense' > antisense_counts.txt``.
+
+One can give multiple comma-separated values to ``type``, in which case all
+the different features will be mixed in the output but can easily be split as
+for instance with
+``rnacounter --type genes,exons BAM GTF | grep 'exon' > exon_counts.txt``.
+Then `--method` must be specified and have the same number of values as `type`.
+
+Custom input:
+-------------
 If your GTF does not represent exons but custom genomic intervals to simply count
 reads in, provide at least a unique `exon_id` in the attributes as a feature name,
-and the type field (column 2) must be set to 'exon'.
-If not specified, `gene_id`, `transcript_id` and `exon_id` will all get the value
-of `exon_id` and be considered as independant features.
+and the type field (column 3) must be set to 'exon' or specified with the
+"--gtf_ftype" option. If not specified, `gene_id`, `transcript_id` and `exon_id`
+will all get the value of `exon_id`.
+One can also give is an annotation file in BED format, in which case each line
+is considered as an independant, disjoint intervals with no splicing structure.
 
 Usage:
    rnacounter
@@ -294,6 +322,10 @@ def is_in(feat_class,x,feat_id):
         return feat_id in x.transcripts
     elif feat_class == Gene:
         return feat_id in x.gene_id.split('|')
+    elif feat_class == Exon:
+        return x.name in feat_id.split('|') or x.name == feat_id
+            # x is an exon: x == itself or x contains the piece
+            # x is a piece: p == feat_id
 
 
 def estimate_expression_NNLS(feat_class, pieces, ids, exons, norm_cst, stranded):
@@ -311,7 +343,7 @@ def estimate_expression_NNLS(feat_class, pieces, ids, exons, norm_cst, stranded)
     #--- Solve for RPK
     T,rnorm = nnls(A,E)
     #-- Same for antisense if stranded protocol
-    if stranded is True:
+    if stranded:
         E_anti = asarray([p.rpk_anti for p in pieces])
         T_anti,rnorm_anti = nnls(A,E_anti)
     #--- Store result in *feat_class* objects
@@ -322,7 +354,7 @@ def estimate_expression_NNLS(feat_class, pieces, ids, exons, norm_cst, stranded)
         flen = sum([p.length for p in pieces if is_in(feat_class,p,f)])
         frpk = T[i]
         fcount = fromRPK(T[i],flen,norm_cst)
-        if stranded is True:
+        if stranded:
             frpk_anti = T_anti[i]
             fcount_anti = fromRPK(T_anti[i],flen,norm_cst)
         feats.append(feat_class(name=f, length=flen,
@@ -339,13 +371,17 @@ def estimate_expression_raw(feat_class, pieces, ids, exons, norm_cst, stranded):
     frpk_anti = fcount_anti = 0.0
     for i,f in enumerate(ids):
         exs = sorted([e for e in exons if is_in(feat_class,e,f)], key=attrgetter('start','end'))
-        inner = [p for p in pieces if is_in(feat_class,p,f)]
-        flen = sum([p.length for p in inner])
-        fcount = sum([p.count for p in inner])
-        frpk = toRPK(fcount,flen,norm_cst)
-        if stranded is True:
-            fcount_anti = sum([p.count_anti for p in inner])
-            frpk_anti = toRPK(fcount_anti,flen,norm_cst)
+        inner = [p for p in pieces if (len(p.gene_id.split('|'))==1 and is_in(feat_class,p,f))]
+        if len(inner)==0:
+            flen = 0
+            fcount = frpk = 0.0
+        else:
+            flen = sum([p.length for p in inner])
+            fcount = sum([p.count for p in inner])
+            frpk = toRPK(fcount,flen,norm_cst)
+            if stranded:
+                fcount_anti = sum([p.count_anti for p in inner])
+                frpk_anti = toRPK(fcount_anti,flen,norm_cst)
         feats.append(feat_class(name=f, length=flen,
                 rpk=frpk, rpk_anti=frpk_anti, count=fcount, count_anti=fcount_anti,
                 chrom=exs[0].chrom, start=exs[0].start, end=exs[len(exs)-1].end,
@@ -457,16 +493,17 @@ def process_chunk(ckexons, sam, chrom, options):
     ckreads = sam.fetch(chrom, exons[0].start, lastend)
 
     #--- Count reads in each piece -- from rnacounter.cc
-    count_reads(pieces,ckreads,options['nh'],options['stranded'])
+    count_reads(pieces,ckreads,options['nh'],stranded)
 
     #--- Calculate RPK
     for p in pieces:
         p.rpk = toRPK(p.count,p.length,norm_cst)
     if stranded:
-        p.rpk_anti = toRPK(p.count_anti,p.length,norm_cst)
+        for p in pieces:
+            p.rpk_anti = toRPK(p.count_anti,p.length,norm_cst)
 
     #--- Infer gene/transcript counts
-    genes = []; transcripts = []
+    genes = []; transcripts = []; exons2 = []
     # Genes - 0
     if 0 in types:
         method = methods[0]
@@ -481,11 +518,19 @@ def process_chunk(ckexons, sam, chrom, options):
             transcripts = estimate_expression_NNLS(Transcript,pieces,transcript_ids,exons,norm_cst,stranded)
         elif method == 0:  # raw
             transcripts = estimate_expression_raw(Transcript,pieces,transcript_ids,exons,norm_cst,stranded)
+    # Exons - 2
+    if 2 in types:
+        method = methods[2]
+        if method == 0:    # raw
+            exons2 = list(pieces) # !
+        elif method == 1:  # nnls
+            exon_ids = [e.name for e in exons]
+            exons2 = estimate_expression_NNLS(Exon,pieces,exon_ids,exons,norm_cst,stranded)
 
     #--- Print output
     # If stranded, add a last column indicating the sense
     if stranded:
-        for f in itertools.chain(genes,transcripts):
+        for f in itertools.chain(genes,transcripts,exons2):
             towrite = [str(x) for x in [f.name,f.count,f.rpk,f.chrom,f.start,f.end,
                                         f.strand,f.gene_name,f.__class__.__name__.lower(),'sense']]
             output.write('\t'.join(towrite)+'\n')
@@ -493,7 +538,7 @@ def process_chunk(ckexons, sam, chrom, options):
                                         f.strand,f.gene_name,f.__class__.__name__.lower(),'antisense']]
             output.write('\t'.join(towrite)+'\n')
     else:
-        for f in itertools.chain(genes,transcripts):
+        for f in itertools.chain(genes,transcripts,exons2):
             towrite = [str(x) for x in [f.name,f.count,f.rpk,f.chrom,f.start,f.end,
                                         f.strand,f.gene_name,f.__class__.__name__.lower()]]
             output.write('\t'.join(towrite)+'\n')
@@ -584,15 +629,16 @@ def parse_args(args):
     # Type: one can actually give both as "-t genes,transcripts" but they
     # will be mixed in the output stream. Split the output using the last field ("Type").
     args['--type'] = [x.lower() for x in args['--type'].split(',')]
-    assert all(x in ["genes","transcripts"] for x in args['--type']), \
-        "TYPE must be one of 'genes' or 'transcripts'"
+    assert all(x in ["genes","transcripts","exons"] for x in args['--type']), \
+        "TYPE must be one of 'genes', 'transcripts' or 'exons'."
     type_map = {'genes':0, 'transcripts':1, 'exons':2}  # avoid comparing strings later
     args['--type'] = [type_map[x] for x in args['--type']]
 
     # Same for methods. If given as a list, the length must be that of `--type`,
     # the method at index i will be applied to feature type at index i.
     args['--method'] = [x.lower() for x in args['--method'].split(',')]
-    assert len(args['--method']) == len(args['--type'])
+    assert len(args['--method']) == len(args['--type']), \
+        "TYPE and METHOD arguments must have the same number of elements."
     assert all(x in ["raw","nnls","likelihood"] for x in args['--method']), \
         "METHOD must be one of 'raw', 'nnls' or 'likelihood'."
     method_map = {'raw':0, 'nnls':1, 'likelihood':2}  # avoid comparing strings later

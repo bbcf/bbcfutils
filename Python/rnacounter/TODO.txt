@@ -4,6 +4,5 @@
 * Cython profiling
 * "strict" to become an option (reads at the intersection of 2 genes discarded by default now)
 * Read annotation from fasta headers if present (regexp)
-* Report exon counts (new --type)
 * Count in introns
 * Max likelihood method
