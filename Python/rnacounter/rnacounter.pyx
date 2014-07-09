@@ -14,22 +14,23 @@ If not specified, `gene_id`, `transcript_id` and `exon_id` will all get the valu
 of `exon_id` and be considered as independant features.
 
 Usage:
-   rnacounter  [-t TYPE] [-n <int>] [-s] [--nh] [-c CHROMS] [-o OUTPUT]
-               [--format FORMAT] [--feature_type FTYPE] [--method METHOD] BAM GTF
+   rnacounter
+               [--format FORMAT] [-t TYPE] [-n <int>] [-s] [--gtf_ftype FTYPE] [--nh]
+               [-c CHROMS] [-o OUTPUT] [--method METHOD] BAM GTF
                [--version] [-h]
 
 Options:
+   -h, --help                       Displays usage information and exits.
+   -v, --version                    Displays version information and exits.
    -f FORMAT, --format FORMAT       Format of the annotation file: 'gtf' or 'bed' [default: gtf].
    -t TYPE, --type TYPE             Type of genomic feature to count on: 'genes' or 'transcripts' [default: genes].
-   -n <int>, --normalize <int>      Normalization constant for RPKM. Default: (total number of mapped reads)/10^6.
    -s, --stranded                   Compute sense and antisense reads separately [default: False].
+   -n <int>, --normalize <int>      Normalization constant for RPKM. Default: (total number of mapped reads)/10^6.
+   --gtf_ftype FTYPE                Type of feature in the 3rd column of the GTF to consider [default: exon].
    --nh                             Divide count by NH flag for multiply mapping reads [default: False].
    -c CHROMS, --chromosomes CHROMS  Selection of chromosome names (comma-separated list).
    -o OUTPUT, --output OUTPUT       Output file to redirect stdout.
    -m METHOD, --method METHOD       Choose from 'nnls', 'raw', ('likelihood'-soon) [default: raw].
-   --feature_type FTYPE             Type of feature in the 3rd column of the GTF to consider [default: exon].
-   -v, --version                    Displays version information and exits.
-   -h, --help                       Displays usage information and exits.
 """
 
 import pysam
@@ -43,9 +44,9 @@ cimport numpy as cnp
 DTYPE = np.double               # fix a datatype for the arrays
 ctypedef cnp.double_t DTYPE_t   # assign a corresponding compile-time C type to DTYPE_t
 
-cdef extern from "math.h":
-    double sqrt(double x)
-    double pow(double x,double y)
+#cdef extern from "math.h":       # For if we implement the sqrt transformation
+#    double sqrt(double x)
+#    double pow(double x,double y)
 
 
 ##########################  GTF parsing  #############################
@@ -59,7 +60,7 @@ cdef inline int _strand(x):
     return smap[x]
 Ecounter = itertools.count(1)  # to give unique ids to undefined exons, see parse_gtf()
 
-def parse_gtf(str line,str feature_type):
+def parse_gtf(str line,str gtf_ftype):
     """Parse one GTF line. Return None if not an 'exon'. Return False if *line* is empty."""
     # GTF fields = ['chr','source','name','start','end','score','strand','frame','attributes']
     cdef list row
@@ -67,7 +68,7 @@ def parse_gtf(str line,str feature_type):
     row = line.strip().split("\t")
     if len(row) < 9:
         raise ValueError("\"Attributes\" field required in GFF.")
-    if row[2] != feature_type:
+    if row[2] != gtf_ftype:
         return None
     attrs = tuple(x.strip().split() for x in row[8].rstrip(';').split(';'))  # {gene_id: "AAA", ...}
     attrs = dict((x[0],x[1].strip("\"")) for x in attrs)
@@ -87,6 +88,7 @@ def parse_bed(str line):
     if (not line) or (line[0]=='#') or (line[:5]=='track'): return False
     row = line.strip().split('\t')
     chrom = row[0]; start = int(row[1]); end = int(row[2]); name = row[3]
+    strand = 0
     if len(row) > 4:
         if len(row) > 5: strand = _strand(row[5])
         else: strand = 0
@@ -111,10 +113,10 @@ cdef class GenomicObject(object):
     cdef public:
         str id,gene_id,gene_name,chrom,name
         int start,end,strand,length,multiplicity
-        double score,count,count_rev,rpk,rpk_rev
+        double score,count,count_anti,rpk,rpk_anti
     def __init__(self,str id='',str gene_id='',str gene_name='',str chrom='',int start=0,int end=0,str name='',
-                  double score=0.0,double count=0.0,double count_rev=0.0,double rpk=0.0,double rpk_rev=0.0,
-                  int strand=0,int length=0,int multiplicity=1):
+                  double score=0.0,int strand=0,int length=0,int multiplicity=1,
+                  double count=0.0,double count_anti=0.0,double rpk=0.0,double rpk_anti=0.0):
         self.id = id
         self.gene_id = gene_id
         self.gene_name = gene_name
@@ -123,13 +125,13 @@ cdef class GenomicObject(object):
         self.end = end
         self.name = name
         self.score = score
-        self.count = count
-        self.count_rev = count_rev
-        self.rpk = rpk
-        self.rpk_rev = rpk_rev
         self.strand = strand  # 1,-1,0
         self.length = length
         self.multiplicity = multiplicity
+        self.count = count
+        self.count_anti = count_anti
+        self.rpk = rpk
+        self.rpk_anti = rpk_anti
     def __and__(self,other):
         """The intersection of two GenomicObjects"""
         assert self.chrom==other.chrom, "Cannot add features from different chromosomes"
@@ -163,7 +165,7 @@ cdef class Exon(GenomicObject):
         E = GenomicObject.__and__(self,other)
         E.transcripts = set(self.transcripts) | set(other.transcripts)
         return E
-    cpdef increment(self,double x,object alignment,bint multiple=False,bint stranded=False):
+    cpdef increment(self,double x,object alignment,bint multiple,bint stranded):
         if multiple:
             NH = 1.0
             for (k,v) in alignment.tags:
@@ -177,7 +179,7 @@ cdef class Exon(GenomicObject):
             or (alignment.is_reverse is True and self.strand == -1):
                 self.count += x
             else:
-                self.count_rev += x
+                self.count_anti += x
         else:
             self.count += x
 
@@ -339,7 +341,7 @@ cdef inline bint is_in(object feat_class,Exon x,str feat_id):
         return feat_id in x.gene_id.split('|')
 
 
-cdef list estimate_expression_NNLS(object feat_class,list pieces,list ids,list exons,double norm_cst):
+cdef list estimate_expression_NNLS(object feat_class,list pieces,list ids,list exons,double norm_cst,bint stranded):
     """Infer gene/transcript expression from exons RPK. Takes Exon instances *pieces*
     and returns for each feature ID in *ids* an instance of *feat_class* with the
     appropriate count and RPK attributes set.
@@ -348,7 +350,7 @@ cdef list estimate_expression_NNLS(object feat_class,list pieces,list ids,list e
     Lines are exons, columns are transcripts,
     so that A[i,j]!=0 means 'transcript Tj contains exon Ei'."""
     cdef int n,m,flen,i,j
-    cdef double rnorm, fcount, frpk
+    cdef double rnorm, fcount, frpk, fcount_anti, frpk_anti
     cdef str f
     cdef cnp.ndarray[DTYPE_t, ndim=2] A
     cdef cnp.ndarray[DTYPE_t, ndim=1] E, T
@@ -365,8 +367,13 @@ cdef list estimate_expression_NNLS(object feat_class,list pieces,list ids,list e
     #E = asarray([toSQRPK(p.count,p.length,norm_cst) for p in pieces])
     #--- Solve for RPK
     T,rnorm = nnls(A,E)
+    #-- Same for antisense if stranded protocol
+    if stranded:
+        E_anti = asarray([p.rpk_anti for p in pieces])
+        T_anti,rnorm_anti = nnls(A,E_anti)
     #--- Store result in *feat_class* objects
     feats = []
+    frpk_anti = fcount_anti = 0.0
     for i,f in enumerate(ids):
         exs = sorted([e for e in exons if is_in(feat_class,e,f)], key=attrgetter('start','end'))
         flen = sum([p.length for p in pieces if is_in(feat_class,p,f)])
@@ -375,29 +382,38 @@ cdef list estimate_expression_NNLS(object feat_class,list pieces,list ids,list e
         #fSQrpk = T[i]
         #fcount = fromSQRPK(T[i],flen,norm_cst)
         #frpk = toRPK(fcount,flen,norm_cst)
-        feats.append(feat_class(name=f, length=flen, rpk=frpk, count=fcount,
+        if stranded:
+            frpk_anti = T_anti[i]
+            fcount_anti = fromRPK(T_anti[i],flen,norm_cst)
+        feats.append(feat_class(name=f, length=flen,
+                rpk=frpk, rpk_anti=frpk_anti, count=fcount, count_anti=fcount_anti,
                 chrom=exs[0].chrom, start=exs[0].start, end=exs[len(exs)-1].end,
                 gene_id=exs[0].gene_id, gene_name=exs[0].gene_name, strand=exs[0].strand))
     return feats
 
 
-cdef list estimate_expression_raw(object feat_class,list pieces,list ids,list exons,double norm_cst):
+cdef list estimate_expression_raw(object feat_class,list pieces,list ids,list exons,double norm_cst,bint stranded):
     """For each feature ID in *ids*, just sum the score of its components as one
     commonly does for genes from exon counts. Discard ambiguous pieces that are part of
     more than one gene."""
     cdef int flen,i,j
-    cdef double fcount, frpk
+    cdef double fcount, frpk, fcount_anti, frpk_anti
     cdef str f
     cdef Exon p
     cdef list inner, feats
     feats = []
+    frpk_anti = fcount_anti = 0.0
     for i,f in enumerate(ids):
         exs = sorted([e for e in exons if is_in(feat_class,e,f)], key=attrgetter('start','end'))
         inner = [p for p in pieces if (len(p.gene_id.split('|'))==1 and is_in(feat_class,p,f))]
         flen = sum([p.length for p in inner])
         fcount = sum([p.count for p in inner])
         frpk = toRPK(fcount,flen,norm_cst)
-        feats.append(feat_class(name=f, length=flen, rpk=frpk, count=fcount,
+        if stranded is True:
+            fcount_anti = sum([p.count_anti for p in inner])
+            frpk_anti = toRPK(fcount_anti,flen,norm_cst)
+        feats.append(feat_class(name=f, length=flen,
+                rpk=frpk, rpk_anti=frpk_anti, count=fcount, count_anti=fcount_anti,
                 chrom=exs[0].chrom, start=exs[0].start, end=exs[len(exs)-1].end,
                 gene_id=exs[0].gene_id, gene_name=exs[0].gene_name, strand=exs[0].strand))
     return feats
@@ -471,11 +487,19 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
     of non-overlapping exons."""
     cdef int method, lastend
     cdef Exon exon0, g, p
-    cdef list pieces, exons, gene_ids, genes, transcripts, el
+    cdef list pieces, exons, gene_ids, genes, transcripts, el, types
     cdef tuple es
-    cdef dict t2e, e2t, tx_replace
+    cdef dict t2e, e2t, tx_replace, methods
     cdef set filtered
     cdef str t
+    cdef bint stranded
+    cdef double norm_cst
+
+    norm_cst = options['normalize']
+    stranded = options['stranded']
+    output = options['output']
+    types = options['type']
+    methods = options['method']
 
     #--- Regroup occurrences of the same Exon from a different transcript
     exons = []
@@ -491,7 +515,7 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
     pieces = cobble(exons)
 
     #--- Filter out too similar transcripts, e.g. made of the same exons up to 100bp.
-    if 1 in options['type']:  # transcripts
+    if 1 in types:  # transcripts
         transcript_ids = set()  # full list of remaining transcripts
         t2e = {}                               # map {transcript: [pieces IDs]}
         for p in pieces:
@@ -515,34 +539,45 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
     ckreads = sam.fetch(chrom, exons[0].start, lastend)
 
     #--- Count reads in each piece -- from rnacounter.cc
-    count_reads(pieces,ckreads,options['nh'],options['stranded'])
+    count_reads(pieces,ckreads,options['nh'],stranded)
 
     #--- Calculate RPK
     for p in pieces:
-        p.rpk = toRPK(p.count,p.length,options['normalize'])
+        p.rpk = toRPK(p.count,p.length,norm_cst)
+    if stranded:
+        p.rpk_anti = toRPK(p.count_anti,p.length,norm_cst)
 
     #--- Infer gene/transcript counts
     genes = []; transcripts = []
     # Genes - 0
-    if 0 in options['type']:
-        method = options['method'][0]
+    if 0 in types:
+        method = methods[0]
         if method == 0:    # raw
-            genes = estimate_expression_raw(Gene,pieces,gene_ids,exons,options['normalize'])
+            genes = estimate_expression_raw(Gene,pieces,gene_ids,exons,norm_cst,stranded)
         elif method == 1:  # nnls
-            genes = estimate_expression_NNLS(Gene,pieces,gene_ids,exons,options['normalize'])
+            genes = estimate_expression_NNLS(Gene,pieces,gene_ids,exons,norm_cst,stranded)
     # Transcripts - 1
-    if 1 in options['type']:
-        method = options['method'][1]
+    if 1 in types:
+        method = methods[1]
         if method == 1:    # nnls
-            transcripts = estimate_expression_NNLS(Transcript,pieces,transcript_ids,exons,options['normalize'])
+            transcripts = estimate_expression_NNLS(Transcript,pieces,transcript_ids,exons,norm_cst,stranded)
         elif method == 0:  # raw
-            transcripts = estimate_expression_raw(Transcript,pieces,transcript_ids,exons,options['normalize'])
+            transcripts = estimate_expression_raw(Transcript,pieces,transcript_ids,exons,norm_cst,stranded)
 
     #--- Print output
-    for f in itertools.chain(genes,transcripts):
-        towrite = [str(x) for x in [f.name,f.count,f.rpk,f.chrom,f.start,f.end,
-                                    f.strand,f.gene_name,f.__class__.__name__.lower()]]
-        options['output'].write('\t'.join(towrite)+'\n')
+    if stranded:
+        for f in itertools.chain(genes,transcripts):
+            towrite = [str(x) for x in [f.name,f.count,f.rpk,f.chrom,f.start,f.end,
+                                        f.strand,f.gene_name,f.__class__.__name__.lower(),'sense']]
+            output.write('\t'.join(towrite)+'\n')
+            towrite = [str(x) for x in [f.name,f.count_anti,f.rpk_anti,f.chrom,f.start,f.end,
+                                        f.strand,f.gene_name,f.__class__.__name__.lower(),'antisense']]
+            output.write('\t'.join(towrite)+'\n')
+    else:
+        for f in itertools.chain(genes,transcripts):
+            towrite = [str(x) for x in [f.name,f.count,f.rpk,f.chrom,f.start,f.end,
+                                        f.strand,f.gene_name,f.__class__.__name__.lower()]]
+            output.write('\t'.join(towrite)+'\n')
 
 
 def rnacounter_main(bamname, annotname, options):
@@ -570,12 +605,13 @@ def rnacounter_main(bamname, annotname, options):
         options['normalize'] = float(options['normalize'])
 
     # Initialize
+    gtf_ftype = options['gtf_ftype']
     chrom = ''
     while chrom not in chromosomes:
         exon = None
         while exon is None:
             row = annot.readline().strip()
-            exon = parse(row, options['feature_type'])  # None if not an exon, False if EOF
+            exon = parse(row, gtf_ftype)  # None if not an exon, False if EOF
         if not row: break
         chrom = exon.chrom
     if chrom == '':
@@ -592,7 +628,7 @@ def rnacounter_main(bamname, annotname, options):
             exon = None
             while exon is None:
                 row = annot.readline().strip()
-                exon = parse(row, options['feature_type'])  # None if not an exon, False if EOF
+                exon = parse(row, gtf_ftype)  # None if not an exon, False if EOF
             if not row: break
             chrom = exon.chrom
         if len(chrexons) > 0:
