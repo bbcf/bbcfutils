@@ -11,19 +11,20 @@ If not specified, `gene_id`, `transcript_id` and `exon_id` will all get the valu
 of `exon_id` and be considered as independant features.
 
 Usage:
-   rnacounter  [-t TYPE] [-n <int>] [-l <int>] [-s] [--nh] [-c CHROMS] [-o OUTPUT] [-m METHOD] [--format FORMAT] BAM GTF
+   rnacounter  [-t TYPE] [-n <int>] [-s] [--nh] [-c CHROMS] [-o OUTPUT]
+               [--format FORMAT] [--feature_type FTYPE] [--method METHOD] BAM GTF
                [--version] [-h]
 
 Options:
    -f FORMAT, --format FORMAT       Format of the annotation file: 'gtf' or 'bed' [default: gtf].
    -t TYPE, --type TYPE             Type of genomic feature to count on: 'genes' or 'transcripts' [default: genes].
    -n <int>, --normalize <int>      Normalization constant for RPKM. Default: (total number of mapped reads)/10^6.
-   -l <int>, --fraglength <int>     Average fragment length [default: 350].
    -s, --stranded                   Compute sense and antisense reads separately [default: False].
    --nh                             Divide count by NH flag for multiply mapping reads [default: False].
    -c CHROMS, --chromosomes CHROMS  Selection of chromosome names (comma-separated list).
    -o OUTPUT, --output OUTPUT       Output file to redirect stdout.
    -m METHOD, --method METHOD       Choose from 'nnls', 'raw', ('likelihood'-soon) [default: raw].
+   --feature_type FTYPE             Type of feature in the 3rd column of the GTF to consider [default: exon].
    -v, --version                    Displays version information and exits.
    -h, --help                       Displays usage information and exits.
 """
@@ -32,7 +33,7 @@ import pysam
 import os, sys, itertools, copy
 from numpy import asarray, zeros
 from scipy.optimize import nnls
-from operator import itemgetter, attrgetter
+from operator import attrgetter
 
 
 ##########################  GTF parsing  #############################
@@ -46,14 +47,14 @@ def _strand(x):
     return smap[x]
 
 Ecounter = itertools.count(1)  # to give unique ids to undefined exons, see parse_gtf()
-def parse_gtf(line):
+def parse_gtf(line, feature_type):
     """Parse one GTF line. Return None if not an 'exon'. Return False if row is empty."""
     # GTF fields = ['chr','source','name','start','end','score','strand','frame','attributes']
     if not line: return False
     row = line.strip().split("\t")
     if len(row) < 9:
         raise ValueError("\"Attributes\" field required in GFF.")
-    if row[2] != 'exon':
+    if row[2] != feature_type:
         return None
     attrs = tuple(x.strip().split() for x in row[8].rstrip(';').split(';'))  # {gene_id: "AAA", ...}
     attrs = dict((x[0],x[1].strip("\"")) for x in attrs)
@@ -461,6 +462,11 @@ def rnacounter_main(bamname, annotname, options):
     if options['output'] is None: options['output'] = sys.stdout
     else: options['output'] = open(options['output'], "wb")
 
+    if options['format'] == 'gtf':
+        parse = parse_gtf
+    elif options['format'] == 'bed':
+        parse = parse_bed
+
     # Cross 'chromosomes' option with available BAM headers
     if len(options['chromosomes']) > 0:
         chromosomes = [c for c in sam.references if c in options['chromosomes']]
@@ -480,7 +486,7 @@ def rnacounter_main(bamname, annotname, options):
         exon = None
         while exon is None:
             row = annot.readline().strip()
-            exon = parse_gtf(row)
+            exon = parse(row, options['feature_type'])
         chrom = exon.chrom
     lastchrom = chrom
 
@@ -494,7 +500,7 @@ def rnacounter_main(bamname, annotname, options):
             exon = None
             while exon is None:
                 row = annot.readline().strip()
-                exon = parse_gtf(row)  # None if not an exon, False if EOF
+                exon = parse(row, options['feature_type'])  # None if not an exon, False if EOF
             if not row: break
             chrom = exon.chrom
         if len(chrexons) > 0:
