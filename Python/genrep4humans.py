@@ -113,7 +113,7 @@ def main():
                 fout.write("\t".join([str(x) for x in gcoord])+"\n")
         if opt.stats:
             stats = assembly.statistics(frequency=True)
-            bases = ["A","C","G","T"]
+            bases = "ACGT"
             fout.write("#Assembly: %s\n" % assembly.name)
             [fout.write("%s\t%s\n" % (x,stats[x])) for x in bases]
             fout.write("#N\t%s\n" % stats["N"] )
