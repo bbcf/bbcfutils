@@ -1,4 +1,5 @@
 
+* Paired-end
 * Implement frag length correction
 * Sum transcript counts to get gene counts?
 * Cython profiling

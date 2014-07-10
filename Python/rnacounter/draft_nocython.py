@@ -22,14 +22,14 @@ are inferred from disjoint slices as for genes.
 
 If the protocol was strand-specific and the `stranded` option is provided,
 sense and antisense counts are both reported in two consecutive lines.
-They can be split afterwards by piping the result as for instance in
-``rnacounter --stranded BAM GTF | grep 'antisense' > antisense_counts.txt``.
+They can be split afterwards by piping the result as for instance into
+``... | grep 'antisense'``.
 
-One can give multiple comma-separated values to ``type``, in which case all
+One can give multiple comma-separated values to `type`, in which case all
 the different features will be mixed in the output but can easily be split as
 for instance with
-``rnacounter --type genes,exons BAM GTF | grep 'exon' > exon_counts.txt``.
-Then `--method` must be specified and have the same number of values as `type`.
+``... | grep 'exon' ``.
+Then `method` must be specified and have the same number of values as `type`.
 
 Custom input:
 -------------
