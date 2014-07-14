@@ -5,7 +5,7 @@ using DataFrames
 
 
 if length(ARGS) > 0; filename = ARGS[1]
-else filename = "genes_expression.tab"; end
+else filename = "genes_expression.txt"; end
 if length(ARGS) > 1; outprefix = ARGS[2]
 else outprefix = "pca_rnaseq"; end
 @assert isfile(filename) "File $filename not found"

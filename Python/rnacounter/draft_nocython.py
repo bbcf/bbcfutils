@@ -75,7 +75,7 @@ def _score(x):
     if x == '.': return 0.0
     else: return float(x)
 def _strand(x):
-    smap = {'+':1, 1:1, '-':-1, -1:-1, '.':0, 0:0}
+    smap = {'+':1, '1':1, '-':-1, '-1':-1, '.':0, '0':0}
     return smap[x]
 
 Ecounter = itertools.count(1)  # to give unique ids to undefined exons, see parse_gtf()
