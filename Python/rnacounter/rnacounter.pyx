@@ -62,7 +62,7 @@ Options:
 """
 
 import pysam
-import os, sys, itertools, copy
+import os, sys, itertools, copy, subprocess
 from operator import attrgetter
 from numpy import asarray, zeros
 from scipy.optimize import nnls
@@ -80,7 +80,7 @@ ctypedef cnp.double_t DTYPE_t   # assign a corresponding compile-time C type to 
 ##########################  GTF parsing  #############################
 
 
-cdef inline double _score(x):
+cdef inline double _score(str x):
     if x == '.': return 0.0
     else: return float(x)
 cdef inline int _strand(str x):
@@ -626,6 +626,12 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
 
 
 def rnacounter_main(bamname, annotname, options):
+    # Index BAM if necessary
+    if not os.path.exists(bamname+'.bai'):
+        sys.stderr.write("BAM index not found. Indexing...")
+        subprocess.check_call("samtools index %s" % bamname, shell=True)
+        sys.stderr.write("...done.\n")
+
     sam = pysam.Samfile(bamname, "rb")
     annot = open(annotname, "r")
 

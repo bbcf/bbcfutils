@@ -62,7 +62,7 @@ Options:
 """
 
 import pysam
-import os, sys, itertools, copy
+import os, sys, itertools, copy, subprocess
 from operator import attrgetter
 from numpy import asarray, zeros
 from scipy.optimize import nnls
@@ -545,6 +545,12 @@ def process_chunk(ckexons, sam, chrom, options):
 
 
 def rnacounter_main(bamname, annotname, options):
+    # Index BAM if necessary
+    if not os.path.exists(bamname+'.bai'):
+        sys.stderr.write("BAM index not found. Indexing...")
+        subprocess.check_call("samtools index %s" % bamname, shell=True)
+        sys.stderr.write("...done.\n")
+
     sam = pysam.Samfile(bamname, "rb")
     annot = open(annotname, "r")
 
