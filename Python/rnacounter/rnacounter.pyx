@@ -23,7 +23,8 @@ are inferred from disjoint slices as for genes.
 If the protocol was strand-specific and the `stranded` option is provided,
 sense and antisense counts are both reported in two consecutive lines.
 They can be split afterwards by piping the result as for instance into
-``... | grep 'antisense'``.
+``... | grep 'antisense'``. Using the `threshold` option together with `stranded`
+will exclude only elements with both sense and antisense counts under the threshold.
 
 One can give multiple comma-separated values to `type`, in which case all
 the different features will be mixed in the output but can easily be split as
@@ -43,7 +44,7 @@ is considered as an independant, disjoint intervals with no splicing structure.
 
 Usage:
    rnacounter
-               [--format FORMAT] [-t TYPE] [-n <int>] [-s] [--gtf_ftype FTYPE] [--nh]
+               [--format FORMAT] [-t TYPE] [-n <int>] [-s] [--gtf_ftype FTYPE] [--nh] [--threshold <float>]
                [-c CHROMS] [-o OUTPUT] [--method METHOD] BAM GTF
                [--version] [-h]
 
@@ -56,6 +57,7 @@ Options:
    -n <int>, --normalize <int>      Normalization constant for RPKM. Default: (total number of mapped reads)/10^6.
    --gtf_ftype FTYPE                Type of feature in the 3rd column of the GTF to consider [default: exon].
    --nh                             Divide count by NH flag for multiply mapping reads [default: False].
+   --threshold <float>              Do not report counts inferior or equal to the given threshold [default: -1].
    -c CHROMS, --chromosomes CHROMS  Selection of chromosome names (comma-separated list).
    -o OUTPUT, --output OUTPUT       Output file to redirect stdout.
    -m METHOD, --method METHOD       Choose from 'nnls', 'raw', ('likelihood'-soon) [default: raw].
@@ -536,6 +538,7 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
     output = options['output']
     types = options['type']
     methods = options['method']
+    threshold = options['threshold']
 
     #--- Regroup occurrences of the same Exon from a different transcript
     exons = []
@@ -610,8 +613,11 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
             exons2 = estimate_expression_NNLS(Exon,pieces,exon_ids,exons,norm_cst,stranded)
 
     #--- Print output
+    igenes = itertools.ifilter(lambda x:x.count > threshold, genes)
+    itranscripts = itertools.ifilter(lambda x:x.count > threshold, transcripts)
+    iexons = itertools.ifilter(lambda x:x.count > threshold, exons2)
     if stranded:
-        for f in itertools.chain(genes,transcripts,exons2):
+        for f in itertools.chain(igenes,itranscripts,iexons):
             towrite = [str(x) for x in [f.name,f.count,f.rpk,f.chrom,f.start,f.end,
                                         f.strand,f.gene_name,f.__class__.__name__.lower(),'sense']]
             output.write('\t'.join(towrite)+'\n')
@@ -619,7 +625,7 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
                                         f.strand,f.gene_name,f.__class__.__name__.lower(),'antisense']]
             output.write('\t'.join(towrite)+'\n')
     else:
-        for f in itertools.chain(genes,transcripts,exons2):
+        for f in itertools.chain(igenes,itranscripts,iexons):
             towrite = [str(x) for x in [f.name,f.count,f.rpk,f.chrom,f.start,f.end,
                                         f.strand,f.gene_name,f.__class__.__name__.lower()]]
             output.write('\t'.join(towrite)+'\n')
@@ -731,6 +737,9 @@ def parse_args(args):
     method_map = {'raw':0, 'nnls':1, 'likelihood':2}  # avoid comparing strings later
     args['--method'] = [method_map[x] for x in args['--method']]
     args['--method'] = dict(zip(args['--type'],args['--method']))
+
+    try: args['--threshold'] = float(args['--threshold'])
+    except ValueError: raise ValueError("--threshold must be numeric.")
 
     options = dict((k.lstrip('-').lower(), v) for k,v in args.iteritems())
     return bamname, annotname, options
