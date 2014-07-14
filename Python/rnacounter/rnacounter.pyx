@@ -531,7 +531,7 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
     cdef set filtered
     cdef str t
     cdef bint stranded
-    cdef double norm_cst
+    cdef double norm_cst, threshold
 
     norm_cst = options['normalize']
     stranded = options['stranded']
