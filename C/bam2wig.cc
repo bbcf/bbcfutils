@@ -414,7 +414,7 @@ int main( int argc, char **argv )
 	cmd.add( cut );
 	TCLAP::ValueArg< int > cut_c( "k", "kut", "Control tags (pseudo-)size",  false, -1, "int" );
 	cmd.add( cut_c );
-	TCLAP::ValueArg< long > wtpm( "w", "weight", "If 0: normalise by total tag count*1e-7, if >0: uses 1e-7*w as factor, default: no normalisation",  false, -1, "int" );
+	TCLAP::ValueArg< long > wtpm( "w", "weight", "If 0: normalise by total tag count*1e-7, if >0: uses 1e-7*w as denominator, default: no normalisation",  false, -1, "int" );
 	cmd.add( wtpm );
 	TCLAP::SwitchArg reg( "r", "regress", "Normalize count by regression on control",  false );
 	cmd.add( reg );
