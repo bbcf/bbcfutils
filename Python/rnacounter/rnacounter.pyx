@@ -43,21 +43,22 @@ One can also give is an annotation file in BED format, in which case each line
 is considered as an independant, disjoint intervals with no splicing structure.
 
 Usage:
-   rnacounter
-               [--format FORMAT] [-t TYPE] [-n <int>] [-s] [--gtf_ftype FTYPE] [--nh] [--threshold <float>]
-               [-c CHROMS] [-o OUTPUT] [--method METHOD] BAM GTF
+   rnacounter  [...] BAM GTF
+   rnacounter  [-n <int>] [-s] [--nh] [--noheader] [--threshold <float>] [--gtf_ftype FTYPE]
+               [-f FORMAT] [-t TYPE] [-c CHROMS] [-o OUTPUT] [-m METHOD] BAM GTF
                [--version] [-h]
 
 Options:
    -h, --help                       Displays usage information and exits.
    -v, --version                    Displays version information and exits.
-   -f FORMAT, --format FORMAT       Format of the annotation file: 'gtf' or 'bed' [default: gtf].
-   -t TYPE, --type TYPE             Type of genomic feature to count on: 'genes' or 'transcripts' [default: genes].
    -s, --stranded                   Compute sense and antisense reads separately [default: False].
    -n <int>, --normalize <int>      Normalization constant for RPKM. Default: (total number of mapped reads)/10^6.
-   --gtf_ftype FTYPE                Type of feature in the 3rd column of the GTF to consider [default: exon].
    --nh                             Divide count by NH flag for multiply mapping reads [default: False].
+   --noheader                       Remove column names from the output (helps piping) [default: False].
    --threshold <float>              Do not report counts inferior or equal to the given threshold [default: -1].
+   --gtf_ftype FTYPE                Type of feature in the 3rd column of the GTF to consider [default: exon].
+   -f FORMAT, --format FORMAT       Format of the annotation file: 'gtf' or 'bed' [default: gtf].
+   -t TYPE, --type TYPE             Type of genomic feature to count on: 'genes' or 'transcripts' [default: genes].
    -c CHROMS, --chromosomes CHROMS  Selection of chromosome names (comma-separated list).
    -o OUTPUT, --output OUTPUT       Output file to redirect stdout.
    -m METHOD, --method METHOD       Choose from 'nnls', 'raw', ('likelihood'-soon) [default: raw].
@@ -643,6 +644,10 @@ def rnacounter_main(bamname, annotname, options):
 
     if options['output'] is None: options['output'] = sys.stdout
     else: options['output'] = open(options['output'], "wb")
+    if options['noheader'] is False:
+        header = ['ID','Count','RPKM','Chrom','Start','End','Strand','GeneName','Type']
+        if options['stranded']: header += ['Sense']
+        options['output'].write('\t'.join(header)+'\n')
 
     if options['format'] == 'gtf':
         parse = parse_gtf
