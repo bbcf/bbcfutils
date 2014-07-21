@@ -110,7 +110,7 @@ def parse_gtf(str line,str gtf_ftype):
         name=exon_id, score=_score(row[5]), strand=_strand(row[6]),
         transcripts=[attrs.get('transcript_id',exon_id)], exon_number=int(attrs.get('exon_number',1)))
 
-def parse_bed(str line):
+def parse_bed(str line,str gtf_ftype):
     """Parse one BED line. Return False if *line* is empty."""
     cdef list row
     cdef int start,end,strand
