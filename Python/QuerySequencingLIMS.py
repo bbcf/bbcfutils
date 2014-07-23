@@ -16,12 +16,14 @@ _lims = "/data/epfl/bbcf/htsstation/data/mapseq_minilims"
 
 def query(*args,**kwargs):
     facility = args[0]
-    params = use_pickle(MiniLIMS(kwargs['minilims']), "global variables")['lims']
-    dafl = dict((loc,daflims.DAFLIMS( username=params['user'], password=pwd ))
-                for loc,pwd in params['passwd'].iteritems())
-
+    if kwargs['user'] and kwargs['password']:
+        dafl = daflims.DAFLIMS( username=kwargs['user'], password=kwargs['password'] )
+    else:
+        params = use_pickle(MiniLIMS(kwargs['minilims']), "global variables")['lims']
+        dafl = dict((loc,daflims.DAFLIMS( username=params['user'], password=pwd ))
+                    for loc,pwd in params['passwd'].iteritems())[facility]
     try: 
-        info = dafl[facility]._lanedesc(*args)
+        info = dafl._lanedesc(*args)
         print json.dumps(info,ensure_ascii=False)
     except ValueError as e:
         if len(args) > 4: 
@@ -35,7 +37,7 @@ def query(*args,**kwargs):
             libname = args[4]
         else:
             libname = None
-        url = dafl[facility]._symlinkname(*args[:4], libname=libname)
+        url = dafl._symlinkname(*args[:4], libname=libname)
         urlok = []
         for k in sorted(url.keys()):
             _ = urlopen(url[k])
@@ -46,7 +48,7 @@ def query(*args,**kwargs):
         return 2
     if kwargs.get('output'):
         try:
-            filename = dafl[facility]._fetch_symlink(url, kwargs['output'])
+            filename = dafl._fetch_symlink(url, kwargs['output'])
             print filename
         except Exception as e:
             print "Problem with downloading %s: %s" %(url,e)
@@ -61,12 +63,15 @@ if __name__ == '__main__':
                           default=None)
         parser.add_option("-m","--minilims",help="path to an HTSstation minilims",
                           default=_lims)
+        parser.add_option("-u","--user",help="LIMS username", default=None)
+        parser.add_option("-p","--password",help="LIMS password", default=None)
         (opt, args) = parser.parse_args()
         if len(args) < 4:
             raise Usage("Need at least 'facility', 'machine', 'run', 'lane' informations")
         args[2] = int(args[2])
         args[3] = int(args[3])
-        sys.exit(query(*args[:5],minilims=opt.minilims,output=opt.output))
+        sys.exit(query(*args[:5],minilims=opt.minilims,output=opt.output,
+                        user=opt.user,password=opt.password))
     except Usage as err:
         print >>sys.stderr, '\n',err.msg,'\n'
         parser.print_help()
