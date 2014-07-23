@@ -103,17 +103,18 @@ def main():
             for gcoord in assembly.gene_coordinates(glist):
                 fout.write("\t".join([str(x) for x in gcoord])+"\n")
         if opt.all:
+            from bbcflib.track import track
             if opt.intype == 1:
                 feats = assembly.exon_track()
             elif opt.intype == 2:
                 feats = assembly.transcript_track()
             else:
                 feats = assembly.gene_track()
-            for gcoord in feats:
-                fout.write("\t".join([str(x) for x in gcoord])+"\n")
+            with track(fout,format='bed',fields=['strand']) as _tfeat:
+                _tfeat.write(feats)
         if opt.stats:
             stats = assembly.statistics(frequency=True)
-            bases = "ACGT"
+            bases = ["A","C","G","T"]
             fout.write("#Assembly: %s\n" % assembly.name)
             [fout.write("%s\t%s\n" % (x,stats[x])) for x in bases]
             fout.write("#N\t%s\n" % stats["N"] )
