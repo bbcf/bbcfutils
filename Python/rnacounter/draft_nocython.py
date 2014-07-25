@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 
 
 """
@@ -6,6 +6,9 @@ Count reads on genes and transcripts from a genome-level BAM file and a
 GTF/GFF file describing the exon structure, such as those provided by Ensembl or GenRep.
 The GTF is assumed to be sorted at least w.r.t. chromosome name,
 and the chromosome identifiers in the GTF must be the same as the BAM references.
+
+Use `rnacounter join` to merge several output files produced using *the same GTF*,
+to create a single table with counts from all samples.
 
 Output:
 -------
@@ -43,6 +46,7 @@ One can also give is an annotation file in BED format, in which case each line
 is considered as an independant, disjoint intervals with no splicing structure.
 
 Usage:
+   rnacounter join TAB [TAB2 ...]
    rnacounter  [...] BAM GTF
    rnacounter  [-n <int>] [-s] [--nh] [--noheader] [--threshold <float>] [--gtf_ftype FTYPE]
                [-f FORMAT] [-t TYPE] [-c CHROMS] [-o OUTPUT] [-m METHOD] BAM GTF
@@ -114,6 +118,32 @@ def parse_bed(line, gtf_ftype):
     exon_id = 'E%d'%Ecounter.next()
     return Exon(id=exon_id, gene_id=name, gene_name=name, chrom=chrom, start=start, end=end,
                 name=name, score=score, strand=strand, transcripts=[name], exon_number=1)
+
+
+##########################  Join tables  ############################
+
+
+def join(tables):
+    tabs = [open(t) for t in tables]
+    out = open("merged_counts_rnacounter.txt","wb")
+    lines = [t.readline().split('\t') for t in tabs]
+    try: float(lines[0][1]) # header?
+    except:
+        header = [lines[0][0]] + ["Count%d"%c for c in range(len(tables))] \
+                 + ["RPKM%d"%c for c in range(len(tables))] + lines[0][3:]
+        out.write('\t'.join(header))
+        lines = [t.readline().strip().split('\t') for t in tabs]
+    while len(lines[0][0]) > 0:
+        gid = lines[0][0]
+        annot = lines[0][3:]
+        cnts = [x[1] for x in lines]
+        rpkm = [x[2] for x in lines]
+        newline = [gid] + cnts + rpkm + annot
+        out.write('\t'.join(newline))
+        lines = [t.readline().split('\t') for t in tabs]
+    out.close()
+    [t.close() for t in tabs]
+    sys.stderr.write("Merged files into \"merged_counts_rnacounter.txt\" .\n")
 
 
 #########################  Global classes  ##########################
@@ -671,8 +701,11 @@ def parse_args(args):
 
 if __name__ == '__main__':
     args = docopt(__doc__, version='0.1')
-    bamname, annotname, options = parse_args(args)
-    rnacounter_main(bamname,annotname, options)
+    if args['join']:
+        join([args['TAB']]+args['TAB2'])
+    else:
+        bamname, annotname, options = parse_args(args)
+        rnacounter_main(bamname,annotname, options)
 
 
 #----------------------------------------------#

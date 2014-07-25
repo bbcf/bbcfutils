@@ -1,11 +1,15 @@
 #!/usr/bin/env python
 
-from rnacounter import rnacounter_main, usage_string, parse_args
+import rnacounter
+from rnacounter import rnacounter_main, parse_args, join
 
 from docopt import docopt
 
 if __name__ == '__main__':
-    args = docopt(usage_string(), version='0.1')
-    bamname, annotname, options = parse_args(args)
-    rnacounter_main(bamname,annotname, options)
+    args = docopt(rnacounter.__doc__, version='0.1')
+    if args['join']:
+        join([args['TAB']]+args['TAB2'])
+    else:
+        bamname, annotname, options = parse_args(args)
+        rnacounter_main(bamname,annotname, options)
 
