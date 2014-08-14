@@ -2,54 +2,11 @@
 
 
 """
-Count reads on genes and transcripts from a genome-level BAM file and a
-GTF/GFF file describing the exon structure, such as those provided by Ensembl or GenRep.
-The GTF is assumed to be sorted at least w.r.t. chromosome name,
-and the chromosome identifiers in the GTF must be the same as the BAM references.
-
-Use `rnacounter join` to merge several output files produced using *the same GTF*,
-to create a single table with counts from all samples.
-
-Output:
--------
-The fact that some reads cross exon boundaries as well as considering the NH flag
-make the reported number not be integers. They still represent count data and can
-be rounded afterwards if necessary.
-Gene and transcript counts are inferred from the counts on (slices) of exons
-with the chosen `method`: "raw" (HTSeq-like) or "nnls" (non-negative least squares).
-
-Because annotated exons overlap a lot, in "raw" mode, "exon" counts are actually
-that of their disjoint slices, and their name in the output table is formatted as
-"exon1|exon2" if a slice is spanned by exon1 and exon2. In "nnls" mode the counts
-are inferred from disjoint slices as for genes.
-
-If the protocol was strand-specific and the `stranded` option is provided,
-sense and antisense counts are both reported in two consecutive lines.
-They can be split afterwards by piping the result as for instance into
-``... | grep 'antisense'``. Using the `threshold` option together with `stranded`
-will exclude only elements with both sense and antisense counts under the threshold.
-
-One can give multiple comma-separated values to `type`, in which case all
-the different features will be mixed in the output but can easily be split as
-for instance with
-``... | grep 'exon' ``.
-Then `method` must be specified and have the same number of values as `type`.
-
-Custom input:
--------------
-If your GTF does not represent exons but custom genomic intervals to simply count
-reads in, provide at least a unique `exon_id` in the attributes as a feature name,
-and the type field (column 3) must be set to 'exon' or specified with the
-"--gtf_ftype" option. If not specified, `gene_id`, `transcript_id` and `exon_id`
-will all get the value of `exon_id`.
-One can also give is an annotation file in BED format, in which case each line
-is considered as an independant, disjoint intervals with no splicing structure.
-
 Usage:
    rnacounter join TAB [TAB2 ...]
    rnacounter  [...] BAM GTF
-   rnacounter  [-n <int>] [-s] [--nh] [--noheader] [--threshold <float>] [--gtf_ftype FTYPE]
-               [-f FORMAT] [-t TYPE] [-c CHROMS] [-o OUTPUT] [-m METHOD] BAM GTF
+   rnacounter  [-n <int>] [-f <int>] [-s] [--nh] [--noheader] [--threshold <float>] [--gtf_ftype FTYPE]
+               [--format FORMAT] [-t TYPE] [-c CHROMS] [-o OUTPUT] [-m METHOD] BAM GTF
                [--version] [-h]
 
 Options:
@@ -57,11 +14,12 @@ Options:
    -v, --version                    Displays version information and exits.
    -s, --stranded                   Compute sense and antisense reads separately [default: False].
    -n <int>, --normalize <int>      Normalization constant for RPKM. Default: (total number of mapped reads)/10^6.
+   -f <int>, --fraglength <int>     Average fragment length (for transcript length correction) [default: 1].
    --nh                             Divide count by NH flag for multiply mapping reads [default: False].
    --noheader                       Remove column names from the output (helps piping) [default: False].
    --threshold <float>              Do not report counts inferior or equal to the given threshold [default: -1].
    --gtf_ftype FTYPE                Type of feature in the 3rd column of the GTF to consider [default: exon].
-   -f FORMAT, --format FORMAT       Format of the annotation file: 'gtf' or 'bed' [default: gtf].
+   --format FORMAT                  Format of the annotation file: 'gtf' or 'bed' [default: gtf].
    -t TYPE, --type TYPE             Type of genomic feature to count on: 'genes' or 'transcripts' [default: genes].
    -c CHROMS, --chromosomes CHROMS  Selection of chromosome names (comma-separated list).
    -o OUTPUT, --output OUTPUT       Output file to redirect stdout.
@@ -281,6 +239,10 @@ def toRPK(count,length,norm_cst):
     return 1000.0 * count / (length * norm_cst)
 def fromRPK(rpk,length,norm_cst):
     return length * norm_cst * rpk / 1000.
+def correct_fraglen_bias(rpk, length, fraglen):
+    if fraglen == 1: return rpk
+    newlength = max(length-fraglen+1, 1)
+    return rpk * length / newlength
 
 
 def count_reads(exons,ckreads,multiple,stranded):
@@ -361,6 +323,10 @@ def is_in(feat_class,x,feat_id):
             # x is a piece: p == feat_id
 
 
+def estimate_expression_WNNLS(feat_class, pieces, ids, exons, norm_cst, stranded):
+    pass
+
+
 def estimate_expression_NNLS(feat_class, pieces, ids, exons, norm_cst, stranded):
     #--- Build the exons-transcripts structure matrix:
     # Lines are exons, columns are transcripts,
@@ -406,7 +372,7 @@ def estimate_expression_raw(feat_class, pieces, ids, exons, norm_cst, stranded):
         exs = sorted([e for e in exons if is_in(feat_class,e,f)], key=attrgetter('start','end'))
         inner = [p for p in pieces if (len(p.gene_id.split('|'))==1 and is_in(feat_class,p,f))]
         if len(inner)==0:
-            flen = 0
+            flen = 1
             fcount = frpk = 0.0
         else:
             flen = sum([p.length for p in inner])
@@ -488,6 +454,7 @@ def process_chunk(ckexons, sam, chrom, options):
     types = options['type']
     methods = options['method']
     threshold = options['threshold']
+    fraglength = options['fraglength']
 
     #--- Regroup occurrences of the same Exon from a different transcript
     exons = []
@@ -545,6 +512,8 @@ def process_chunk(ckexons, sam, chrom, options):
             genes = estimate_expression_raw(Gene,pieces,gene_ids,exons,norm_cst,stranded)
         elif method == 1:  # nnls
             genes = estimate_expression_NNLS(Gene,pieces,gene_ids,exons,norm_cst,stranded)
+        for gene in genes:
+            gene.rpk = correct_fraglen_bias(gene.rpk, gene.length, fraglength)
     # Transcripts - 1
     if 1 in types:
         method = methods[1]
@@ -552,6 +521,8 @@ def process_chunk(ckexons, sam, chrom, options):
             transcripts = estimate_expression_NNLS(Transcript,pieces,transcript_ids,exons,norm_cst,stranded)
         elif method == 0:  # raw
             transcripts = estimate_expression_raw(Transcript,pieces,transcript_ids,exons,norm_cst,stranded)
+        for trans in transcripts:
+            trans.rpk = correct_fraglen_bias(trans.rpk, trans.length, fraglength)
     # Exons - 2
     if 2 in types:
         method = methods[2]
@@ -561,11 +532,13 @@ def process_chunk(ckexons, sam, chrom, options):
             exon_ids = [e.name for e in exons]
             exons2 = estimate_expression_NNLS(Exon,pieces,exon_ids,exons,norm_cst,stranded)
 
-    #--- Print output
-    # If stranded, add a last column indicating the sense
+    print_output(output, genes,transcripts,exons2, threshold,stranded)
+
+
+def print_output(output, genes,transcripts,exons, threshold,stranded):
     igenes = itertools.ifilter(lambda x:x.count > threshold, genes)
     itranscripts = itertools.ifilter(lambda x:x.count > threshold, transcripts)
-    iexons = itertools.ifilter(lambda x:x.count > threshold, exons2)
+    iexons = itertools.ifilter(lambda x:x.count > threshold, exons)
     if stranded:
         for f in itertools.chain(igenes,itranscripts,iexons):
             towrite = [str(x) for x in [f.name,f.count,f.rpk,f.chrom,f.start,f.end,
@@ -694,6 +667,8 @@ def parse_args(args):
 
     try: args['--threshold'] = float(args['--threshold'])
     except ValueError: raise ValueError("--threshold must be numeric.")
+    try: args['--fraglength'] = int(args['--fraglength'])
+    except ValueError: raise ValueError("--fraglength must be an integer.")
 
     options = dict((k.lstrip('-').lower(), v) for k,v in args.iteritems())
     return bamname, annotname, options
