@@ -1,9 +1,14 @@
 
-* Paired-end
-* Implement frag length correction
-* Sum transcript counts to get gene counts?
-* Cython profiling
-* "strict" to become an option? (reads at the intersection of 2 genes discarded by default now)
-* rnaseq.py: Read annotation from fasta headers if present (regexp)
+
+For sure:
+
 * Count in introns
+* rnaseq.py: Read annotation from fasta headers if present (regexp)
+* Paired-end
+
+Maybe:
+
+* Sum transcript counts to get gene counts?
+* "strict" to become an option? (reads at the intersection of 2 genes discarded by default now)
 * Max likelihood method
+

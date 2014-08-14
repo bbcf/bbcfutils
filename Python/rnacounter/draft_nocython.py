@@ -493,7 +493,7 @@ def process_chunk(ckexons, sam, chrom, options):
     lastend = max(e.end for e in exons)
     ckreads = sam.fetch(chrom, exons[0].start, lastend)
 
-    #--- Count reads in each piece -- from rnacounter.cc
+    #--- Count reads in each piece
     count_reads(pieces,ckreads,options['nh'],stranded)
 
     #--- Calculate RPK
@@ -508,27 +508,27 @@ def process_chunk(ckexons, sam, chrom, options):
     # Genes - 0
     if 0 in types:
         method = methods[0]
-        if method == 0:    # raw
+        if method == 0:
             genes = estimate_expression_raw(Gene,pieces,gene_ids,exons,norm_cst,stranded)
-        elif method == 1:  # nnls
+        elif method == 1:
             genes = estimate_expression_NNLS(Gene,pieces,gene_ids,exons,norm_cst,stranded)
         for gene in genes:
             gene.rpk = correct_fraglen_bias(gene.rpk, gene.length, fraglength)
     # Transcripts - 1
     if 1 in types:
         method = methods[1]
-        if method == 1:    # nnls
+        if method == 1:
             transcripts = estimate_expression_NNLS(Transcript,pieces,transcript_ids,exons,norm_cst,stranded)
-        elif method == 0:  # raw
+        elif method == 0:
             transcripts = estimate_expression_raw(Transcript,pieces,transcript_ids,exons,norm_cst,stranded)
         for trans in transcripts:
             trans.rpk = correct_fraglen_bias(trans.rpk, trans.length, fraglength)
     # Exons - 2
     if 2 in types:
         method = methods[2]
-        if method == 0:    # raw
-            exons2 = list(pieces) # !
-        elif method == 1:  # nnls
+        if method == 0:
+            exons2 = list(pieces)   # !
+        elif method == 1:
             exon_ids = [e.name for e in exons]
             exons2 = estimate_expression_NNLS(Exon,pieces,exon_ids,exons,norm_cst,stranded)
 
