@@ -20,7 +20,8 @@ Options:
    --threshold <float>              Do not report counts inferior or equal to the given threshold [default: -1].
    --gtf_ftype FTYPE                Type of feature in the 3rd column of the GTF to consider [default: exon].
    --format FORMAT                  Format of the annotation file: 'gtf' or 'bed' [default: gtf].
-   -t TYPE, --type TYPE             Type of genomic feature to count on: 'genes' or 'transcripts' [default: genes].
+   -t TYPE, --type TYPE             Type of genomic features to count reads in:
+                                    'genes', 'transcripts', 'exons' or 'introns' [default: genes].
    -c CHROMS, --chromosomes CHROMS  Selection of chromosome names (comma-separated list).
    -o OUTPUT, --output OUTPUT       Output file to redirect stdout.
    -m METHOD, --method METHOD       Choose from 'nnls', 'raw', ('likelihood'-soon) [default: raw].
@@ -55,8 +56,9 @@ def parse_gtf(line, gtf_ftype):
         return None
     attrs = tuple(x.strip().split() for x in row[8].rstrip(';').split(';'))  # {gene_id: "AAA", ...}
     attrs = dict((x[0],x[1].strip("\"")) for x in attrs)
-    exon_id = attrs.get('exon_id', 'E%d'%Ecounter.next())
-    return Exon(id=exon_id,
+    exon_nr = Ecounter.next()
+    exon_id = attrs.get('exon_id', 'E%d'%exon_nr)
+    return Exon(id=(exon_nr,),
         gene_id=attrs.get('gene_id',exon_id), gene_name=attrs.get('gene_name',exon_id),
         chrom=row[0], start=max(int(row[3])-1,0), end=max(int(row[4]),0),
         name=exon_id, score=_score(row[5]), strand=_strand(row[6]),
@@ -114,7 +116,7 @@ class Counter(object):
         self.n += 1
 
 class GenomicObject(object):
-    def __init__(self, id='',gene_id='',gene_name='',chrom='',start=0,end=0,
+    def __init__(self, id=(0,),gene_id='',gene_name='',chrom='',start=0,end=0,
                  name='',score=0.0,strand=0,length=0,multiplicity=1,
                  count=0,count_anti=0,rpk=0.0,rpk_anti=0.0):
         self.id = id
@@ -444,6 +446,23 @@ def partition_chrexons(chrexons):
     return partition
 
 
+def complement(tid,tpieces):
+    """From a transcript ID and its exon pieces, complement the
+    intervals to get the transcript's introns."""
+    introns = []
+    k = 0
+    for i in range(len(tpieces)-1):
+        a = tpieces[i]
+        b = tpieces[i+1]
+        if a.end == b.start: continue
+        k += 1
+        intron_id = (-1,)+a.id
+        intron_name = "%s-i%d"%(tid,k)
+        introns.append( Exon(id=intron_id, gene_id=a.gene_id, gene_name=a.gene_name, chrom=a.chrom,
+            start=a.end, end=b.start, name=intron_name, strand=a.strand, transcripts=[tid]) )
+    return introns
+
+
 def process_chunk(ckexons, sam, chrom, options):
     """Distribute counts across transcripts and genes of a chunk *ckexons*
     of non-overlapping exons."""
@@ -470,16 +489,17 @@ def process_chunk(ckexons, sam, chrom, options):
     pieces = cobble(exons)
 
     #--- Filter out too similar transcripts, e.g. made of the same exons up to 100bp.
-    if 1 in types:  # transcripts
+    if 1:# in types:  # transcripts
         transcript_ids = set()  # full list of remaining transcripts
         t2e = {}                               # map {transcript: [pieces IDs]}
         for p in pieces:
             if p.length < 100: continue        # filter out cobbled pieces of less that read length
             for t in p.transcripts:
-                t2e.setdefault(t,[]).append(p.id)
+                t2e.setdefault(t,[]).append(p)
         e2t = {}
         for t,el in t2e.iteritems():
-            es = tuple(sorted(el))             # combination of pieces indices
+            elids = [p.id for p in el]
+            es = tuple(sorted(elids))          # combination of pieces indices
             e2t.setdefault(es,[]).append(t)    # {(pieces IDs combination): [transcripts with same struct]}
         # Replace too similar transcripts by the first of the list, arbitrarily
         tx_replace = dict((badt,tlist[0]) for tlist in e2t.values() for badt in tlist[1:] if len(tlist)>1)
@@ -504,10 +524,10 @@ def process_chunk(ckexons, sam, chrom, options):
             p.rpk_anti = toRPK(p.count_anti,p.length,norm_cst)
 
     #--- Infer gene/transcript counts
-    genes = []; transcripts = []; exons2 = []
+    genes=[]; transcripts=[]; exons2=[]; introns2=[]
     # Genes - 0
     if 0 in types:
-        method = methods[0]
+        method = methods.get(0,0)
         if method == 0:
             genes = estimate_expression_raw(Gene,pieces,gene_ids,exons,norm_cst,stranded)
         elif method == 1:
@@ -516,7 +536,7 @@ def process_chunk(ckexons, sam, chrom, options):
             gene.rpk = correct_fraglen_bias(gene.rpk, gene.length, fraglength)
     # Transcripts - 1
     if 1 in types:
-        method = methods[1]
+        method = methods.get(1,0)
         if method == 1:
             transcripts = estimate_expression_NNLS(Transcript,pieces,transcript_ids,exons,norm_cst,stranded)
         elif method == 0:
@@ -525,22 +545,32 @@ def process_chunk(ckexons, sam, chrom, options):
             trans.rpk = correct_fraglen_bias(trans.rpk, trans.length, fraglength)
     # Exons - 2
     if 2 in types:
-        method = methods[2]
+        method = methods.get(2,0)
         if method == 0:
             exons2 = list(pieces)   # !
         elif method == 1:
             exon_ids = [e.name for e in exons]
             exons2 = estimate_expression_NNLS(Exon,pieces,exon_ids,exons,norm_cst,stranded)
+    # Introns - 3
+    if 3 in types:
+        introns = []
+        for tid,tpieces in t2e.iteritems():
+            introns.extend(complement(tid,tpieces))
+        intron_pieces = cobble(introns)
+        intron_ids = [e.name for e in introns]
+        introns2 = estimate_expression_raw(Exon,intron_pieces,intron_ids,introns,norm_cst,stranded)
+        for intron in introns: intron.__class__.__name__ = "Intron"
 
-    print_output(output, genes,transcripts,exons2, threshold,stranded)
+    print_output(output, genes,transcripts,exons2,introns2, threshold,stranded)
 
 
-def print_output(output, genes,transcripts,exons, threshold,stranded):
+def print_output(output, genes,transcripts,exons,introns, threshold,stranded):
     igenes = itertools.ifilter(lambda x:x.count > threshold, genes)
     itranscripts = itertools.ifilter(lambda x:x.count > threshold, transcripts)
     iexons = itertools.ifilter(lambda x:x.count > threshold, exons)
+    iintrons = itertools.ifilter(lambda x:x.count > threshold, introns)
     if stranded:
-        for f in itertools.chain(igenes,itranscripts,iexons):
+        for f in itertools.chain(igenes,itranscripts,iexons,iintrons):
             towrite = [str(x) for x in [f.name,f.count,f.rpk,f.chrom,f.start,f.end,
                                         f.strand,f.gene_name,f.__class__.__name__.lower(),'sense']]
             output.write('\t'.join(towrite)+'\n')
@@ -548,7 +578,7 @@ def print_output(output, genes,transcripts,exons, threshold,stranded):
                                         f.strand,f.gene_name,f.__class__.__name__.lower(),'antisense']]
             output.write('\t'.join(towrite)+'\n')
     else:
-        for f in itertools.chain(igenes,itranscripts,iexons):
+        for f in itertools.chain(igenes,itranscripts,iexons,iintrons):
             towrite = [str(x) for x in [f.name,f.count,f.rpk,f.chrom,f.start,f.end,
                                         f.strand,f.gene_name,f.__class__.__name__.lower()]]
             output.write('\t'.join(towrite)+'\n')
@@ -649,9 +679,9 @@ def parse_args(args):
     # Type: one can actually give both as "-t genes,transcripts" but they
     # will be mixed in the output stream. Split the output using the last field ("Type").
     args['--type'] = [x.lower() for x in args['--type'].split(',')]
-    assert all(x in ["genes","transcripts","exons"] for x in args['--type']), \
-        "TYPE must be one of 'genes', 'transcripts' or 'exons'."
-    type_map = {'genes':0, 'transcripts':1, 'exons':2}  # avoid comparing strings later
+    assert all(x in ["genes","transcripts","exons","introns"] for x in args['--type']), \
+        "TYPE must be one of 'genes', 'transcripts', 'exons' or 'introns'."
+    type_map = {'genes':0, 'transcripts':1, 'exons':2, 'introns':3}  # avoid comparing strings later
     args['--type'] = [type_map[x] for x in args['--type']]
 
     # Same for methods. If given as a list, the length must be that of `--type`,
