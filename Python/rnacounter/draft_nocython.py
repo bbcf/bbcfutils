@@ -496,6 +496,7 @@ def process_chunk(ckexons, sam, chrom, options):
             exon0.transcripts.append(g.transcripts[0])
         exons.append(exon0)
     gene_ids = list(set(e.gene_id for e in exons))
+    exon_names = set(e.name for e in exons)
 
     #--- Cobble all these intervals
     pieces = cobble(exons)  # sorted
@@ -516,20 +517,23 @@ def process_chunk(ckexons, sam, chrom, options):
     for p in pieces:
         p.transcripts = [t for t in p.transcripts if t not in toremove]
 
-    #--- Get all reads from this chunk - iterator
+    #--- Count reads in each piece
     lastend = max(e.end for e in exons)
     ckreads = sam.fetch(chrom, exons[0].start, lastend)
-
-    #--- Count reads in each piece
     count_reads(pieces,ckreads,options['nh'],stranded)
 
-    #--- Same for introns if selected
+    #--- Same for introns, if selected
     intron_pieces = []
     if 3 in types:
+        #introns = complement(pieces)
         introns = []
         for tid,tpieces in t2p.iteritems():
             introns.extend(complement(tid,tpieces))  # tpieces is already sorted
-        intron_pieces = cobble(introns)
+        intron_exon_pieces = cobble(introns+exons)
+        intron_pieces = [ip for ip in intron_exon_pieces \
+                         if not any([n in exon_names for n in ip.name.split('|')])]
+        lastend = max(intron.end for intron in introns)
+        ckreads = sam.fetch(chrom, pieces[0].start, lastend)
         count_reads(intron_pieces,ckreads,options['nh'],stranded)
         for p in intron_pieces:
             p.rpk = toRPK(p.count,p.length,norm_cst)
