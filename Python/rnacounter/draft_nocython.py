@@ -62,7 +62,7 @@ def parse_gtf(line, gtf_ftype):
         gene_id=attrs.get('gene_id',exon_id), gene_name=attrs.get('gene_name',exon_id),
         chrom=row[0], start=max(int(row[3])-1,0), end=max(int(row[4]),0),
         name=exon_id, score=_score(row[5]), strand=_strand(row[6]),
-        transcripts=[attrs.get('transcript_id',exon_id)], exon_number=int(attrs.get('exon_number',1)))
+        transcripts=set([attrs.get('transcript_id',exon_id)]), exon_number=int(attrs.get('exon_number',1)))
 
 def parse_bed(line, gtf_ftype):
     """Parse one BED line. Return False if *line* is empty."""
@@ -77,7 +77,7 @@ def parse_bed(line, gtf_ftype):
     else: score = 0.0
     exon_id = 'E%d'%Ecounter.next()
     return Exon(id=exon_id, gene_id=name, gene_name=name, chrom=chrom, start=start, end=end,
-                name=name, score=score, strand=strand, transcripts=[name], exon_number=1)
+                name=name, score=score, strand=strand, transcripts=set([name]), exon_number=1)
 
 
 ##########################  Join tables  ############################
@@ -160,7 +160,7 @@ class Exon(GenomicObject):
         self.length = self.end - self.start
     def __and__(self,other):
         E = GenomicObject.__and__(self,other)
-        E.transcripts = set(self.transcripts) | set(other.transcripts)
+        E.transcripts = self.transcripts | other.transcripts
         return E
     def increment(self, x, alignment, multiple, stranded):
         if multiple:
@@ -183,8 +183,6 @@ class Exon(GenomicObject):
 class Intron(Exon):
     def __init__(self, exon_number=0, transcripts=set(), **args):
         Exon.__init__(self, **args)
-    def __and__(self,other):
-        return Exon.__and__(self,other)
 
 class Transcript(GenomicObject):
     def __init__(self, exons=[], **args):
@@ -192,7 +190,7 @@ class Transcript(GenomicObject):
         self.exons = exons               # list of exons it contains
 
 class Gene(GenomicObject):
-    def __init__(self, exons=set(),transcripts=set(), **args):
+    def __init__(self, exons=set(), transcripts=set(), **args):
         GenomicObject.__init__(self, **args)
         self.exons = exons               # list of exons contained
         self.transcripts = transcripts   # list of transcripts contained
@@ -455,7 +453,7 @@ def complement(tid,tpieces):
         intron_id = (-1,)+a.id
         intron_name = "%s-i%d"%(tid,k)
         intron = Intron(id=intron_id, gene_id=a.gene_id, gene_name=a.gene_name, chrom=a.chrom,
-            start=a.end, end=b.start, name=intron_name, strand=a.strand, transcripts=set(tid))
+            start=a.end, end=b.start, name=intron_name, strand=a.strand, transcripts=set([tid]))
         introns.append(intron)
     return introns
 
@@ -493,7 +491,7 @@ def process_chunk(ckexons, sam, chrom, options):
         # ckexons are sorted by id because chrexons were sorted by chrom,start,end
         exon0 = group.next()
         for g in group:
-            exon0.transcripts.append(g.transcripts[0])
+            exon0.transcripts.add(g.transcripts[0])
         exons.append(exon0)
     gene_ids = list(set(e.gene_id for e in exons))
     exon_names = set(e.name for e in exons)
@@ -515,7 +513,7 @@ def process_chunk(ckexons, sam, chrom, options):
         transcript_ids.remove(t)
         t2p.pop(t)
     for p in pieces:
-        p.transcripts = [t for t in p.transcripts if t not in toremove]
+        p.transcripts = set(t for t in p.transcripts if t not in toremove)
 
     #--- Count reads in each piece
     lastend = max(e.end for e in exons)
@@ -525,7 +523,6 @@ def process_chunk(ckexons, sam, chrom, options):
     #--- Same for introns, if selected
     intron_pieces = []
     if 3 in types:
-        #introns = complement(pieces)
         introns = []
         for tid,tpieces in t2p.iteritems():
             introns.extend(complement(tid,tpieces))  # tpieces is already sorted
@@ -533,7 +530,7 @@ def process_chunk(ckexons, sam, chrom, options):
         intron_pieces = [ip for ip in intron_exon_pieces \
                          if not any([n in exon_names for n in ip.name.split('|')])]
         lastend = max(intron.end for intron in introns)
-        ckreads = sam.fetch(chrom, pieces[0].start, lastend)
+        ckreads = sam.fetch(chrom, intron_pieces[0].start, lastend)
         count_reads(intron_pieces,ckreads,options['nh'],stranded)
         for p in intron_pieces:
             p.rpk = toRPK(p.count,p.length,norm_cst)
@@ -550,7 +547,7 @@ def process_chunk(ckexons, sam, chrom, options):
 
     #--- Infer gene/transcript counts
     for p in pieces:
-        p.name = '|'.join(sorted(list(set(p.name.split('|')))))
+        p.name = '|'.join(sorted(list(set(p.name.split('|')))))  # remove duplicates in names
     genes=[]; transcripts=[]; exons2=[]; introns2=[]
     # Genes - 0
     if 0 in types:
