@@ -144,13 +144,9 @@ class GenomicObject(object):
             gene_id = '|'.join(set([self.gene_id, other.gene_id])),
             gene_name = '|'.join(set([self.gene_name, other.gene_name])),
             chrom = self.chrom,
-            #start = max(self.start, other.start),
-            #end = min(self.end, other.end),
             ##   name = '|'.join(set([self.name, other.name])),
             name = '|'.join([self.name, other.name]),
-            #score = self.score + other.score,
             strand = (self.strand + other.strand)/2,
-            #length = min(self.end, other.end) - max(self.start, other.start),
             multiplicity = self.multiplicity + other.multiplicity
         )
     def __repr__(self):
@@ -184,6 +180,12 @@ class Exon(GenomicObject):
         else:
             self.count += x
 
+class Intron(Exon):
+    def __init__(self, exon_number=0, transcripts=set(), **args):
+        Exon.__init__(self, **args)
+    def __and__(self,other):
+        return Exon.__and__(self,other)
+
 class Transcript(GenomicObject):
     def __init__(self, exons=[], **args):
         GenomicObject.__init__(self, **args)
@@ -199,18 +201,15 @@ class Gene(GenomicObject):
 #####################  Operations on intervals  #####################
 
 
-def intersect_exons_list(feats, multiple=False):
-    """The intersection of a list *feats* of GenomicObjects.
-    If *multiple* is True, permits multiplicity: if the same exon E1 is
-    given twice, there will be "E1|E1" parts. Otherwise pieces are unique."""
-    if multiple is False:
-        feats = list(set(feats))
+def intersect_exons_list(feats):
+    """The intersection of a list *feats* of GenomicObjects. Pieces are unique."""
+    feats = list(set(feats))
     if len(feats) == 1:
         return copy.deepcopy(feats[0])
     else:
         return reduce(lambda x,y: x&y, feats)
 
-def cobble(exons, multiple=False):
+def cobble(exons):
     """Split exons into non-overlapping parts.
     :param multiple: see intersect_exons_list()."""
     ends = [(e.start,1,e) for e in exons] + [(e.end,0,e) for e in exons]
@@ -230,6 +229,7 @@ def cobble(exons, multiple=False):
             continue
         e = intersect_exons_list(active_exons)
         e.start = a[0]; e.end = b[0]; e.length = b[0]-a[0]
+        #e.name = '|'.join(sorted(list(set(e.name.split('|')))))   # ?
         cobbled.append(e)
     return cobbled
 
@@ -325,10 +325,6 @@ def is_in(feat_class,x,feat_id):
             # x is a piece: p == feat_id
 
 
-def estimate_expression_WNNLS(feat_class, pieces, ids, exons, norm_cst, stranded):
-    pass
-
-
 def estimate_expression_NNLS(feat_class, pieces, ids, exons, norm_cst, stranded):
     #--- Build the exons-transcripts structure matrix:
     # Lines are exons, columns are transcripts,
@@ -339,9 +335,9 @@ def estimate_expression_NNLS(feat_class, pieces, ids, exons, norm_cst, stranded)
     for i,p in enumerate(pieces):
         for j,f in enumerate(ids):
             A[i,j] = 1. if is_in(feat_class,p,f) else 0.
-    #--- Build the exons scores vector
+    #--- Build the exons RPKs vector
     E = asarray([p.rpk for p in pieces])
-    #--- Solve for RPK
+    #--- Solve for transcripts RPK
     T,rnorm = nnls(A,E)
     #-- Same for antisense if stranded protocol
     if stranded:
@@ -448,7 +444,7 @@ def partition_chrexons(chrexons):
 
 def complement(tid,tpieces):
     """From a transcript ID and its exon pieces, complement the
-    intervals to get the transcript's introns."""
+    intervals to get the introns of the transcript."""
     introns = []
     k = 0
     for i in range(len(tpieces)-1):
@@ -458,9 +454,25 @@ def complement(tid,tpieces):
         k += 1
         intron_id = (-1,)+a.id
         intron_name = "%s-i%d"%(tid,k)
-        introns.append( Exon(id=intron_id, gene_id=a.gene_id, gene_name=a.gene_name, chrom=a.chrom,
-            start=a.end, end=b.start, name=intron_name, strand=a.strand, transcripts=[tid]) )
+        intron = Intron(id=intron_id, gene_id=a.gene_id, gene_name=a.gene_name, chrom=a.chrom,
+            start=a.end, end=b.start, name=intron_name, strand=a.strand, transcripts=set(tid))
+        introns.append(intron)
     return introns
+
+
+def filter_transcripts(t2p, readlength):
+    """*t2p* is a map {transcriptID: [exon pieces]}.
+    Find transcripts that differ from others by less than a few exons of less than
+    a read length. Return the set of IDs of redundant transcripts."""
+    seen = set()  # transcript structures, as tuples of exon ids
+    toremove = set() # too close transcripts
+    for t,tpieces in t2p.iteritems():
+        filtered_ids = tuple([tp.id for tp in tpieces if tp.length < readlength])
+        if filtered_ids in seen:
+            toremove.add(t)
+        else:
+            seen.add(filtered_ids)
+    return toremove
 
 
 def process_chunk(ckexons, sam, chrom, options):
@@ -486,28 +498,23 @@ def process_chunk(ckexons, sam, chrom, options):
     gene_ids = list(set(e.gene_id for e in exons))
 
     #--- Cobble all these intervals
-    pieces = cobble(exons)
+    pieces = cobble(exons)  # sorted
+
+    #--- Build transcript to pieces mapping
+    t2p = {}
+    transcript_ids = set()
+    for p in pieces:
+        for t in p.transcripts:
+            transcript_ids.add(t)
+            t2p.setdefault(t,[]).append(p)
 
     #--- Filter out too similar transcripts, e.g. made of the same exons up to 100bp.
-    if 1:# in types:  # transcripts
-        transcript_ids = set()  # full list of remaining transcripts
-        t2e = {}                               # map {transcript: [pieces IDs]}
-        for p in pieces:
-            if p.length < 100: continue        # filter out cobbled pieces of less that read length
-            for t in p.transcripts:
-                t2e.setdefault(t,[]).append(p)
-        e2t = {}
-        for t,el in t2e.iteritems():
-            elids = [p.id for p in el]
-            es = tuple(sorted(elids))          # combination of pieces indices
-            e2t.setdefault(es,[]).append(t)    # {(pieces IDs combination): [transcripts with same struct]}
-        # Replace too similar transcripts by the first of the list, arbitrarily
-        tx_replace = dict((badt,tlist[0]) for tlist in e2t.values() for badt in tlist[1:] if len(tlist)>1)
-        for p in pieces:
-            filtered = set(tx_replace.get(t,t) for t in p.transcripts)
-            transcript_ids |= filtered
-            p.transcripts = list(filtered)
-        transcript_ids = list(transcript_ids)
+    toremove = filter_transcripts(t2p, readlength=100)
+    for t in toremove:
+        transcript_ids.remove(t)
+        t2p.pop(t)
+    for p in pieces:
+        p.transcripts = [t for t in p.transcripts if t not in toremove]
 
     #--- Get all reads from this chunk - iterator
     lastend = max(e.end for e in exons)
@@ -516,14 +523,30 @@ def process_chunk(ckexons, sam, chrom, options):
     #--- Count reads in each piece
     count_reads(pieces,ckreads,options['nh'],stranded)
 
+    #--- Same for introns if selected
+    intron_pieces = []
+    if 3 in types:
+        introns = []
+        for tid,tpieces in t2p.iteritems():
+            introns.extend(complement(tid,tpieces))  # tpieces is already sorted
+        intron_pieces = cobble(introns)
+        count_reads(intron_pieces,ckreads,options['nh'],stranded)
+        for p in intron_pieces:
+            p.rpk = toRPK(p.count,p.length,norm_cst)
+        if stranded:
+            for p in intron_pieces:
+                p.rpk_anti = toRPK(p.count_anti,p.length,norm_cst)
+
     #--- Calculate RPK
-    for p in pieces:
+    for p in itertools.chain(pieces,intron_pieces):
         p.rpk = toRPK(p.count,p.length,norm_cst)
     if stranded:
-        for p in pieces:
+        for p in itertools.chain(pieces,intron_pieces):
             p.rpk_anti = toRPK(p.count_anti,p.length,norm_cst)
 
     #--- Infer gene/transcript counts
+    for p in pieces:
+        p.name = '|'.join(sorted(list(set(p.name.split('|')))))
     genes=[]; transcripts=[]; exons2=[]; introns2=[]
     # Genes - 0
     if 0 in types:
@@ -553,13 +576,12 @@ def process_chunk(ckexons, sam, chrom, options):
             exons2 = estimate_expression_NNLS(Exon,pieces,exon_ids,exons,norm_cst,stranded)
     # Introns - 3
     if 3 in types:
-        introns = []
-        for tid,tpieces in t2e.iteritems():
-            introns.extend(complement(tid,tpieces))
-        intron_pieces = cobble(introns)
-        intron_ids = [e.name for e in introns]
-        introns2 = estimate_expression_raw(Exon,intron_pieces,intron_ids,introns,norm_cst,stranded)
-        for intron in introns: intron.__class__.__name__ = "Intron"
+        method = methods.get(3,0)
+        if method == 0:
+            introns2 = list(intron_pieces)   # !
+        elif method == 1:
+            intron_ids = [e.name for e in introns]
+            introns2 = estimate_expression_NNLS(Exon,intron_pieces,intron_ids,introns,norm_cst,stranded)
 
     print_output(output, genes,transcripts,exons2,introns2, threshold,stranded)
 
@@ -687,11 +709,14 @@ def parse_args(args):
     # Same for methods. If given as a list, the length must be that of `--type`,
     # the method at index i will be applied to feature type at index i.
     args['--method'] = [x.lower() for x in args['--method'].split(',')]
-    assert len(args['--method']) == len(args['--type']), \
-        "TYPE and METHOD arguments must have the same number of elements."
-    assert all(x in ["raw","nnls","likelihood"] for x in args['--method']), \
-        "METHOD must be one of 'raw', 'nnls' or 'likelihood'."
-    method_map = {'raw':0, 'nnls':1, 'likelihood':2}  # avoid comparing strings later
+    if len(args['--method']) > 1:  # multiple methods given
+        assert len(args['--method']) == len(args['--type']), \
+            "TYPE and METHOD arguments must have the same number of elements."
+    elif len(args['--type']) > 1:  # apply same method to all types
+        args['--method'] = args['--method'] * len(args['--type'])
+    assert all(x in ["raw","nnls"] for x in args['--method']), \
+        "METHOD must be one of 'raw' or 'nnls'."
+    method_map = {'raw':0, 'nnls':1}  # avoid comparing strings later
     args['--method'] = [method_map[x] for x in args['--method']]
     args['--method'] = dict(zip(args['--type'],args['--method']))
 
