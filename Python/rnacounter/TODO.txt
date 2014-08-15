@@ -2,7 +2,6 @@
 
 For sure:
 
-* Count in introns
 * rnaseq.py: Read annotation from fasta headers if present (regexp)
 * Paired-end
 
