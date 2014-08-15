@@ -61,8 +61,8 @@ def parse_gtf(line, gtf_ftype):
     return Exon(id=(exon_nr,),
         gene_id=attrs.get('gene_id',exon_id), gene_name=attrs.get('gene_name',exon_id),
         chrom=row[0], start=max(int(row[3])-1,0), end=max(int(row[4]),0),
-        name=exon_id, score=_score(row[5]), strand=_strand(row[6]),
-        transcripts=set([attrs.get('transcript_id',exon_id)]), exon_number=int(attrs.get('exon_number',1)))
+        name=exon_id, strand=_strand(row[6]),
+        transcripts=set([attrs.get('transcript_id',exon_id)]))
 
 def parse_bed(line, gtf_ftype):
     """Parse one BED line. Return False if *line* is empty."""
@@ -75,9 +75,10 @@ def parse_bed(line, gtf_ftype):
         else: strand = 0
         score = _score(row[4])
     else: score = 0.0
-    exon_id = 'E%d'%Ecounter.next()
-    return Exon(id=exon_id, gene_id=name, gene_name=name, chrom=chrom, start=start, end=end,
-                name=name, score=score, strand=strand, transcripts=set([name]), exon_number=1)
+    exon_nr = Ecounter.next()
+    #exon_id = 'E%d'%exon_nr
+    return Exon(id=(exon_nr,), gene_id=name, gene_name=name, chrom=chrom, start=start, end=end,
+                name=name, score=score, strand=strand, transcripts=set([name]))
 
 
 ##########################  Join tables  ############################
@@ -137,10 +138,8 @@ class GenomicObject(object):
     def __and__(self,other):
         """The intersection of two GenomicObjects"""
         assert self.chrom==other.chrom, "Cannot add features from different chromosomes"
-        selfid = (self.id,) if isinstance(self.id,int) else self.id
-        otherid = (other.id,) if isinstance(other.id,int) else other.id
         return self.__class__(
-            id = selfid + otherid,
+            id = self.id + other.id,
             gene_id = '|'.join(set([self.gene_id, other.gene_id])),
             gene_name = '|'.join(set([self.gene_name, other.gene_name])),
             chrom = self.chrom,
@@ -153,9 +152,8 @@ class GenomicObject(object):
         return "__%s.%s:%d-%d__" % (self.name,self.gene_name,self.start,self.end)
 
 class Exon(GenomicObject):
-    def __init__(self, exon_number=0, transcripts=set(), **args):
+    def __init__(self, transcripts=set(), **args):
         GenomicObject.__init__(self, **args)
-        self.exon_number = exon_number
         self.transcripts = transcripts   # list of transcripts it is contained in
         self.length = self.end - self.start
     def __and__(self,other):
@@ -181,11 +179,11 @@ class Exon(GenomicObject):
             self.count += x
 
 class Intron(Exon):
-    def __init__(self, exon_number=0, transcripts=set(), **args):
+    def __init__(self, transcripts=set(), **args):
         Exon.__init__(self, **args)
 
 class Transcript(GenomicObject):
-    def __init__(self, exons=[], **args):
+    def __init__(self, exons=set(), **args):
         GenomicObject.__init__(self, **args)
         self.exons = exons               # list of exons it contains
 
@@ -230,6 +228,75 @@ def cobble(exons):
         #e.name = '|'.join(sorted(list(set(e.name.split('|')))))   # ?
         cobbled.append(e)
     return cobbled
+
+def fuse(intervals):
+    """Fuses overlapping *intervals* - a list [(a,b),(c,d),...]."""
+    fused = []
+    x = intervals[0]
+    for y in intervals[1:]:
+        if y[0] < x[1]:
+            x[1] = max(x[1], y[1])
+        else:
+            fused.append(x)
+            x = y
+    fused.append(x)
+    return fused
+
+def partition_chrexons(chrexons):
+    """Partition chrexons in non-overlapping chunks with distinct genes.
+    The problem is that exons are sorted wrt start,end, and so the first
+    exon of a gene can be separate from the second by exons of other genes
+    - from the GTF we don't know how many and how far."""
+    lastend = chrexons[0].end
+    lastgeneids = set([chrexons[0].gene_id])
+    lastindex = 0
+    partition = []
+    pinvgenes = {}  # map {gene_id: partitions it is found in}
+    npart = 0       # partition index
+    # First cut - where disjoint except if the same gene continues
+    for i,exon in enumerate(chrexons):
+        if (exon.start > lastend) and (exon.gene_id not in lastgeneids):
+            lastend = max(exon.end,lastend)
+            partition.append((lastindex,i))
+            # Record in which parts the gene was found, fuse them later
+            for g in lastgeneids:
+                pinvgenes.setdefault(g,[]).append(npart)
+            npart += 1
+            lastgeneids.clear()
+            lastindex = i
+        else:
+            lastend = max(exon.end,lastend)
+        lastgeneids.add(exon.gene_id)
+    partition.append((lastindex,len(chrexons)))
+    for g in lastgeneids:
+        pinvgenes.setdefault(g,[]).append(npart)
+    # Put together intervals containing parts of the same gene mixed with others - if any
+    mparts = [[p[0],p[len(p)-1]] for p in pinvgenes.itervalues() if len(p)>1]
+    if len(mparts) > 0:
+        mparts = fuse(sorted(mparts))
+        toremove = set()
+        for (a,b) in mparts:
+            partition[b] = (partition[a][0],partition[b][1])
+            toremove |= set(xrange(a,b))
+        partition = [p for i,p in enumerate(partition) if i not in toremove]
+    return partition
+
+def complement(tid,tpieces):
+    """From a transcript ID and its exon pieces, complement the
+    intervals to get the introns of the transcript."""
+    introns = []
+    k = 0
+    for i in range(len(tpieces)-1):
+        a = tpieces[i]
+        b = tpieces[i+1]
+        if a.end == b.start: continue
+        k += 1
+        intron_id = (-1,)+a.id
+        intron_name = "%s-i%d"%(tid,k)
+        intron = Intron(id=intron_id, gene_id=a.gene_id, gene_name=a.gene_name, chrom=a.chrom,
+            start=a.end, end=b.start, name=intron_name, strand=a.strand, transcripts=set([tid]))
+        introns.append(intron)
+    return introns
 
 
 #############################  Counting  ############################
@@ -387,77 +454,6 @@ def estimate_expression_raw(feat_class, pieces, ids, exons, norm_cst, stranded):
 ###########################  Main script  ###########################
 
 
-def fuse(intervals):
-    """Fuses overlapping *intervals* - a list [(a,b),(c,d),...]."""
-    fused = []
-    x = intervals[0]
-    for y in intervals[1:]:
-        if y[0] < x[1]:
-            x[1] = max(x[1], y[1])
-        else:
-            fused.append(x)
-            x = y
-    fused.append(x)
-    return fused
-
-def partition_chrexons(chrexons):
-    """Partition chrexons in non-overlapping chunks with distinct genes.
-    The problem is that exons are sorted wrt start,end, and so the first
-    exon of a gene can be separate from the second by exons of other genes
-    - from the GTF we don't know how many and how far."""
-    lastend = chrexons[0].end
-    lastgeneids = set([chrexons[0].gene_id])
-    lastindex = 0
-    partition = []
-    pinvgenes = {}  # map {gene_id: partitions it is found in}
-    npart = 0       # partition index
-    # First cut - where disjoint except if the same gene continues
-    for i,exon in enumerate(chrexons):
-        if (exon.start > lastend) and (exon.gene_id not in lastgeneids):
-            lastend = max(exon.end,lastend)
-            partition.append((lastindex,i))
-            # Record in which parts the gene was found, fuse them later
-            for g in lastgeneids:
-                pinvgenes.setdefault(g,[]).append(npart)
-            npart += 1
-            lastgeneids.clear()
-            lastindex = i
-        else:
-            lastend = max(exon.end,lastend)
-        lastgeneids.add(exon.gene_id)
-    partition.append((lastindex,len(chrexons)))
-    for g in lastgeneids:
-        pinvgenes.setdefault(g,[]).append(npart)
-    # Put together intervals containing parts of the same gene mixed with others - if any
-    mparts = [[p[0],p[len(p)-1]] for p in pinvgenes.itervalues() if len(p)>1]
-    if len(mparts) > 0:
-        mparts = fuse(sorted(mparts))
-        toremove = set()
-        for (a,b) in mparts:
-            partition[b] = (partition[a][0],partition[b][1])
-            toremove |= set(xrange(a,b))
-        partition = [p for i,p in enumerate(partition) if i not in toremove]
-    return partition
-
-
-def complement(tid,tpieces):
-    """From a transcript ID and its exon pieces, complement the
-    intervals to get the introns of the transcript."""
-    introns = []
-    k = 0
-    for i in range(len(tpieces)-1):
-        a = tpieces[i]
-        b = tpieces[i+1]
-        if a.end == b.start: continue
-        k += 1
-        intron_id = (-1,)+a.id
-        intron_name = "%s-i%d"%(tid,k)
-        intron = Intron(id=intron_id, gene_id=a.gene_id, gene_name=a.gene_name, chrom=a.chrom,
-            start=a.end, end=b.start, name=intron_name, strand=a.strand, transcripts=set([tid]))
-        introns.append(intron)
-    return introns
-
-
 def filter_transcripts(t2p, readlength):
     """*t2p* is a map {transcriptID: [exon pieces]}.
     Find transcripts that differ from others by less than a few exons of less than
@@ -490,8 +486,8 @@ def process_chunk(ckexons, sam, chrom, options):
     for key,group in itertools.groupby(ckexons, attrgetter('id')):
         # ckexons are sorted by id because chrexons were sorted by chrom,start,end
         exon0 = group.next()
-        for g in group:
-            exon0.transcripts.add(g.transcripts[0])
+        for gr in group:
+            exon0.transcripts.add(gr.transcripts.pop())
         exons.append(exon0)
     gene_ids = list(set(e.gene_id for e in exons))
     exon_names = set(e.name for e in exons)
@@ -507,13 +503,14 @@ def process_chunk(ckexons, sam, chrom, options):
             transcript_ids.add(t)
             t2p.setdefault(t,[]).append(p)
 
-    #--- Filter out too similar transcripts, e.g. made of the same exons up to 100bp.
-    toremove = filter_transcripts(t2p, readlength=100)
-    for t in toremove:
-        transcript_ids.remove(t)
-        t2p.pop(t)
-    for p in pieces:
-        p.transcripts = set(t for t in p.transcripts if t not in toremove)
+    #--- Filter out too similar transcripts
+    if 1 in types or 3 in types:
+        toremove = filter_transcripts(t2p, 100)
+        for t in toremove:
+            transcript_ids.remove(t)
+            t2p.pop(t)
+        for p in pieces:
+            p.transcripts = set(t for t in p.transcripts if t not in toremove)
 
     #--- Count reads in each piece
     lastend = max(e.end for e in exons)
