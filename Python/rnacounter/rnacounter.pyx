@@ -1,7 +1,6 @@
 #cython: wraparound=False
 #cython: boundscheck=False
 #cython: cdivision=True
-#cython: profile=True
 """
 Usage:
    rnacounter join TAB [TAB2 ...]
@@ -38,10 +37,6 @@ import numpy as np
 cimport numpy as cnp
 DTYPE = np.double               # fix a datatype for the arrays
 ctypedef cnp.double_t DTYPE_t   # assign a corresponding compile-time C type to DTYPE_t
-
-#cdef extern from "math.h":       # For if we implement the sqrt transformation
-#    double sqrt(double x)
-#    double pow(double x,double y)
 
 
 ##########################  GTF parsing  #############################
@@ -138,9 +133,10 @@ cdef class GenomicObject(object):
         str gene_id,gene_name,chrom,name
         int start,end,strand,length,multiplicity
         double score,count,count_anti,rpk,rpk_anti
-    def __init__(self,tuple id=(0,),str gene_id='',str gene_name='',str chrom='',int start=0,int end=0,str name='',
-                  double score=0.0,int strand=0,int length=0,int multiplicity=1,
-                  double count=0.0,double count_anti=0.0,double rpk=0.0,double rpk_anti=0.0):
+    def __init__(self, tuple id=(0,), str gene_id='', str gene_name='',
+             str chrom='', int start=0, int end=0, str name='',
+             double score=0.0, int strand=0, int length=0, int multiplicity=1,
+             double count=0.0, double count_anti=0.0, double rpk=0.0, double rpk_anti=0.0):
         self.id = id
         self.gene_id = gene_id
         self.gene_name = gene_name
@@ -218,10 +214,6 @@ cdef class Gene(GenomicObject):
         GenomicObject.__init__(self, **args)
         self.exons = exons               # list of exons contained
         self.transcripts = transcripts   # list of transcripts contained
-
-#ctypedef fused ExonIntron:
-#    Exon
-#    Intron
 
 
 #####################  Operations on intervals  #####################
@@ -357,8 +349,10 @@ def complement(str tid,list tpieces):
 
 cdef inline double toRPK(double count,double length,double norm_cst):
     return 1000.0 * count / (length * norm_cst)
+
 cdef inline double fromRPK(double rpk,double length,double norm_cst):
     return length * norm_cst * rpk / 1000.0
+
 cdef inline double correct_fraglen_bias(double rpk,int length, int fraglen):
     if fraglen == 1: return rpk
     newlength = <float> max(length-fraglen+1, 1)
@@ -493,9 +487,6 @@ cdef list estimate_expression_NNLS(object feat_class,list pieces,set ids,list ex
         flen = sum([p.length for p in pieces if is_in(feat_class,p,f)])
         frpk = T[i]
         fcount = fromRPK(T[i],flen,norm_cst)
-        #fSQrpk = T[i]
-        #fcount = fromSQRPK(T[i],flen,norm_cst)
-        #frpk = toRPK(fcount,flen,norm_cst)
         if stranded:
             frpk_anti = T_anti[i]
             fcount_anti = fromRPK(T_anti[i],flen,norm_cst)
@@ -627,6 +618,7 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
             p.rpk_anti = toRPK(p.count_anti,p.length,norm_cst)
 
     #--- Same for introns, if selected
+    # We remove intronic regions that also span exonic regions
     intron_pieces = []
     if 3 in types:
         introns = []

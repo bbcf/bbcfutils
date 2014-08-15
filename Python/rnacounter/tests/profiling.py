@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
-""" Run
+"""
+Add `#cython: profile=True` on top or the rnacounter script, with other compiler directives.
+
+Then run
 
 python profiling.py -o zzz -n 1 -c chr18 /archive/epfl/bbcf/jdelafon/test_rnaseq/mefKO.bam /archive/epfl/bbcf/jdelafon/test_rnaseq/mm9_renamed.gtf
 

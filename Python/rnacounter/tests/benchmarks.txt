@@ -154,5 +154,14 @@ real	2m24.298s
 user	2m9.259s
 sys	0m3.968s
 
+            #############
+            #  15.08.14 #
+            #############
+
+V-IT, can count in exons
+
+real	3m27.274s
+user	1m30.262s
+sys	0m4.427s
 
 
