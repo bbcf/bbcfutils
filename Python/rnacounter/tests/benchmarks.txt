@@ -164,4 +164,9 @@ real	3m27.274s
 user	1m30.262s
 sys	0m4.427s
 
+MBP
+
+real	2m33.256s
+user	2m22.462s
+sys	0m4.047s
 
