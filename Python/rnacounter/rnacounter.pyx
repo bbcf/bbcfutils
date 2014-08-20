@@ -598,7 +598,7 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
 
     #--- Filter out too similar transcripts
     if 1 in types or 3 in types:
-        toremove = filter_transcripts(t2p, 100)
+        toremove = filter_transcripts(t2p, options["readlength"])
         for t in toremove:
             transcript_ids.remove(t)
             t2p.pop(t)
@@ -702,6 +702,11 @@ def rnacounter_main(bamname, annotname, options):
         sys.stderr.write("BAM index not found. Indexing...")
         subprocess.check_call("samtools index %s" % bamname, shell=True)
         sys.stderr.write("...done.\n")
+
+    # Get read length
+    sam = pysam.Samfile(bamname, "rb")
+    options["readlength"] = int(sam.next().rlen)
+    sam.close()
 
     sam = pysam.Samfile(bamname, "rb")
     annot = open(annotname, "r")
