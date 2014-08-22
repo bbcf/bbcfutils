@@ -32,7 +32,7 @@ draw(D3("$(outprefix).js", 6inch, 6inch), pl)
 
 
 # Barplot of variance proportions
-cumvar = string(round(sum(p.cumulative_variance[1:2])*100.,2))
+cumvar = string(round(p.cumulative_variance[2]*100.,2))
 barplot = plot(x=1:length(p.proportion_of_variance), y=p.proportion_of_variance, Geom.bar(position=:dodge),
                Theme(bar_spacing=0.5cm), Scale.x_discrete,
                label=["PC1+PC2: $cumvar %"], Geom.label,

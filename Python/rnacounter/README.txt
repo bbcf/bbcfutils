@@ -1,13 +1,13 @@
 
 Usage:
 ======
-See "rnacounter --help".
+See "rnacounter --help" and the tutorial at [...<bbcflib tutorials>].
 
 
 Files description:
 ==================
 * draft_nocython.py:
-Python only version, for testing purposes. Run as "python draft.py ...".
+Python only version (same functionality), for testing purposes. Run as "python draft.py ...".
 
 * rnacounter.pyx:
 Cython version that we compile with setup.py.
@@ -22,7 +22,8 @@ The (python) executable, imports and runs the C version after compilation.
 * benchmark.txt: some execution timings reported, in different conditions.
 
 * tests/:
-Unit tests, run with "nosetests test_rnacounter.py".
+- test_rnacounter.py: unit tests, run with "nosetests test_rnacounter.py".
+- profiling.py: copy of rnacounter with profiling (timing) of internal functions.
 
 * testfiles/:
 Folder with testing files, including
