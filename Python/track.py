@@ -126,8 +126,8 @@ def read(*args,**kw):
 # *****************************************
 """ %(os.path.basename(infile), intrack.format, fileinfo, chromlist, fields))
             continue
-        for x in intrack.read(selection=selection,fields=fields):
-            output.write("\t".join([str(y) for y in x])+"\n")
+        with track.track(output,format=intrack.format,fields=fields) as _tout:
+            _tout.write(intrack.read(selection=selection,fields=fields))
         intrack.close()
     try: output.close()
     except IOError: pass # if stdout
