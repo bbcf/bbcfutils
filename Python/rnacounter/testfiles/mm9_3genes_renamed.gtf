@@ -1,3 +1,5 @@
+# asdf
+# jkl;
 chr6	protein_coding	exon	125095259	125096047	.	+	.	gene_id "ENSMUSG00000038271"; transcript_id "ENSMUST00000119527"; exon_number "1"; gene_name "Iffo1"; gene_biotype "protein_coding"; exon_id "ENSMUSE00000930296"
 chr6	protein_coding	exon	125099607	125099667	.	+	.	gene_id "ENSMUSG00000038271"; transcript_id "ENSMUST00000119527"; exon_number "2"; gene_name "Iffo1"; gene_biotype "protein_coding"; exon_id "ENSMUSE00000413578"
 chr6	protein_coding	exon	125099759	125099854	.	+	.	gene_id "ENSMUSG00000038271"; transcript_id "ENSMUST00000119527"; exon_number "3"; gene_name "Iffo1"; gene_biotype "protein_coding"; exon_id "ENSMUSE00000362682"

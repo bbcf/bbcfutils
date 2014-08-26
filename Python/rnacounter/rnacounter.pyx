@@ -50,6 +50,14 @@ cdef inline int _strand(str x):
     return smap[x]
 Ecounter = itertools.count(1)  # to give unique ids to undefined exons, see parse_gtf()
 
+cdef int skip_header(str filename):
+    """Return the number of lines starting with `#`."""
+    cdef int n = 0
+    with open(filename) as f:
+        while f.readline()[0] == '#':
+            n += 1
+    return n
+
 def parse_gtf(str line,str gtf_ftype):
     """Parse one GTF line. Return None if not an 'exon'. Return False if *line* is empty."""
     # GTF fields = ['chr','source','name','start','end','score','strand','frame','attributes']
@@ -703,13 +711,16 @@ def rnacounter_main(bamname, annotname, options):
         subprocess.check_call("samtools index %s" % bamname, shell=True)
         sys.stderr.write("...done.\n")
 
-    # Get read length
+    # Open BAM. Get read length
     sam = pysam.Samfile(bamname, "rb")
     options["readlength"] = int(sam.next().rlen)
     sam.close()
-
     sam = pysam.Samfile(bamname, "rb")
+
+    # Open GTF. Skip header lines
+    nhead = skip_header(annotname)
     annot = open(annotname, "r")
+    for _ in range(nhead): annot.readline()
 
     if options['output'] is None: options['output'] = sys.stdout
     else: options['output'] = open(options['output'], "wb")

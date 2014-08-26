@@ -30,7 +30,7 @@ Options:
 import pysam
 import os, sys, itertools, copy, subprocess
 from operator import attrgetter
-from numpy import asarray, zeros
+from numpy import asarray, zeros, diag, sqrt, multiply, dot
 from scipy.optimize import nnls
 
 
@@ -43,6 +43,14 @@ def _score(x):
 def _strand(x):
     smap = {'+':1, '1':1, '-':-1, '-1':-1, '.':0, '0':0}
     return smap[x]
+
+def skip_header(filename):
+    """Return the number of lines starting with `#`."""
+    n = 0
+    with open(filename) as f:
+        while f.readline()[0] == '#':
+            n += 1
+    return n
 
 Ecounter = itertools.count(1)  # to give unique ids to undefined exons, see parse_gtf()
 def parse_gtf(line, gtf_ftype):
@@ -225,7 +233,6 @@ def cobble(exons):
             continue
         e = intersect_exons_list(active_exons)
         e.start = a[0]; e.end = b[0]; e.length = b[0]-a[0]
-        #e.name = '|'.join(sorted(list(set(e.name.split('|')))))   # ?
         cobbled.append(e)
     return cobbled
 
@@ -389,6 +396,44 @@ def is_in(feat_class,x,feat_id):
             # x is an exon: x == itself or x contains the piece
             # x is a piece: p == feat_id
 
+def estimate_expression_WNNLS(feat_class, pieces, ids, exons, norm_cst, stranded):
+    #--- Build the exons-transcripts structure matrix:
+    # Lines are exons, columns are transcripts,
+    # so that A[i,j]!=0 means "transcript Tj contains exon Ei".
+    n = len(pieces)
+    m = len(ids)
+    A = zeros((n,m))
+    for i,p in enumerate(pieces):
+        for j,f in enumerate(ids):
+            A[i,j] = 1. if is_in(feat_class,p,f) else 0.
+    w = sqrt(asarray([p.length for p in pieces]))
+    W = diag(w)
+    A = dot(W,A)
+    #--- Build the exons RPKs vector
+    E = asarray([p.rpk for p in pieces])
+    E = multiply(E, w)
+    #--- Solve for transcripts RPK
+    T,rnorm = nnls(A,E)
+    #-- Same for antisense if stranded protocol
+    if stranded:
+        E_anti = asarray([p.rpk_anti for p in pieces])
+        T_anti,rnorm_anti = nnls(A,E_anti)
+    #--- Store result in *feat_class* objects
+    feats = []
+    frpk_anti = fcount_anti = 0.0
+    for i,f in enumerate(ids):
+        exs = sorted([e for e in exons if is_in(feat_class,e,f)], key=attrgetter('start','end'))
+        flen = sum([p.length for p in pieces if is_in(feat_class,p,f)])
+        frpk = T[i]
+        fcount = fromRPK(T[i],flen,norm_cst)
+        if stranded:
+            frpk_anti = T_anti[i]
+            fcount_anti = fromRPK(T_anti[i],flen,norm_cst)
+        feats.append(feat_class(name=f, length=flen,
+                rpk=frpk, rpk_anti=frpk_anti, count=fcount, count_anti=fcount_anti,
+                chrom=exs[0].chrom, start=exs[0].start, end=exs[len(exs)-1].end,
+                gene_id=exs[0].gene_id, gene_name=exs[0].gene_name, strand=exs[0].strand))
+    return feats
 
 def estimate_expression_NNLS(feat_class, pieces, ids, exons, norm_cst, stranded):
     #--- Build the exons-transcripts structure matrix:
@@ -505,7 +550,7 @@ def process_chunk(ckexons, sam, chrom, options):
 
     #--- Filter out too similar transcripts
     if 1 in types or 3 in types:
-        toremove = filter_transcripts(t2p, 100)
+        toremove = filter_transcripts(t2p, options["readlength"])
         for t in toremove:
             transcript_ids.remove(t)
             t2p.pop(t)
@@ -558,7 +603,9 @@ def process_chunk(ckexons, sam, chrom, options):
     # Transcripts - 1
     if 1 in types:
         method = methods.get(1,0)
-        if method == 1:
+        if method == 2:
+            transcripts = estimate_expression_WNNLS(Transcript,pieces,transcript_ids,exons,norm_cst,stranded)
+        elif method == 1:
             transcripts = estimate_expression_NNLS(Transcript,pieces,transcript_ids,exons,norm_cst,stranded)
         elif method == 0:
             transcripts = estimate_expression_raw(Transcript,pieces,transcript_ids,exons,norm_cst,stranded)
@@ -611,8 +658,16 @@ def rnacounter_main(bamname, annotname, options):
         subprocess.check_call("samtools index %s" % bamname, shell=True)
         sys.stderr.write("...done.\n")
 
+    # Open SAM. Get read length
     sam = pysam.Samfile(bamname, "rb")
+    options["readlength"] = sam.next().rlen
+    sam.close()
+    sam = pysam.Samfile(bamname, "rb")
+
+    # Open GTF. Skip header lines
+    nhead = skip_header(annotname)
     annot = open(annotname, "r")
+    for _ in range(nhead): annot.readline()
 
     if options['output'] is None: options['output'] = sys.stdout
     else: options['output'] = open(options['output'], "wb")
@@ -712,9 +767,9 @@ def parse_args(args):
             "TYPE and METHOD arguments must have the same number of elements."
     elif len(args['--type']) > 1:  # apply same method to all types
         args['--method'] = args['--method'] * len(args['--type'])
-    assert all(x in ["raw","nnls"] for x in args['--method']), \
+    assert all(x in ["raw","nnls","wnnls"] for x in args['--method']), \
         "METHOD must be one of 'raw' or 'nnls'."
-    method_map = {'raw':0, 'nnls':1}  # avoid comparing strings later
+    method_map = {'raw':0, 'nnls':1, "wnnls":2}  # avoid comparing strings later
     args['--method'] = [method_map[x] for x in args['--method']]
     args['--method'] = dict(zip(args['--type'],args['--method']))
 
