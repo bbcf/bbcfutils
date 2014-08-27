@@ -625,7 +625,7 @@ def process_chunk(ckexons, sam, chrom, options):
             exon_ids = [e.name for e in exons]
             exons2 = estimate_expression_NNLS(Exon,pieces,exon_ids,exons,norm_cst,stranded)
     # Introns - 3
-    if 3 in types:
+    if 3 in types and len(intron_pieces) > 0:
         method = methods.get(3,0)
         if method == 0:
             introns2 = list(intron_pieces)   # !
