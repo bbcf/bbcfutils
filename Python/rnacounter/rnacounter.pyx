@@ -638,14 +638,15 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
             intron_pieces = [ip for ip in intron_exon_pieces \
                              if ip.length > readlength \
                              and not any([n in exon_names for n in ip.name.split('|')])]
-            lastend = max(intron.end for intron in introns)
-            ckreads = sam.fetch(chrom, intron_pieces[0].start, lastend)
-            count_reads(intron_pieces,ckreads,options['nh'],stranded)
-            for p in intron_pieces:
-                p.rpk = toRPK(p.count,p.length,norm_cst)
-            if stranded:
+            if len(intron_pieces) > 0:
+                lastend = max([intron.end for intron in introns])
+                ckreads = sam.fetch(chrom, intron_pieces[0].start, lastend)
+                count_reads(intron_pieces,ckreads,options['nh'],stranded)
                 for p in intron_pieces:
-                    p.rpk_anti = toRPK(p.count_anti,p.length,norm_cst)
+                    p.rpk = toRPK(p.count,p.length,norm_cst)
+                if stranded:
+                    for p in intron_pieces:
+                        p.rpk_anti = toRPK(p.count_anti,p.length,norm_cst)
 
     #--- Infer gene/transcript counts
     genes=[]; transcripts=[]; exons2=[]; introns2=[]
