@@ -93,8 +93,9 @@ def parse_bed(line, gtf_ftype):
 
 
 def join(tables):
+    """Put 1-sample tables together into a single big table with one column per sample."""
     tabs = [open(t) for t in tables]
-    out = open("merged_counts_rnacounter.txt","wb")
+    out = open("joined_counts_rnacounter.txt","wb")
     lines = [t.readline().split('\t') for t in tabs]
     try: float(lines[0][1]) # header?
     except:
@@ -112,7 +113,7 @@ def join(tables):
         lines = [t.readline().split('\t') for t in tabs]
     out.close()
     [t.close() for t in tabs]
-    sys.stderr.write("Merged files into \"merged_counts_rnacounter.txt\" .\n")
+    sys.stderr.write("Merged files into \"joined_counts_rnacounter.txt\" .\n")
 
 
 #########################  Global classes  ##########################
@@ -525,6 +526,7 @@ def process_chunk(ckexons, sam, chrom, options):
     methods = options['method']
     threshold = options['threshold']
     fraglength = options['fraglength']
+    readlength = options["readlength"]
 
     #--- Regroup occurrences of the same Exon from a different transcript
     exons = []
@@ -550,7 +552,7 @@ def process_chunk(ckexons, sam, chrom, options):
 
     #--- Filter out too similar transcripts
     if 1 in types or 3 in types:
-        toremove = filter_transcripts(t2p, options["readlength"])
+        toremove = filter_transcripts(t2p, readlength)
         for t in toremove:
             transcript_ids.remove(t)
             t2p.pop(t)
@@ -568,17 +570,19 @@ def process_chunk(ckexons, sam, chrom, options):
         introns = []
         for tid,tpieces in t2p.iteritems():
             introns.extend(complement(tid,tpieces))  # tpieces is already sorted
-        intron_exon_pieces = cobble(introns+exons)
-        intron_pieces = [ip for ip in intron_exon_pieces \
-                         if not any([n in exon_names for n in ip.name.split('|')])]
-        lastend = max(intron.end for intron in introns)
-        ckreads = sam.fetch(chrom, intron_pieces[0].start, lastend)
-        count_reads(intron_pieces,ckreads,options['nh'],stranded)
-        for p in intron_pieces:
-            p.rpk = toRPK(p.count,p.length,norm_cst)
-        if stranded:
+        if len(introns) > 0:
+            intron_exon_pieces = cobble(introns+exons)
+            intron_pieces = [ip for ip in intron_exon_pieces \
+                             if ip.length > readlength \
+                             and not any([n in exon_names for n in ip.name.split('|')])]
+            lastend = max(intron.end for intron in introns)
+            ckreads = sam.fetch(chrom, intron_pieces[0].start, lastend)
+            count_reads(intron_pieces,ckreads,options['nh'],stranded)
             for p in intron_pieces:
-                p.rpk_anti = toRPK(p.count_anti,p.length,norm_cst)
+                p.rpk = toRPK(p.count,p.length,norm_cst)
+            if stranded:
+                for p in intron_pieces:
+                    p.rpk_anti = toRPK(p.count_anti,p.length,norm_cst)
 
     #--- Calculate RPK
     for p in itertools.chain(pieces,intron_pieces):

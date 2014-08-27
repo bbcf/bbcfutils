@@ -562,7 +562,7 @@ cdef set filter_transcripts(dict t2p,int readlength):
 def process_chunk(list ckexons,object sam,str chrom,dict options):
     """Distribute counts across transcripts and genes of a chunk *ckexons*
     of non-overlapping exons."""
-    cdef int method, lastend, fraglength
+    cdef int method, lastend, fraglength, readlength
     cdef Exon exon0, gr, p
     cdef Gene gene
     cdef Transcript trans
@@ -581,6 +581,7 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
     methods = options['method']
     threshold = options['threshold']
     fraglength = options['fraglength']
+    readlength = options["readlength"]
 
     #--- Regroup occurrences of the same Exon from a different transcript
     exons = []
@@ -606,7 +607,7 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
 
     #--- Filter out too similar transcripts
     if 1 in types or 3 in types:
-        toremove = filter_transcripts(t2p, options["readlength"])
+        toremove = filter_transcripts(t2p, readlength)
         for t in toremove:
             transcript_ids.remove(t)
             t2p.pop(t)
@@ -632,17 +633,19 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
         introns = []
         for tid,tpieces in t2p.iteritems():
             introns.extend(complement(tid,tpieces))  # tpieces is already sorted
-        intron_exon_pieces = cobble(introns+exons)
-        intron_pieces = [ip for ip in intron_exon_pieces \
-                         if not any([n in exon_names for n in ip.name.split('|')])]
-        lastend = max(intron.end for intron in introns)
-        ckreads = sam.fetch(chrom, intron_pieces[0].start, lastend)
-        count_reads(intron_pieces,ckreads,options['nh'],stranded)
-        for p in intron_pieces:
-            p.rpk = toRPK(p.count,p.length,norm_cst)
-        if stranded:
+        if len(introns) > 0:
+            intron_exon_pieces = cobble(introns+exons)
+            intron_pieces = [ip for ip in intron_exon_pieces \
+                             if ip.length > readlength \
+                             and not any([n in exon_names for n in ip.name.split('|')])]
+            lastend = max(intron.end for intron in introns)
+            ckreads = sam.fetch(chrom, intron_pieces[0].start, lastend)
+            count_reads(intron_pieces,ckreads,options['nh'],stranded)
             for p in intron_pieces:
-                p.rpk_anti = toRPK(p.count_anti,p.length,norm_cst)
+                p.rpk = toRPK(p.count,p.length,norm_cst)
+            if stranded:
+                for p in intron_pieces:
+                    p.rpk_anti = toRPK(p.count_anti,p.length,norm_cst)
 
     #--- Infer gene/transcript counts
     genes=[]; transcripts=[]; exons2=[]; introns2=[]
