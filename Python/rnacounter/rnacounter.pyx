@@ -30,7 +30,7 @@ Options:
 import pysam
 import os, sys, itertools, copy, subprocess
 from operator import attrgetter
-from numpy import asarray, zeros
+from numpy import array, zeros, diag, dot, multiply, sqrt
 from scipy.optimize import nnls
 
 import numpy as np
@@ -451,13 +451,14 @@ cdef inline bint is_in(object feat_class,Exon x,str feat_id):
         return feat_id in x.transcripts
     elif feat_class == Gene:
         return feat_id in x.gene_id.split('|')
-    elif feat_class == Exon:
+    else:
         return x.name in feat_id.split('|') or x.name == feat_id
             # x is an exon: x == itself or x contains the piece
             # x is a piece: p == feat_id
 
 
-cdef list estimate_expression_NNLS(object feat_class,list pieces,set ids,list exons,double norm_cst,bint stranded):
+cdef list estimate_expression_NNLS(object feat_class,list pieces,set ids,list exons,double norm_cst,
+                                   bint stranded,bint weighted):
     """Infer gene/transcript expression from exons RPK. Takes Exon instances *pieces*
     and returns for each feature ID in *ids* an instance of *feat_class* with the
     appropriate count and RPK attributes set.
@@ -468,8 +469,8 @@ cdef list estimate_expression_NNLS(object feat_class,list pieces,set ids,list ex
     cdef int n,m,flen,i,j
     cdef double rnorm, fcount, frpk, fcount_anti, frpk_anti
     cdef str f
-    cdef cnp.ndarray[DTYPE_t, ndim=2] A
-    cdef cnp.ndarray[DTYPE_t, ndim=1] E, T
+    cdef cnp.ndarray[DTYPE_t, ndim=2] A, W
+    cdef cnp.ndarray[DTYPE_t, ndim=1] E, T, w
     cdef Exon p
     cdef list exs, feats
     n = len(pieces)
@@ -477,15 +478,19 @@ cdef list estimate_expression_NNLS(object feat_class,list pieces,set ids,list ex
     A = zeros((n,m))
     for i,p in enumerate(pieces):
         for j,f in enumerate(ids):
-            A[i,j] = 1. if is_in(feat_class,p,f) else 0.
+            if is_in(feat_class,p,f): A[i,j] = 1.
     #--- Build the exons scores vector
-    E = asarray([p.rpk for p in pieces])
-    #E = asarray([toSQRPK(p.count,p.length,norm_cst) for p in pieces])
+    E = array([p.rpk for p in pieces])
+    if weighted:
+        w = sqrt(array([p.length for p in pieces]))
+        W = diag(w)
+        A = dot(W,A)
+        E = multiply(E, w)
     #--- Solve for RPK
     T,rnorm = nnls(A,E)
     #-- Same for antisense if stranded protocol
     if stranded:
-        E_anti = asarray([p.rpk_anti for p in pieces])
+        E_anti = array([p.rpk_anti for p in pieces])
         T_anti,rnorm_anti = nnls(A,E_anti)
     #--- Store result in *feat_class* objects
     feats = []
@@ -571,7 +576,7 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
     cdef dict t2p, methods
     cdef set exon_names, transcript_ids, gene_ids, toremove
     cdef str t, tid
-    cdef bint stranded
+    cdef bint stranded, weighted
     cdef double norm_cst, threshold
 
     norm_cst = options['normalize']
@@ -582,6 +587,7 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
     threshold = options['threshold']
     fraglength = options['fraglength']
     readlength = options["readlength"]
+    weighted = True  # WNNLS switch !
 
     #--- Regroup occurrences of the same Exon from a different transcript
     exons = []
@@ -656,14 +662,14 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
         if method == 0:
             genes = estimate_expression_raw(Gene,pieces,gene_ids,exons,norm_cst,stranded)
         elif method == 1:
-            genes = estimate_expression_NNLS(Gene,pieces,gene_ids,exons,norm_cst,stranded)
+            genes = estimate_expression_NNLS(Gene,pieces,gene_ids,exons,norm_cst,stranded,weighted)
         for gene in genes:
             gene.rpk = correct_fraglen_bias(gene.rpk, gene.length, fraglength)
     # Transcripts - 1
     if 1 in types:
         method = methods.get(0,1)
         if method == 1:
-            transcripts = estimate_expression_NNLS(Transcript,pieces,transcript_ids,exons,norm_cst,stranded)
+            transcripts = estimate_expression_NNLS(Transcript,pieces,transcript_ids,exons,norm_cst,stranded,weighted)
         elif method == 0:
             transcripts = estimate_expression_raw(Transcript,pieces,transcript_ids,exons,norm_cst,stranded)
         for trans in transcripts:
@@ -675,7 +681,7 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
             exons2 = list(pieces) # !
         elif method == 1:
             exon_ids = set([e.name for e in exons])
-            exons2 = estimate_expression_NNLS(Exon,pieces,exon_ids,exons,norm_cst,stranded)
+            exons2 = estimate_expression_NNLS(Exon,pieces,exon_ids,exons,norm_cst,stranded,weighted)
     # Introns - 3
     if 3 in types and len(intron_pieces) > 0:
         method = methods.get(3,0)
@@ -683,7 +689,7 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
             introns2 = list(intron_pieces)   # !
         elif method == 1:
             intron_ids = set([e.name for e in introns])
-            introns2 = estimate_expression_NNLS(Exon,intron_pieces,intron_ids,introns,norm_cst,stranded)
+            introns2 = estimate_expression_NNLS(Exon,intron_pieces,intron_ids,introns,norm_cst,stranded,weighted)
 
     print_output(output, genes,transcripts,exons2,introns2, threshold,stranded)
 

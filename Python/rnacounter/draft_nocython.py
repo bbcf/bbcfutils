@@ -392,7 +392,7 @@ def is_in(feat_class,x,feat_id):
         return feat_id in x.transcripts
     elif feat_class == Gene:
         return feat_id in x.gene_id.split('|')
-    elif feat_class == Exon:
+    else:
         return x.name in feat_id.split('|') or x.name == feat_id
             # x is an exon: x == itself or x contains the piece
             # x is a piece: p == feat_id
