@@ -644,6 +644,8 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
             introns.extend(complement(tid,tpieces))  # tpieces is already sorted
         if len(introns) > 0:
             intron_exon_pieces = cobble(introns+exons)
+            for ip in intron_pieces:   # transcripts is a set, so intron names join randomly...
+                ip.name = '|'.join(sorted(ip.name.split('|')))
             intron_pieces = [ip for ip in intron_exon_pieces \
                              if ip.length > readlength \
                              and not any([n in exon_names for n in ip.name.split('|')])]
