@@ -106,12 +106,15 @@ def join(tables):
     tabs = [open(t) for t in tables]
     out = open("merged.txt","wb")
     lines = [t.readline().split('\t') for t in tabs]
+    if len(lines) == 0:
+        sys.stderr.write("One of the tables is empty. Abort.")
+        return 1
     try: float(lines[0][1]) # header?
     except:
         header = [lines[0][0]] + ["Count.%d"%c for c in range(len(tables))] \
-                 + ["RPKM%d"%c for c in range(len(tables))] + lines[0][3:]
+                 + ["RPKM.%d"%c for c in range(len(tables))] + lines[0][3:]
         out.write('\t'.join(header))
-        lines = [t.readline().strip().split('\t') for t in tabs]
+        lines = [t.readline().split('\t') for t in tabs]
     while len(lines[0][0]) > 0:
         gid = lines[0][0]
         annot = lines[0][3:]
