@@ -108,7 +108,7 @@ def join(tables):
     lines = [t.readline().split('\t') for t in tabs]
     try: float(lines[0][1]) # header?
     except:
-        header = [lines[0][0]] + ["Count%d"%c for c in range(len(tables))] \
+        header = [lines[0][0]] + ["Count.%d"%c for c in range(len(tables))] \
                  + ["RPKM%d"%c for c in range(len(tables))] + lines[0][3:]
         out.write('\t'.join(header))
         lines = [t.readline().strip().split('\t') for t in tabs]
