@@ -97,7 +97,7 @@ def join(tables):
     tabs = [open(t) for t in tables]
     out = open("joined_counts_rnacounter.txt","wb")
     lines = [t.readline().split('\t') for t in tabs]
-    if len(lines) == 0:
+    if any(len(L) == 0 for L in lines):
         sys.stderr.write("One of the tables is empty. Abort.")
         return 1
     try: float(lines[0][1]) # header?
@@ -106,14 +106,20 @@ def join(tables):
                  + ["RPKM.%d"%c for c in range(len(tables))] + lines[0][3:]
         out.write('\t'.join(header))
         lines = [t.readline().split('\t') for t in tabs]
-    while len(lines[0][0]) > 0:
-        gid = lines[0][0]
-        annot = lines[0][3:]
-        cnts = [x[1] for x in lines]
-        rpkm = [x[2] for x in lines]
-        newline = [gid] + cnts + rpkm + annot
-        out.write('\t'.join(newline))
-        lines = [t.readline().split('\t') for t in tabs]
+    while 1:
+        if all(len(L) > 3 for L in lines):
+            gid = lines[0][0]
+            annot = lines[0][3:]
+            cnts = [x[1] for x in lines]
+            rpkm = [x[2] for x in lines]
+            newline = [gid] + cnts + rpkm + annot
+            out.write('\t'.join(newline))
+            lines = [t.readline().split('\t') for t in tabs]
+        elif all(len(L[0]) == 0 for L in lines):  # success
+            break
+        else:  # unequal nb of lines
+            sys.stderr.write("Unequal number of lines. Abort.")
+            return 1
     out.close()
     [t.close() for t in tabs]
     sys.stderr.write("Merged files into \"joined_counts_rnacounter.txt\" .\n")
@@ -400,46 +406,7 @@ def is_in(feat_class,x,feat_id):
             # x is an exon: x == itself or x contains the piece
             # x is a piece: p == feat_id
 
-def estimate_expression_WNNLS(feat_class, pieces, ids, exons, norm_cst, stranded):
-    #--- Build the exons-transcripts structure matrix:
-    # Lines are exons, columns are transcripts,
-    # so that A[i,j]!=0 means "transcript Tj contains exon Ei".
-    n = len(pieces)
-    m = len(ids)
-    A = zeros((n,m))
-    for i,p in enumerate(pieces):
-        for j,f in enumerate(ids):
-            A[i,j] = 1. if is_in(feat_class,p,f) else 0.
-    w = sqrt(asarray([p.length for p in pieces]))
-    W = diag(w)
-    A = dot(W,A)
-    #--- Build the exons RPKs vector
-    E = asarray([p.rpk for p in pieces])
-    E = multiply(E, w)
-    #--- Solve for transcripts RPK
-    T,rnorm = nnls(A,E)
-    #-- Same for antisense if stranded protocol
-    if stranded:
-        E_anti = asarray([p.rpk_anti for p in pieces])
-        T_anti,rnorm_anti = nnls(A,E_anti)
-    #--- Store result in *feat_class* objects
-    feats = []
-    frpk_anti = fcount_anti = 0.0
-    for i,f in enumerate(ids):
-        exs = sorted([e for e in exons if is_in(feat_class,e,f)], key=attrgetter('start','end'))
-        flen = sum([p.length for p in pieces if is_in(feat_class,p,f)])
-        frpk = T[i]
-        fcount = fromRPK(T[i],flen,norm_cst)
-        if stranded:
-            frpk_anti = T_anti[i]
-            fcount_anti = fromRPK(T_anti[i],flen,norm_cst)
-        feats.append(feat_class(name=f, length=flen,
-                rpk=frpk, rpk_anti=frpk_anti, count=fcount, count_anti=fcount_anti,
-                chrom=exs[0].chrom, start=exs[0].start, end=exs[len(exs)-1].end,
-                gene_id=exs[0].gene_id, gene_name=exs[0].gene_name, strand=exs[0].strand))
-    return feats
-
-def estimate_expression_NNLS(feat_class, pieces, ids, exons, norm_cst, stranded):
+def estimate_expression_NNLS(feat_class, pieces, ids, exons, norm_cst, stranded, weighted):
     #--- Build the exons-transcripts structure matrix:
     # Lines are exons, columns are transcripts,
     # so that A[i,j]!=0 means "transcript Tj contains exon Ei".
@@ -451,6 +418,11 @@ def estimate_expression_NNLS(feat_class, pieces, ids, exons, norm_cst, stranded)
             A[i,j] = 1. if is_in(feat_class,p,f) else 0.
     #--- Build the exons RPKs vector
     E = asarray([p.rpk for p in pieces])
+    if weighted:
+        w = sqrt(asarray([p.length for p in pieces]))
+        W = diag(w)
+        A = dot(W,A)
+        E = multiply(E, w)
     #--- Solve for transcripts RPK
     T,rnorm = nnls(A,E)
     #-- Same for antisense if stranded protocol
@@ -530,6 +502,7 @@ def process_chunk(ckexons, sam, chrom, options):
     threshold = options['threshold']
     fraglength = options['fraglength']
     readlength = options["readlength"]
+    weighted = True
 
     #--- Regroup occurrences of the same Exon from a different transcript
     exons = []
@@ -539,7 +512,7 @@ def process_chunk(ckexons, sam, chrom, options):
         for gr in group:
             exon0.transcripts.add(gr.transcripts.pop())
         exons.append(exon0)
-    gene_ids = list(set(e.gene_id for e in exons))
+    gene_ids = set(e.gene_id for e in exons)
     exon_names = set(e.name for e in exons)
 
     #--- Cobble all these intervals
@@ -575,8 +548,6 @@ def process_chunk(ckexons, sam, chrom, options):
             introns.extend(complement(tid,tpieces))  # tpieces is already sorted
         if len(introns) > 0:
             intron_exon_pieces = cobble(introns+exons)
-            for ip in intron_pieces:   # transcripts is a set, so intron names join randomly...
-                ip.name = '|'.join(sorted(ip.name.split('|')))
             intron_pieces = [ip for ip in intron_exon_pieces \
                              if ip.length > readlength \
                              and not any([n in exon_names for n in ip.name.split('|')])]
@@ -584,11 +555,8 @@ def process_chunk(ckexons, sam, chrom, options):
                 lastend = max([intron.end for intron in introns])
                 ckreads = sam.fetch(chrom, intron_pieces[0].start, lastend)
                 count_reads(intron_pieces,ckreads,options['nh'],stranded)
-                for p in intron_pieces:
-                    p.rpk = toRPK(p.count,p.length,norm_cst)
-                if stranded:
-                    for p in intron_pieces:
-                        p.rpk_anti = toRPK(p.count_anti,p.length,norm_cst)
+        for ip in intron_pieces:   # transcripts is a set, so intron names join randomly...
+            ip.name = '|'.join(sorted(ip.name.split('|')))
 
     #--- Calculate RPK
     for p in itertools.chain(pieces,intron_pieces):
@@ -599,7 +567,7 @@ def process_chunk(ckexons, sam, chrom, options):
 
     #--- Infer gene/transcript counts
     for p in pieces:
-        p.name = '|'.join(sorted(list(set(p.name.split('|')))))  # remove duplicates in names
+        p.name = '|'.join(sorted(set(p.name.split('|'))))  # remove duplicates in names
     genes=[]; transcripts=[]; exons2=[]; introns2=[]
     # Genes - 0
     if 0 in types:
@@ -607,16 +575,14 @@ def process_chunk(ckexons, sam, chrom, options):
         if method == 0:
             genes = estimate_expression_raw(Gene,pieces,gene_ids,exons,norm_cst,stranded)
         elif method == 1:
-            genes = estimate_expression_NNLS(Gene,pieces,gene_ids,exons,norm_cst,stranded)
+            genes = estimate_expression_NNLS(Gene,pieces,gene_ids,exons,norm_cst,stranded,weighted)
         for gene in genes:
             gene.rpk = correct_fraglen_bias(gene.rpk, gene.length, fraglength)
     # Transcripts - 1
     if 1 in types:
         method = methods.get(1,0)
-        if method == 2:
-            transcripts = estimate_expression_WNNLS(Transcript,pieces,transcript_ids,exons,norm_cst,stranded)
-        elif method == 1:
-            transcripts = estimate_expression_NNLS(Transcript,pieces,transcript_ids,exons,norm_cst,stranded)
+        if method == 1:
+            transcripts = estimate_expression_NNLS(Transcript,pieces,transcript_ids,exons,norm_cst,stranded,weighted)
         elif method == 0:
             transcripts = estimate_expression_raw(Transcript,pieces,transcript_ids,exons,norm_cst,stranded)
         for trans in transcripts:
@@ -627,7 +593,7 @@ def process_chunk(ckexons, sam, chrom, options):
         if method == 0:
             exons2 = list(pieces)   # !
         elif method == 1:
-            exon_ids = [e.name for e in exons]
+            exon_ids = set([e.name for e in exons])
             exons2 = estimate_expression_NNLS(Exon,pieces,exon_ids,exons,norm_cst,stranded)
     # Introns - 3
     if 3 in types and len(intron_pieces) > 0:
@@ -635,7 +601,7 @@ def process_chunk(ckexons, sam, chrom, options):
         if method == 0:
             introns2 = list(intron_pieces)   # !
         elif method == 1:
-            intron_ids = [e.name for e in introns]
+            intron_ids = set(['|'.join(sorted(e.name.split('|'))) for e in introns])
             introns2 = estimate_expression_NNLS(Exon,intron_pieces,intron_ids,introns,norm_cst,stranded)
 
     print_output(output, genes,transcripts,exons2,introns2, threshold,stranded)

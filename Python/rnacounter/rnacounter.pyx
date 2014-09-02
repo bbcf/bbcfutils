@@ -103,10 +103,11 @@ def parse_bed(str line,str gtf_ftype):
 
 
 def join(tables):
+    """Put 1-sample tables together into a single big table with one column per sample."""
     tabs = [open(t) for t in tables]
-    out = open("merged.txt","wb")
+    out = open("joined_counts_rnacounter.txt","wb")
     lines = [t.readline().split('\t') for t in tabs]
-    if len(lines) == 0:
+    if any(len(L) == 0 for L in lines):
         sys.stderr.write("One of the tables is empty. Abort.")
         return 1
     try: float(lines[0][1]) # header?
@@ -115,17 +116,23 @@ def join(tables):
                  + ["RPKM.%d"%c for c in range(len(tables))] + lines[0][3:]
         out.write('\t'.join(header))
         lines = [t.readline().split('\t') for t in tabs]
-    while len(lines[0][0]) > 0:
-        gid = lines[0][0]
-        annot = lines[0][3:]
-        cnts = [x[1] for x in lines]
-        rpkm = [x[2] for x in lines]
-        newline = [gid] + cnts + rpkm + annot
-        out.write('\t'.join(newline))
-        lines = [t.readline().split('\t') for t in tabs]
+    while 1:
+        if all(len(L) > 3 for L in lines):
+            gid = lines[0][0]
+            annot = lines[0][3:]
+            cnts = [x[1] for x in lines]
+            rpkm = [x[2] for x in lines]
+            newline = [gid] + cnts + rpkm + annot
+            out.write('\t'.join(newline))
+            lines = [t.readline().split('\t') for t in tabs]
+        elif all(len(L[0]) == 0 for L in lines):  # success
+            break
+        else:  # unequal nb of lines
+            sys.stderr.write("Unequal number of lines. Abort.")
+            return 1
     out.close()
     [t.close() for t in tabs]
-    sys.stderr.write("Merged files into \"merged_counts_rnacounter.txt\" .\n")
+    sys.stderr.write("Merged files into \"joined_counts_rnacounter.txt\" .\n")
 
 
 #########################  Global classes  ##########################
@@ -628,15 +635,7 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
     ckreads = sam.fetch(chrom, exons[0].start, lastend)
     count_reads(pieces,ckreads,options['nh'],stranded)
 
-    #--- Calculate RPK
-    for p in pieces:
-        p.rpk = toRPK(p.count,p.length,norm_cst)
-    if stranded:
-        for p in pieces:
-            p.rpk_anti = toRPK(p.count_anti,p.length,norm_cst)
-
     #--- Same for introns, if selected
-    # We remove intronic regions that also span exonic regions
     intron_pieces = []
     if 3 in types:
         introns = []
@@ -644,8 +643,6 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
             introns.extend(complement(tid,tpieces))  # tpieces is already sorted
         if len(introns) > 0:
             intron_exon_pieces = cobble(introns+exons)
-            for ip in intron_pieces:   # transcripts is a set, so intron names join randomly...
-                ip.name = '|'.join(sorted(ip.name.split('|')))
             intron_pieces = [ip for ip in intron_exon_pieces \
                              if ip.length > readlength \
                              and not any([n in exon_names for n in ip.name.split('|')])]
@@ -653,13 +650,19 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
                 lastend = max([intron.end for intron in introns])
                 ckreads = sam.fetch(chrom, intron_pieces[0].start, lastend)
                 count_reads(intron_pieces,ckreads,options['nh'],stranded)
-                for p in intron_pieces:
-                    p.rpk = toRPK(p.count,p.length,norm_cst)
-                if stranded:
-                    for p in intron_pieces:
-                        p.rpk_anti = toRPK(p.count_anti,p.length,norm_cst)
+        for ip in intron_pieces:
+            ip.name = '|'.join(sorted(ip.name.split('|')))
+
+    #--- Calculate RPK
+    for p in itertools.chain(pieces,intron_pieces):
+        p.rpk = toRPK(p.count,p.length,norm_cst)
+    if stranded:
+        for p in itertools.chain(pieces,intron_pieces):
+            p.rpk_anti = toRPK(p.count_anti,p.length,norm_cst)
 
     #--- Infer gene/transcript counts
+    for p in pieces:
+        p.name = '|'.join(sorted(set(p.name.split('|'))))  # remove duplicates in names
     genes=[]; transcripts=[]; exons2=[]; introns2=[]
     # Genes - 0
     if 0 in types:
@@ -693,7 +696,7 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
         if method == 0:
             introns2 = list(intron_pieces)   # !
         elif method == 1:
-            intron_ids = set([e.name for e in introns])
+            intron_ids = set(['|'.join(sorted(e.name.split('|'))) for e in introns])
             introns2 = estimate_expression_NNLS(Exon,intron_pieces,intron_ids,introns,norm_cst,stranded,weighted)
 
     print_output(output, genes,transcripts,exons2,introns2, threshold,stranded)
