@@ -339,7 +339,7 @@ cdef list partition_chrexons(list chrexons):
         partition = [p for i,p in enumerate(partition) if i not in toremove]
     return partition
 
-def complement(str tid,list tpieces):
+cdef complement(str tid,list tpieces):
     """From a transcript ID and its exon pieces, complement the
     intervals to get the introns of the transcript."""
     cdef Exon a,b,intron
