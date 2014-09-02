@@ -289,7 +289,7 @@ def partition_chrexons(chrexons):
         pinvgenes.setdefault(g,[]).append(npart)
     # Put together intervals containing parts of the same gene mixed with others - if any
     mparts = [[p[0],p[len(p)-1]] for p in pinvgenes.itervalues() if len(p)>1]
-    if len(mparts) > 0:
+    if mparts:
         mparts = fuse(sorted(mparts))
         toremove = set()
         for (a,b) in mparts:
@@ -546,12 +546,12 @@ def process_chunk(ckexons, sam, chrom, options):
         introns = []
         for tid,tpieces in t2p.iteritems():
             introns.extend(complement(tid,tpieces))  # tpieces is already sorted
-        if len(introns) > 0:
+        if introns:
             intron_exon_pieces = cobble(introns+exons)
             intron_pieces = [ip for ip in intron_exon_pieces \
                              if ip.length > readlength \
                              and not any([n in exon_names for n in ip.name.split('|')])]
-            if len(intron_pieces) > 0:
+            if intron_pieces:
                 lastend = max([intron.end for intron in introns])
                 ckreads = sam.fetch(chrom, intron_pieces[0].start, lastend)
                 count_reads(intron_pieces,ckreads,options['nh'],stranded)
@@ -596,7 +596,7 @@ def process_chunk(ckexons, sam, chrom, options):
             exon_ids = set([e.name for e in exons])
             exons2 = estimate_expression_NNLS(Exon,pieces,exon_ids,exons,norm_cst,stranded)
     # Introns - 3
-    if 3 in types and len(intron_pieces) > 0:
+    if 3 in types and intron_pieces:
         method = methods.get(3,0)
         if method == 0:
             introns2 = list(intron_pieces)   # !
@@ -658,7 +658,7 @@ def rnacounter_main(bamname, annotname, options):
         parse = parse_bed
 
     # Cross 'chromosomes' option with available BAM headers
-    if len(options['chromosomes']) > 0:
+    if options['chromosomes']:
         chromosomes = [c for c in sam.references if c in options['chromosomes']]
     else:
         chromosomes = sam.references
@@ -694,7 +694,7 @@ def rnacounter_main(bamname, annotname, options):
                 exon = parse(row, gtf_ftype)  # None if not an exon, False if EOF
             if not row: break
             chrom = exon.chrom
-        if len(chrexons) > 0:
+        if chrexons:
             chrexons.sort(key=lambda x: (x.start,x.end))
             partition = partition_chrexons(chrexons)
             # Process chunks
