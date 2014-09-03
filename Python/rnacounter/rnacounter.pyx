@@ -505,7 +505,7 @@ cdef list estimate_expression_NNLS(object feat_class,list pieces,set ids,list ex
     #--- Store result in *feat_class* objects
     feats = []
     frpk_anti = fcount_anti = 0.0
-    for i,f in enumerate(ids):
+    for i,f in enumerate(sorted(ids)):
         exs = sorted([e for e in exons if is_in(feat_class,e,f)], key=attrgetter('start','end'))
         flen = sum([p.length for p in pieces if is_in(feat_class,p,f)])
         frpk = T[i]
@@ -531,7 +531,7 @@ cdef list estimate_expression_raw(object feat_class,list pieces,set ids,list exo
     cdef list inner, feats
     feats = []
     frpk_anti = fcount_anti = 0.0
-    for i,f in enumerate(ids):
+    for i,f in enumerate(sorted(ids)):
         exs = sorted([e for e in exons if is_in(feat_class,e,f)], key=attrgetter('start','end'))
         inner = [p for p in pieces if (len(p.gene_id.split('|'))==1 and is_in(feat_class,p,f))]
         if len(inner)==0:

@@ -432,7 +432,7 @@ def estimate_expression_NNLS(feat_class, pieces, ids, exons, norm_cst, stranded,
     #--- Store result in *feat_class* objects
     feats = []
     frpk_anti = fcount_anti = 0.0
-    for i,f in enumerate(ids):
+    for i,f in enumerate(sorted(ids)):
         exs = sorted([e for e in exons if is_in(feat_class,e,f)], key=attrgetter('start','end'))
         flen = sum([p.length for p in pieces if is_in(feat_class,p,f)])
         frpk = T[i]
@@ -452,7 +452,7 @@ def estimate_expression_raw(feat_class, pieces, ids, exons, norm_cst, stranded):
     commonly does for genes from exon counts."""
     feats = []
     frpk_anti = fcount_anti = 0.0
-    for i,f in enumerate(ids):
+    for i,f in enumerate(sorted(ids)):
         exs = sorted([e for e in exons if is_in(feat_class,e,f)], key=attrgetter('start','end'))
         inner = [p for p in pieces if (len(p.gene_id.split('|'))==1 and is_in(feat_class,p,f))]
         if len(inner)==0:
