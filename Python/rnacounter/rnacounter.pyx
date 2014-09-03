@@ -639,7 +639,7 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
     intron_pieces = []
     if 3 in types:
         introns = []
-        for tid,tpieces in t2p.iteritems():
+        for tid,tpieces in sorted(t2p.items()):
             introns.extend(complement(tid,tpieces))  # tpieces is already sorted
         if introns:
             intron_exon_pieces = cobble(introns+exons)
