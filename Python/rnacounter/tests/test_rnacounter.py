@@ -11,7 +11,7 @@ from numpy.testing import assert_almost_equal
 __test__ = True
 
 
-from draft_nocython import *
+from rnacounter.draft_nocython import *
 import pysam
 
 path = os.path.abspath("../testfiles/")
@@ -37,7 +37,7 @@ class Test_Cobble(unittest.TestCase):
             for x in trans:
                 if self.sts[i] in trans[x]: t = x; break
             self.exons.append(Exon(chrom='c',start=self.sts[i]*10,end=self.ens[i]*10,gene_id='G',gene_name='g',
-                                   name='E%d'%i,strand=-1,transcripts=[t]))
+                                   name='E%d'%i,strand=-1,transcripts=set([t])))
     def test_add_exons(self):
         newexon = self.exons[1] & self.exons[2]
         self.assertListEqual(sorted(list(newexon.transcripts)), ['T1','T2'])
@@ -50,9 +50,6 @@ class Test_Cobble(unittest.TestCase):
         newexon = intersect_exons_list([self.exons[1]]+self.exons[1:4])
         self.assertListEqual(sorted(list(newexon.transcripts)), ['T1','T2','T3'])
         self.assertListEqual(sorted(newexon.name.split('|')), ['E1','E2','E3'])
-        # multiple=True
-        newexon = intersect_exons_list([self.exons[1]]+self.exons[1:4], multiple=True)
-        self.assertEqual(newexon.name, 'E1|E1|E2|E3')
     def test_cobble(self):
         cobbled = cobble(self.exons)
         csts = [0, 2,3,4,5,6,7,8,9, 10,11,12,13,14, 16,17,18,20,21,22,23,24, 26,27,28,29,30]

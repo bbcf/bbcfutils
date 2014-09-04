@@ -432,7 +432,7 @@ def estimate_expression_NNLS(feat_class, pieces, ids, exons, norm_cst, stranded,
     #--- Store result in *feat_class* objects
     feats = []
     frpk_anti = fcount_anti = 0.0
-    for i,f in enumerate(sorted(ids)):
+    for i,f in enumerate(ids):
         exs = sorted([e for e in exons if is_in(feat_class,e,f)], key=attrgetter('start','end'))
         flen = sum([p.length for p in pieces if is_in(feat_class,p,f)])
         frpk = T[i]
@@ -452,7 +452,7 @@ def estimate_expression_raw(feat_class, pieces, ids, exons, norm_cst, stranded):
     commonly does for genes from exon counts."""
     feats = []
     frpk_anti = fcount_anti = 0.0
-    for i,f in enumerate(sorted(ids)):
+    for i,f in enumerate(ids):
         exs = sorted([e for e in exons if is_in(feat_class,e,f)], key=attrgetter('start','end'))
         inner = [p for p in pieces if (len(p.gene_id.split('|'))==1 and is_in(feat_class,p,f))]
         if len(inner)==0:
@@ -512,28 +512,26 @@ def process_chunk(ckexons, sam, chrom, options):
         for gr in group:
             exon0.transcripts.add(gr.transcripts.pop())
         exons.append(exon0)
-    gene_ids = set(e.gene_id for e in exons)
-    exon_names = set(e.name for e in exons)
+    gene_ids = list(set(e.gene_id for e in exons))
+    exon_names = list(set(e.name for e in exons))
 
     #--- Cobble all these intervals
     pieces = cobble(exons)  # sorted
 
     #--- Build transcript to pieces mapping
     t2p = {}
-    transcript_ids = set()
     for p in pieces:
         for t in p.transcripts:
-            transcript_ids.add(t)
             t2p.setdefault(t,[]).append(p)
 
     #--- Filter out too similar transcripts
     if 1 in types or 3 in types:
         toremove = filter_transcripts(t2p, readlength)
         for t in toremove:
-            transcript_ids.remove(t)
             t2p.pop(t)
         for p in pieces:
             p.transcripts = set(t for t in p.transcripts if t not in toremove)
+    transcript_ids = t2p.keys()
 
     #--- Count reads in each piece
     lastend = max(e.end for e in exons)
@@ -555,8 +553,8 @@ def process_chunk(ckexons, sam, chrom, options):
                 lastend = max([intron.end for intron in introns])
                 ckreads = sam.fetch(chrom, intron_pieces[0].start, lastend)
                 count_reads(intron_pieces,ckreads,options['nh'],stranded)
-        for ip in intron_pieces:   # transcripts is a set, so intron names join randomly...
-            ip.name = '|'.join(sorted(ip.name.split('|')))
+        for i,ip in enumerate(intron_pieces):   # transcripts is a set, so intron names join randomly...
+            ip.name = "%dI_%s" % (i+1,ip.gene_name)
 
     #--- Calculate RPK
     for p in itertools.chain(pieces,intron_pieces):
@@ -591,17 +589,17 @@ def process_chunk(ckexons, sam, chrom, options):
     if 2 in types:
         method = methods.get(2,0)
         if method == 0:
-            exons2 = list(pieces)   # !
+            exons2 = pieces[:]   # !
         elif method == 1:
-            exon_ids = set([e.name for e in exons])
+            exon_ids = [e.name for e in exons]
             exons2 = estimate_expression_NNLS(Exon,pieces,exon_ids,exons,norm_cst,stranded)
     # Introns - 3
     if 3 in types and intron_pieces:
         method = methods.get(3,0)
         if method == 0:
-            introns2 = list(intron_pieces)   # !
+            introns2 = intron_pieces[:]   # !
         elif method == 1:
-            intron_ids = set(['|'.join(sorted(e.name.split('|'))) for e in introns])
+            intron_ids = [e.name for e in introns]
             introns2 = estimate_expression_NNLS(Exon,intron_pieces,intron_ids,introns,norm_cst,stranded)
 
     print_output(output, genes,transcripts,exons2,introns2, threshold,stranded)
