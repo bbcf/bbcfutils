@@ -119,6 +119,7 @@ def join(tables):
     while 1:
         if all(len(L) > 3 for L in lines):
             gid = lines[0][0]
+            for L in lines: assert L[0]==gid, "Line identifiers are not the same."
             annot = lines[0][3:]
             cnts = [x[1] for x in lines]
             rpkm = [x[2] for x in lines]
@@ -148,11 +149,11 @@ cdef class Counter(object):
 cdef class GenomicObject(object):
     cdef public:
         tuple id
-        str gene_id,gene_name,chrom,name
+        str gene_id,gene_name,chrom,name,ftype
         int start,end,strand,length,multiplicity
         double score,count,count_anti,rpk,rpk_anti
     def __init__(self, tuple id=(0,), str gene_id='', str gene_name='',
-             str chrom='', int start=0, int end=0, str name='',
+             str chrom='', int start=0, int end=0, str name='', str ftype='',
              double score=0.0, int strand=0, int length=0, int multiplicity=1,
              double count=0.0, double count_anti=0.0, double rpk=0.0, double rpk_anti=0.0):
         self.id = id
@@ -162,6 +163,7 @@ cdef class GenomicObject(object):
         self.start = start
         self.end = end
         self.name = name
+        self.ftype = self.__class__.__name__
         self.score = score
         self.strand = strand  # 1,-1,0
         self.length = length
@@ -215,10 +217,6 @@ cdef class Exon(GenomicObject):
                 self.count_anti += x
         else:
             self.count += x
-
-cdef class Intron(Exon):
-    def __init__(self, transcripts=set(), **args):
-        Exon.__init__(self, **args)
 
 cdef class Transcript(GenomicObject):
     cdef public object exons   # unused
@@ -339,7 +337,7 @@ cdef list partition_chrexons(list chrexons):
         partition = [p for i,p in enumerate(partition) if i not in toremove]
     return partition
 
-cdef complement(str tid,list tpieces):
+cdef list complement(str tid,list tpieces):
     """From a transcript ID and its exon pieces, complement the
     intervals to get the introns of the transcript."""
     cdef Exon a,b,intron
@@ -356,7 +354,7 @@ cdef complement(str tid,list tpieces):
         k += 1
         intron_id = (-1,)+a.id
         intron_name = "%s-i%d"%(tid,k)
-        intron = Intron(id=intron_id, gene_id=a.gene_id, gene_name=a.gene_name, chrom=a.chrom,
+        intron = Exon(id=intron_id, gene_id=a.gene_id, gene_name=a.gene_name, chrom=a.chrom,
             start=a.end, end=b.start, name=intron_name, strand=a.strand, transcripts=set([tid]))
         introns.append(intron)
     return introns
@@ -554,6 +552,10 @@ cdef list estimate_expression_raw(object feat_class,list pieces,list ids,list ex
 ###########################  Main script  ###########################
 
 
+cdef inline str simplify(str name):
+    """Removes duplicates in names of the form 'name1|name2', and sorts elements."""
+    return '|'.join(sorted(set(name.split('|'))))
+
 cdef set filter_transcripts(dict t2p,int readlength):
     """*t2p* is a map {transcriptID: [exon pieces]}.
     Find transcripts that differ from others by less than a few exons of less than
@@ -608,8 +610,8 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
         for gr in group:
             exon0.transcripts.add(gr.transcripts.pop())
         exons.append(exon0)
-    gene_ids = list(set(e.gene_id for e in exons))
-    exon_names = list(set(e.name for e in exons))
+    gene_ids = sorted(set(e.gene_id for e in exons))
+    exon_names = sorted(set(e.name for e in exons))
 
     #--- Cobble all these intervals
     pieces = cobble(exons)  # sorted
@@ -627,7 +629,7 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
             t2p.pop(t)
         for p in pieces:
             p.transcripts = set(t for t in p.transcripts if t not in toremove)
-    transcript_ids = t2p.keys()
+    transcript_ids = sorted(t2p.keys())
 
     #--- Count reads in each piece
     lastend = max(e.end for e in exons)
@@ -642,15 +644,16 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
             introns.extend(complement(tid,tpieces))  # tpieces is already sorted
         if introns:
             intron_exon_pieces = cobble(introns+exons)
-            intron_pieces = [ip for ip in intron_exon_pieces \
-                             if ip.length > readlength \
-                             and not any([n in exon_names for n in ip.name.split('|')])]
+            intron_pieces = [p for p in intron_exon_pieces \
+                             if p.length > readlength \
+                             and not any([n in exon_names for n in p.name.split('|')])]
             if intron_pieces:
                 lastend = max([intron.end for intron in introns])
                 ckreads = sam.fetch(chrom, intron_pieces[0].start, lastend)
                 count_reads(intron_pieces,ckreads,options['nh'],stranded)
-        for i,ip in enumerate(intron_pieces):
-            ip.name = "%dI_%s" % (i+1,ip.gene_name)
+        for i,p in enumerate(intron_pieces):
+            p.name = "%dI_%s" % (i+1, simplify(p.gene_name))
+            p.ftype = "Intron"
 
     #--- Calculate RPK
     for p in itertools.chain(pieces,intron_pieces):
@@ -661,7 +664,7 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
 
     #--- Infer gene/transcript counts
     for p in pieces:
-        p.name = '|'.join(sorted(set(p.name.split('|'))))  # remove duplicates in names
+        p.name = simplify(p.name)  # remove duplicates in names
     genes=[]; transcripts=[]; exons2=[]; introns2=[]
     # Genes - 0
     if 0 in types:
@@ -687,7 +690,7 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
         if method == 0:
             exons2 = pieces[:]  # !
         elif method == 1:
-            exon_ids = [e.name for e in exons]
+            exon_ids = [p.name for p in exons]
             exons2 = estimate_expression_NNLS(Exon,pieces,exon_ids,exons,norm_cst,stranded,weighted)
     # Introns - 3
     if 3 in types and intron_pieces:
@@ -695,7 +698,7 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
         if method == 0:
             introns2 = intron_pieces[:]   # !
         elif method == 1:
-            intron_ids = [e.name for e in introns]
+            intron_ids = [p.name for p in introns]
             introns2 = estimate_expression_NNLS(Exon,intron_pieces,intron_ids,introns,norm_cst,stranded,weighted)
 
     print_output(output, genes,transcripts,exons2,introns2, threshold,stranded)
@@ -709,15 +712,15 @@ def print_output(output, genes,transcripts,exons,introns, threshold,stranded):
     if stranded:
         for f in itertools.chain(igenes,itranscripts,iexons,iintrons):
             towrite = [str(x) for x in [f.name,f.count,f.rpk,f.chrom,f.start,f.end,
-                                        f.strand,f.gene_name,f.__class__.__name__.lower(),'sense']]
+                                        f.strand,f.gene_name,f.ftype,'sense']]
             output.write('\t'.join(towrite)+'\n')
             towrite = [str(x) for x in [f.name,f.count_anti,f.rpk_anti,f.chrom,f.start,f.end,
-                                        f.strand,f.gene_name,f.__class__.__name__.lower(),'antisense']]
+                                        f.strand,f.gene_name,f.ftype,'antisense']]
             output.write('\t'.join(towrite)+'\n')
     else:
         for f in itertools.chain(igenes,itranscripts,iexons,iintrons):
             towrite = [str(x) for x in [f.name,f.count,f.rpk,f.chrom,f.start,f.end,
-                                        f.strand,f.gene_name,f.__class__.__name__.lower()]]
+                                        f.strand,f.gene_name,f.ftype]]
             output.write('\t'.join(towrite)+'\n')
 
 

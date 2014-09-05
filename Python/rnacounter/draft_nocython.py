@@ -109,6 +109,7 @@ def join(tables):
     while 1:
         if all(len(L) > 3 for L in lines):
             gid = lines[0][0]
+            for L in lines: assert L[0]==gid, "Line identifiers are not the same."
             annot = lines[0][3:]
             cnts = [x[1] for x in lines]
             rpkm = [x[2] for x in lines]
@@ -136,7 +137,7 @@ class Counter(object):
 
 class GenomicObject(object):
     def __init__(self, id=(0,),gene_id='',gene_name='',chrom='',start=0,end=0,
-                 name='',score=0.0,strand=0,length=0,multiplicity=1,
+                 name='',score=0.0,strand=0,length=0,multiplicity=1,ftype='',
                  count=0,count_anti=0,rpk=0.0,rpk_anti=0.0):
         self.id = id
         self.gene_id = gene_id
@@ -145,6 +146,7 @@ class GenomicObject(object):
         self.start = start
         self.end = end
         self.name = name
+        self.ftype = self.__class__.__name__
         self.score = score
         self.strand = strand  # 1,-1,0
         self.length = length
@@ -475,6 +477,10 @@ def estimate_expression_raw(feat_class, pieces, ids, exons, norm_cst, stranded):
 ###########################  Main script  ###########################
 
 
+def simplify(name):
+    """Removes duplicates in names of the form 'name1|name2', and sorts elements."""
+    return '|'.join(sorted(set(name.split('|'))))
+
 def filter_transcripts(t2p, readlength):
     """*t2p* is a map {transcriptID: [exon pieces]}.
     Find transcripts that differ from others by less than a few exons of less than
@@ -512,8 +518,8 @@ def process_chunk(ckexons, sam, chrom, options):
         for gr in group:
             exon0.transcripts.add(gr.transcripts.pop())
         exons.append(exon0)
-    gene_ids = list(set(e.gene_id for e in exons))
-    exon_names = list(set(e.name for e in exons))
+    gene_ids = sorted(set(e.gene_id for e in exons)) # sort to have the same order in all outputs from same gtf
+    exon_names = sorted(set(e.name for e in exons))
 
     #--- Cobble all these intervals
     pieces = cobble(exons)  # sorted
@@ -531,7 +537,7 @@ def process_chunk(ckexons, sam, chrom, options):
             t2p.pop(t)
         for p in pieces:
             p.transcripts = set(t for t in p.transcripts if t not in toremove)
-    transcript_ids = t2p.keys()
+    transcript_ids = sorted(t2p.keys())  # sort to have the same order in all outputs from same gtf
 
     #--- Count reads in each piece
     lastend = max(e.end for e in exons)
@@ -553,8 +559,9 @@ def process_chunk(ckexons, sam, chrom, options):
                 lastend = max([intron.end for intron in introns])
                 ckreads = sam.fetch(chrom, intron_pieces[0].start, lastend)
                 count_reads(intron_pieces,ckreads,options['nh'],stranded)
-        for i,ip in enumerate(intron_pieces):   # transcripts is a set, so intron names join randomly...
-            ip.name = "%dI_%s" % (i+1,ip.gene_name)
+        for i,ip in enumerate(intron_pieces):
+            ip.name = "%dI_%s" % (i+1, simplify(ip.gene_name))
+            ip.ftype = "Exon"
 
     #--- Calculate RPK
     for p in itertools.chain(pieces,intron_pieces):
@@ -565,7 +572,7 @@ def process_chunk(ckexons, sam, chrom, options):
 
     #--- Infer gene/transcript counts
     for p in pieces:
-        p.name = '|'.join(sorted(set(p.name.split('|'))))  # remove duplicates in names
+        p.name = simplify(p.name)
     genes=[]; transcripts=[]; exons2=[]; introns2=[]
     # Genes - 0
     if 0 in types:
@@ -613,15 +620,15 @@ def print_output(output, genes,transcripts,exons,introns, threshold,stranded):
     if stranded:
         for f in itertools.chain(igenes,itranscripts,iexons,iintrons):
             towrite = [str(x) for x in [f.name,f.count,f.rpk,f.chrom,f.start,f.end,
-                                        f.strand,f.gene_name,f.__class__.__name__.lower(),'sense']]
+                                        f.strand,f.gene_name,f.ftype,'sense']]
             output.write('\t'.join(towrite)+'\n')
             towrite = [str(x) for x in [f.name,f.count_anti,f.rpk_anti,f.chrom,f.start,f.end,
-                                        f.strand,f.gene_name,f.__class__.__name__.lower(),'antisense']]
+                                        f.strand,f.gene_name,f.ftype,'antisense']]
             output.write('\t'.join(towrite)+'\n')
     else:
         for f in itertools.chain(igenes,itranscripts,iexons,iintrons):
             towrite = [str(x) for x in [f.name,f.count,f.rpk,f.chrom,f.start,f.end,
-                                        f.strand,f.gene_name,f.__class__.__name__.lower()]]
+                                        f.strand,f.gene_name,f.ftype]]
             output.write('\t'.join(towrite)+'\n')
 
 
