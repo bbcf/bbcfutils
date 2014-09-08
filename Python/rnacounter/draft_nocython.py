@@ -700,7 +700,7 @@ def rnacounter_main(bamname, annotname, options):
             if not row: break
             chrom = exon.chrom
         if chrexons:
-            chrexons.sort(key=lambda x: (x.start,x.end))
+            chrexons.sort(key=lambda x: (x.start,x.end,x.name))
             partition = partition_chrexons(chrexons)
             # Process chunks
             for (a,b) in partition:
