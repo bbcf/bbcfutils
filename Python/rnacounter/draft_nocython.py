@@ -29,7 +29,7 @@ Options:
 
 import pysam
 import os, sys, itertools, copy, subprocess
-from operator import attrgetter
+from operator import attrgetter, itemgetter
 from numpy import asarray, zeros, diag, sqrt, multiply, dot
 from scipy.optimize import nnls
 
@@ -76,10 +76,12 @@ def parse_bed(line, gtf_ftype):
     """Parse one BED line. Return False if *line* is empty."""
     if (not line) or (line[0]=='#') or (line[:5]=='track'): return False
     row = line.strip().split('\t')
+    lrow = len(row)
+    assert lrow >=4, "Input BED format requires at least 4 fields: %s" % line
     chrom = row[0]; start = int(row[1]); end = int(row[2]); name = row[3]
     strand = 0
-    if len(row) > 4:
-        if len(row) > 5: strand = _strand(row[5])
+    if lrow > 4:
+        if lrow > 5: strand = _strand(row[5])
         else: strand = 0
         score = _score(row[4])
     else: score = 0.0
@@ -487,7 +489,7 @@ def filter_transcripts(t2p, readlength):
     a read length. Return the set of IDs of redundant transcripts."""
     seen = set()  # transcript structures, as tuples of exon ids
     toremove = set() # too close transcripts
-    for t,tpieces in t2p.iteritems():
+    for t,tpieces in sorted(t2p.iteritems(), key=itemgetter(0)):
         filtered_ids = tuple([tp.id for tp in tpieces if tp.length < readlength])
         if filtered_ids in seen:
             toremove.add(t)
