@@ -102,10 +102,12 @@ def read(*args,**kw):
         else:
             selection = str(kw['selection']).split(",")
     fields = None
+    outformat = None
     if kw['fields']:
         fields = str(kw['fields']).split(",")
     if kw['output'] is None:
         output = sys.stdout
+        outformat = "txt"
     else:
         output = open(kw['output'],'w')
     chrmeta = _get_chrmeta(**kw)
@@ -126,7 +128,7 @@ def read(*args,**kw):
 # *****************************************
 """ %(os.path.basename(infile), intrack.format, fileinfo, chromlist, fields))
             continue
-        with track.track(output,format=intrack.format,fields=fields) as _tout:
+        with track.track(output,format=outformat,fields=fields) as _tout:
             _tout.write(intrack.read(selection=selection,fields=fields))
         intrack.close()
     try: output.close()
