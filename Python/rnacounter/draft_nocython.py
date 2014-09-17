@@ -733,6 +733,8 @@ def parse_args(args):
 
     assert args['--format'].lower() in ['gtf','bed'], \
         "FORMAT must be one of 'gtf' or 'bed'."
+    assert args['--format'].lower() != 'bed' or args['--type'] == 'genes', \
+        "BED input is not compatible with the '--type' option."
 
     # Type: one can actually give both as "-t genes,transcripts" but they
     # will be mixed in the output stream. Split the output using the last field ("Type").

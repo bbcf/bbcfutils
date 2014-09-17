@@ -90,6 +90,9 @@ Options:
     One can also give an annotation file in BED format, in which case each line
     is considered as an independant, disjoint interval with no splicing structure.
     Default is "gtf", can be changed to "bed".
+    If the input format is "bed", the program cannot know which type of intervals
+    is represented, thus will always report them as 'genes' in the output.
+    Consistently, it cannot be used in conjunction with the :option:`--type` option.
 
 * :option:`-t`, :option:`--type`::
 
