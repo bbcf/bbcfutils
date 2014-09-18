@@ -126,8 +126,14 @@ Miscellaneous notes:
 --------------------
 
 * Overlapping regions:
-  In "raw" counting mode, regions spanned by two or more genes, together with the
-  alignements inside these regions, are ignored - as in HTSeq's "union" mode.
+  In "raw" counting mode, regions spanned by exon from two or more genes,
+  together with the alignements inside these regions, are ignored (ambiguous).
+
+* Multiple alignments:
+  Rather than an option/default to remove multiply mapping reads, this filtering
+  - if desired - should be done at the mapping step choosing the right parameters,
+  or the BAM file can be filtered afterwards. On the contrary if you want to keep
+  multiple mapping, you can use the `--nh` option.
 
 * Exons and introns:
   Because annotated exons often overlap a lot, in "raw" mode, "exon" counts are actually
