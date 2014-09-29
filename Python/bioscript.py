@@ -48,6 +48,7 @@ def main():
     plugin = getattr(sys.modules['bsPlugins'],name)
     usage, opts, desc, funcname, multis = parse_plugin(plugin,name,sub)
     parser = optparse.OptionParser(usage=usage, description=desc)
+    parser.add_option("--outprefix",help="prefix for output file names",default="")
     for opt in opts:
         if len(opt) == 4:
             parser.add_option(opt[0],opt[1],help=opt[2],**opt[3])
@@ -58,10 +59,11 @@ def main():
         return 0
     (opt, args) = parser.parse_args()
     pl_call = getattr(sys.modules["bsPlugins."+name],funcname)()
+    setattr(sys.modules["bsPlugins."+name],"outprefix",opt.outprefix)
     for k, v in multis.iteritems():
         if not v in opt.__dict__: opt.__dict__[v] = {}
         vv = None
-        if k in opt.__dict__: vv = opt.__dict__.pop(k)        
+        if k in opt.__dict__: vv = opt.__dict__.pop(k)
         opt.__dict__[v][k] = vv.split(",") if vv else []
     try:
         pl_call(**opt.__dict__)
