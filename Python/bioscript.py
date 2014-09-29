@@ -58,15 +58,15 @@ def main():
         parser.print_help()
         return 0
     (opt, args) = parser.parse_args()
-    pl_call = getattr(sys.modules["bsPlugins."+name],funcname)()
-    setattr(sys.modules["bsPlugins."+name],"outprefix",opt.outprefix)
+    pl_call = getattr(sys.modules["bsPlugins."+name],funcname)
+    pl_call.outprefix = opt.outprefix
     for k, v in multis.iteritems():
         if not v in opt.__dict__: opt.__dict__[v] = {}
         vv = None
         if k in opt.__dict__: vv = opt.__dict__.pop(k)
         opt.__dict__[v][k] = vv.split(",") if vv else []
     try:
-        pl_call(**opt.__dict__)
+        pl_call()(**opt.__dict__)
     except Exception, err:
         print >>sys.stderr, '\n',err,'\n\n'
         parser.print_help()
