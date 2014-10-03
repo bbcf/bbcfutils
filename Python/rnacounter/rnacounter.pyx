@@ -85,7 +85,7 @@ def parse_bed(str line,str gtf_ftype):
     cdef str name
     cdef double score
     if (not line) or (line[0]=='#') or (line[:5]=='track'): return False
-    row = line.strip().split('\t')
+    row = line.strip().split()
     lrow = len(row)
     assert lrow >=4, "Input BED format requires at least 4 fields: %s" % line
     chrom = row[0]; start = int(row[1]); end = int(row[2]); name = row[3]
