@@ -483,14 +483,14 @@ def simplify(name):
     """Removes duplicates in names of the form 'name1|name2', and sorts elements."""
     return '|'.join(sorted(set(name.split('|'))))
 
-def filter_transcripts(t2p, readlength):
-    """*t2p* is a map {transcriptID: [exon pieces]}.
-    Find transcripts that differ from others by less than a few exons of less than
-    a read length. Return the set of IDs of redundant transcripts."""
+def filter_transcripts(t2e, readlength):
+    """*t2e* is a map {transcriptID: [exons]}.
+    Find transcripts that differ from others by exons of less than
+    one read length. Return the set of IDs of redundant transcripts."""
     seen = set()  # transcript structures, as tuples of exon ids
     toremove = set() # too close transcripts
-    for t,tpieces in sorted(t2p.iteritems(), key=itemgetter(0)):
-        filtered_ids = tuple([tp.id for tp in tpieces if tp.length < readlength])
+    for t,texons in sorted(t2e.iteritems(), key=itemgetter(0)):
+        filtered_ids = tuple([te.id for te in texons if te.length < readlength])
         if filtered_ids in seen:
             toremove.add(t)
         else:
@@ -526,20 +526,18 @@ def process_chunk(ckexons, sam, chrom, options):
     #--- Cobble all these intervals
     pieces = cobble(exons)  # sorted
 
-    #--- Build transcript to pieces mapping
-    t2p = {}
-    for p in pieces:
-        for t in p.transcripts:
-            t2p.setdefault(t,[]).append(p)
-
     #--- Filter out too similar transcripts
+    t2e = {}
+    for e in exons:
+        for t in e.transcripts:
+            t2e.setdefault(t,[]).append(e)
     if 1 in types or 3 in types:
-        toremove = filter_transcripts(t2p, readlength)
+        toremove = filter_transcripts(t2e, readlength)
         for t in toremove:
-            t2p.pop(t)
+            t2e.pop(t)
         for p in pieces:
             p.transcripts = set(t for t in p.transcripts if t not in toremove)
-    transcript_ids = sorted(t2p.keys())  # sort to have the same order in all outputs from same gtf
+    transcript_ids = sorted(t2e.keys())  # sort to have the same order in all outputs from same gtf
 
     #--- Count reads in each piece
     lastend = max(e.end for e in exons)
@@ -550,6 +548,10 @@ def process_chunk(ckexons, sam, chrom, options):
     intron_pieces = []
     if 3 in types:
         introns = []
+        t2p = {}
+        for p in pieces:
+            for t in p.transcripts:
+                t2p.setdefault(t,[]).append(p)
         for tid,tpieces in sorted(t2p.items()):
             introns.extend(complement(tid,tpieces))  # tpieces is already sorted
         if introns:

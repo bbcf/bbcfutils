@@ -558,10 +558,10 @@ cdef inline str simplify(str name):
     """Removes duplicates in names of the form 'name1|name2', and sorts elements."""
     return '|'.join(sorted(set(name.split('|'))))
 
-cdef set filter_transcripts(dict t2p,int readlength):
-    """*t2p* is a map {transcriptID: [exon pieces]}.
-    Find transcripts that differ from others by less than a few exons of less than
-    a read length. Return the set of IDs of redundant transcripts."""
+cdef set filter_transcripts(dict t2e,int readlength):
+    """*t2e* is a map {transcriptID: [exons]}.
+    Find transcripts that differ from others by exons of less than
+    one read length. Return the set of IDs of redundant transcripts."""
     cdef set seen, toremove
     cdef str t
     cdef list tpieces
@@ -569,8 +569,8 @@ cdef set filter_transcripts(dict t2p,int readlength):
     cdef tuple filtered_ids
     seen = set()  # transcript structures, as tuples of exon ids
     toremove = set() # too close transcripts
-    for t,tpieces in sorted(t2p.iteritems(), key=itemgetter(0)):
-        filtered_ids = tuple([tp.id for tp in tpieces if tp.length < readlength])
+    for t,texons in sorted(t2e.iteritems(), key=itemgetter(0)):
+        filtered_ids = tuple([te.id for te in texons if te.length < readlength])
         if filtered_ids in seen:
             toremove.add(t)
         else:
@@ -582,13 +582,13 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
     """Distribute counts across transcripts and genes of a chunk *ckexons*
     of non-overlapping exons."""
     cdef int method, lastend, fraglength, readlength, i
-    cdef Exon exon0, gr, p
+    cdef Exon exon0, gr, p, e
     cdef Gene gene
     cdef Transcript trans
     cdef list exons, exons2, introns, introns2, genes, transcripts
     cdef list exon_names, transcript_ids, gene_ids
     cdef list pieces, tpieces, types
-    cdef dict t2p, methods
+    cdef dict t2p, t2e, methods
     cdef set toremove
     cdef str t, tid
     cdef bint stranded, weighted
@@ -618,20 +618,18 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
     #--- Cobble all these intervals
     pieces = cobble(exons)  # sorted
 
-    #--- Build transcript to pieces mapping
-    t2p = {}
-    for p in pieces:
-        for t in p.transcripts:
-            t2p.setdefault(t,[]).append(p)
-
     #--- Filter out too similar transcripts
+    t2e = {}
+    for e in exons:
+        for t in e.transcripts:
+            t2e.setdefault(t,[]).append(e)
     if 1 in types or 3 in types:
-        toremove = filter_transcripts(t2p, readlength)
+        toremove = filter_transcripts(t2e, readlength)
         for t in toremove:
-            t2p.pop(t)
+            t2e.pop(t)
         for p in pieces:
             p.transcripts = set(t for t in p.transcripts if t not in toremove)
-    transcript_ids = sorted(t2p.keys())
+    transcript_ids = sorted(t2e.keys())  # sort to have the same order in all outputs from same gtf
 
     #--- Count reads in each piece
     lastend = max(e.end for e in exons)
@@ -642,20 +640,24 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
     intron_pieces = []
     if 3 in types:
         introns = []
+        t2p = {}
+        for p in pieces:
+            for t in p.transcripts:
+                t2p.setdefault(t,[]).append(p)
         for tid,tpieces in sorted(t2p.items()):
             introns.extend(complement(tid,tpieces))  # tpieces is already sorted
         if introns:
             intron_exon_pieces = cobble(introns+exons)
-            intron_pieces = [p for p in intron_exon_pieces \
-                             if p.length > readlength \
-                             and not any([n in exon_names for n in p.name.split('|')])]
+            intron_pieces = [ip for ip in intron_exon_pieces \
+                             if ip.length > readlength \
+                             and not any([n in exon_names for n in ip.name.split('|')])]
             if intron_pieces:
                 lastend = max([intron.end for intron in introns])
                 ckreads = sam.fetch(chrom, intron_pieces[0].start, lastend)
                 count_reads(intron_pieces,ckreads,options['nh'],stranded)
-        for i,p in enumerate(intron_pieces):
-            p.name = "%dI_%s" % (i+1, simplify(p.gene_name))
-            p.ftype = "Intron"
+        for i,ip in enumerate(intron_pieces):
+            ip.name = "%dI_%s" % (i+1, simplify(ip.gene_name))
+            ip.ftype = "Intron"
 
     #--- Calculate RPK
     for p in itertools.chain(pieces,intron_pieces):
