@@ -55,9 +55,10 @@ Options:
 * :option:`-f`, :option:`--fraglength`::
 
     Since in a transcript of length L there are only L-F+1 different positions where
-    one can cut a fragment of length F, one should correct for this bias before RPKM
-    calculation (then usually called FPKM). Typical fragment lengths are around 350;
-    default value is 1 (no correction).
+    a fragment of length F can be cut, one may want to correct for this bias before RPKM
+    calculation (then usually called FPKM). Typical fragment lengths are around 350nt;
+    default value is 1 (no correction). This is not to be confused with the read length.
+    This option can be applied only at the gene- or transcript level.
 
 * :option:`--nh`::
 
@@ -68,8 +69,8 @@ Options:
 * :option:`--noheader`::
 
     By default the program adds one line with column descriptors on top of the output file.
-    For easier piping the result in some other program, such as `cut`, one can choose to
-    not add the header by adding this option.
+    For easier piping the result to some other program, one can choose
+    not to add the header by adding this option.
 
 * :option:`--threshold`::
 
@@ -118,8 +119,10 @@ Options:
 * :option:`-m`, :option:`--method`::
 
     Feature counts are inferred from the counts on (slices of) exons
-    with the chosen `--method`: "raw" (default, HTSeq-like) or
+    with the chosen `--method`: "raw" (htseq-count-like) or
     "nnls" (non-negative least squares, see [<ref>]).
+    The default is "raw" to not disturb habits, but "nnls" is advised,
+    and should be mandatory at the transcripts level (see Example below).
 
 
 Miscellaneous notes:
@@ -128,6 +131,8 @@ Miscellaneous notes:
 * Overlapping regions:
   In "raw" counting mode, regions spanned by exon from two or more genes,
   together with the alignements inside these regions, are ignored (ambiguous).
+  The "nnls" mode tries to resolve the ambiguity in the same way
+  it does for multiple isoforms.
 
 * Multiple alignments:
   Rather than an option/default to remove multiply mapping reads, this filtering
@@ -144,8 +149,7 @@ Miscellaneous notes:
   Intronic regions also annotated as exons in some alternative transcripts are
   ignored whatever the chosen method is. Because they don't have official IDs,
   introns slices are given names following this pattern:
-  "T-i7" means that is is the 7th intron of transcript T,
-  "T1-i1|T2-i3|..." means it is part of several transcripts.
+  "<n>I-<gene_id>", if it is the n-th intron of that gene.
 
 * Non-integer counts:
   The fact that some reads cross exon boundaries as well as considering the NH flag
