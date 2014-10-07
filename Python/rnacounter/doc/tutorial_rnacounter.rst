@@ -100,9 +100,11 @@ Options:
 
 * :option:`--format`::
 
-    One can also give an annotation file in BED format, in which case each line
+    One can also give an annotation file in BED format with 4 fields
+    (chromosone, start, end, name), in which case each line
     is considered as an independant, disjoint interval with no splicing structure.
     Default is "gtf", can be changed to "bed".
+    The 4th column of the BED format (name) must contain *unique* IDs.
     If the input format is "bed", the program cannot know which type of intervals
     is represented, thus will always report them as 'genes' in the output.
     Consistently, it cannot be used in conjunction with the :option:`--type` option.
