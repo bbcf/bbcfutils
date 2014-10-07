@@ -79,8 +79,8 @@ Options:
     the read length constraint and lack of coverage on small regions, reducing
     the model's power.
     To address this, one can merge transcripts differing by exonic
-    regions of less than that many nucleotides. In the output, only one of the
-    similar set will be reported, but synonyms will be added in a supplementary column.
+    regions of less than that many nucleotides. In the output, only one
+    record will be reported, but synonyms will be added in a supplementary column.
     Defaults to read length. Set to 0 to remove transcripts filtering, especially
     with "local" alignments, or to a bigger number to reduce the transcripts variety.
 
