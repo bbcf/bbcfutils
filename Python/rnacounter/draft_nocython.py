@@ -141,8 +141,8 @@ class Counter(object):
 
 class GenomicObject(object):
     def __init__(self, id=(0,),gene_id='',gene_name='',chrom='',start=0,end=0,
-                 name='',score=0.0,strand=0,length=0,multiplicity=1,ftype='',
-                 count=0,count_anti=0,rpk=0.0,rpk_anti=0.0):
+                 name='',score=0.0,strand=0,length=0,ftype='',
+                 count=0,count_anti=0,rpk=0.0,rpk_anti=0.0,synonyms=''):
         self.id = id
         self.gene_id = gene_id
         self.gene_name = gene_name
@@ -154,11 +154,11 @@ class GenomicObject(object):
         self.score = score
         self.strand = strand  # 1,-1,0
         self.length = length
-        self.multiplicity = multiplicity
         self.count = count
         self.count_anti = count_anti
         self.rpk = rpk
         self.rpk_anti = rpk_anti
+        self.synonyms = synonyms
     def __and__(self,other):
         """The intersection of two GenomicObjects"""
         assert self.chrom==other.chrom, "Cannot add features from different chromosomes"
@@ -170,7 +170,6 @@ class GenomicObject(object):
             ##   name = '|'.join(set([self.name, other.name])),
             name = '|'.join([self.name, other.name]),
             strand = (self.strand + other.strand)/2,
-            multiplicity = self.multiplicity + other.multiplicity
         )
     def __repr__(self):
         return "__%s.%s:%d-%d__" % (self.name,self.gene_name,self.start,self.end)
@@ -497,13 +496,10 @@ def filter_transcripts(t2p, exon_cutoff):
         seen.setdefault(filtered_ids, []).append(t)
     for f,tlist in seen.iteritems():
         main = tlist[0]
-        if len(tlist) > 1:
-            newname = '|'.join(tlist)
-            t2p[newname] = t2p[main]
-            for t in tlist:
-                t2p.pop(t)
-                replace[t] = newname
-        else: replace[main] = main
+        replace[main] = main
+        for t in tlist[1:]:
+            t2p.pop(t)
+            replace[t] = main
     return replace
 
 
@@ -537,6 +533,7 @@ def process_chunk(ckexons, sam, chrom, options):
 
     #--- Filter out too similar transcripts
     t2p = {}
+    synonyms = {}
     for p in pieces:
         for t in p.transcripts:
             t2p.setdefault(t,[]).append(p)
@@ -544,6 +541,8 @@ def process_chunk(ckexons, sam, chrom, options):
         replace = filter_transcripts(t2p, exon_cutoff)
         for p in pieces + exons:
             p.transcripts = set(replace[t] for t in p.transcripts)
+        for t,main in replace.iteritems():
+            if t!=main: synonyms.setdefault(main, []).append(t)
     transcript_ids = sorted(t2p.keys())  # sort to have the same order in all outputs from same gtf
 
     #--- Count reads in each piece
@@ -594,13 +593,13 @@ def process_chunk(ckexons, sam, chrom, options):
     # Transcripts - 1
     if 1 in types:
         method = methods.get(1,0)
-
         if method == 1:
             transcripts = estimate_expression_NNLS(Transcript,pieces,transcript_ids,exons,norm_cst,stranded,weighted)
         elif method == 0:
             transcripts = estimate_expression_raw(Transcript,pieces,transcript_ids,exons,norm_cst,stranded)
         for trans in transcripts:
             trans.rpk = correct_fraglen_bias(trans.rpk, trans.length, fraglength)
+            trans.synonyms = ','.join(synonyms.get(trans.name, ['.']))
     # Exons - 2
     if 2 in types:
         method = methods.get(2,0)
@@ -629,15 +628,15 @@ def print_output(output, genes,transcripts,exons,introns, threshold,stranded):
     if stranded:
         for f in itertools.chain(igenes,itranscripts,iexons,iintrons):
             towrite = [str(x) for x in [f.name,f.count,f.rpk,f.chrom,f.start,f.end,
-                                        f.strand,f.gene_name,f.ftype,'sense']]
+                                        f.strand,f.gene_name,f.ftype,'sense',f.synonyms]]
             output.write('\t'.join(towrite)+'\n')
             towrite = [str(x) for x in [f.name,f.count_anti,f.rpk_anti,f.chrom,f.start,f.end,
-                                        f.strand,f.gene_name,f.ftype,'antisense']]
+                                        f.strand,f.gene_name,f.ftype,'antisense',f.synonyms]]
             output.write('\t'.join(towrite)+'\n')
     else:
         for f in itertools.chain(igenes,itranscripts,iexons,iintrons):
             towrite = [str(x) for x in [f.name,f.count,f.rpk,f.chrom,f.start,f.end,
-                                        f.strand,f.gene_name,f.ftype]]
+                                        f.strand,f.gene_name,f.ftype,'.',f.synonyms]]
             output.write('\t'.join(towrite)+'\n')
 
 
