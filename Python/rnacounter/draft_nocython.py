@@ -553,7 +553,8 @@ def process_chunk(ckexons, sam, chrom, options):
             for t in p.transcripts:
                 t2p.setdefault(t,[]).append(p)
         for tid,tpieces in sorted(t2p.items()):
-            introns.extend(complement(tid,tpieces))  # tpieces is already sorted
+            tpieces.sort(key=attrgetter('start','end'))
+            introns.extend(complement(tid,tpieces))
         if introns:
             intron_exon_pieces = cobble(introns+exons)
             intron_pieces = [ip for ip in intron_exon_pieces \
@@ -565,7 +566,7 @@ def process_chunk(ckexons, sam, chrom, options):
                 count_reads(intron_pieces,ckreads,options['nh'],stranded)
         for i,ip in enumerate(intron_pieces):
             ip.name = "%dI_%s" % (i+1, simplify(ip.gene_name))
-            ip.ftype = "Exon"
+            ip.ftype = "Intron"
 
     #--- Calculate RPK
     for p in itertools.chain(pieces,intron_pieces):
@@ -576,7 +577,7 @@ def process_chunk(ckexons, sam, chrom, options):
 
     #--- Infer gene/transcript counts
     for p in pieces:
-        p.name = simplify(p.name)
+        p.name = simplify(p.name)  # remove duplicates in names
     genes=[]; transcripts=[]; exons2=[]; introns2=[]
     # Genes - 0
     if 0 in types:
@@ -603,7 +604,7 @@ def process_chunk(ckexons, sam, chrom, options):
             exons2 = pieces[:]   # !
         elif method == 1:
             exon_ids = [e.name for e in exons]
-            exons2 = estimate_expression_NNLS(Exon,pieces,exon_ids,exons,norm_cst,stranded)
+            exons2 = estimate_expression_NNLS(Exon,pieces,exon_ids,exons,norm_cst,stranded,weighted)
     # Introns - 3
     if 3 in types and intron_pieces:
         method = methods.get(3,0)
@@ -611,7 +612,7 @@ def process_chunk(ckexons, sam, chrom, options):
             introns2 = intron_pieces[:]   # !
         elif method == 1:
             intron_ids = [e.name for e in introns]
-            introns2 = estimate_expression_NNLS(Exon,intron_pieces,intron_ids,introns,norm_cst,stranded)
+            introns2 = estimate_expression_NNLS(Exon,intron_pieces,intron_ids,introns,norm_cst,stranded,weighted)
 
     print_output(output, genes,transcripts,exons2,introns2, threshold,stranded)
 

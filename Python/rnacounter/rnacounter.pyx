@@ -645,7 +645,8 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
             for t in p.transcripts:
                 t2p.setdefault(t,[]).append(p)
         for tid,tpieces in sorted(t2p.items()):
-            introns.extend(complement(tid,tpieces))  # tpieces is already sorted
+            tpieces.sort(key=attrgetter('start','end'))
+            introns.extend(complement(tid,tpieces))
         if introns:
             intron_exon_pieces = cobble(introns+exons)
             intron_pieces = [ip for ip in intron_exon_pieces \
