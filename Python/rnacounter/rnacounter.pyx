@@ -5,9 +5,10 @@
 Usage:
    rnacounter join TAB [TAB2 ...]
    rnacounter  [...] BAM GTF
-   rnacounter  [-n <int>] [-f <int>] [-s] [--nh] [--noheader] [--threshold <float>] [--gtf_ftype FTYPE]
-               [--format FORMAT] [-t TYPE] [-c CHROMS] [-o OUTPUT] [-m METHOD] BAM GTF
-               [--version] [-h]
+   rnacounter  [--version] [-h]
+               [-n <int>] [-f <int>] [-s] [--nh] [--noheader] [--threshold <float>] [--exon_cutoff <int>]
+               [--gtf_ftype FTYPE] [--format FORMAT] [-t TYPE] [-c CHROMS] [-o OUTPUT] [-m METHOD]
+               BAM GTF
 
 Options:
    -h, --help                       Displays usage information and exits.
@@ -17,6 +18,7 @@ Options:
    -f <int>, --fraglength <int>     Average fragment length (for transcript length correction) [default: 1].
    --nh                             Divide count by NH flag for multiply mapping reads [default: False].
    --noheader                       Remove column names from the output (helps piping) [default: False].
+   --exon_cutoff <int>              Merge transcripts differing by exons of less than that many nt. Default: read length.
    --threshold <float>              Do not report counts inferior or equal to the given threshold [default: -1].
    --gtf_ftype FTYPE                Type of feature in the 3rd column of the GTF to consider [default: exon].
    --format FORMAT                  Format of the annotation file: 'gtf' or 'bed' [default: gtf].
@@ -371,7 +373,7 @@ cdef inline double toRPK(double count,double length,double norm_cst):
 cdef inline double fromRPK(double rpk,double length,double norm_cst):
     return length * norm_cst * rpk / 1000.0
 
-cdef inline double correct_fraglen_bias(double rpk,int length, int fraglen):
+cdef inline double correct_fraglen_bias(double rpk,int length,int fraglen):
     if fraglen == 1: return rpk
     newlength = <float> max(length-fraglen+1, 1)
     return rpk * length / newlength
@@ -437,6 +439,7 @@ cdef int count_reads(list exons,object ckreads,bint multiple,bint stranded) exce
                 ali_pos += shift   # got to start of next op in prevision for next round
             elif op == 1:  # BAM_CINS
                 ali_len += shift;
+        # If read entirely contained in exon, ali_len==shift and we do a single increment
         E2.increment(float(ali_len)/float(read_len), alignment, multiple,stranded)
     return 0
 
@@ -558,38 +561,43 @@ cdef inline str simplify(str name):
     """Removes duplicates in names of the form 'name1|name2', and sorts elements."""
     return '|'.join(sorted(set(name.split('|'))))
 
-cdef set filter_transcripts(dict t2e,int readlength):
-    """*t2e* is a map {transcriptID: [exons]}.
-    Find transcripts that differ from others by exons of less than
-    one read length. Return the set of IDs of redundant transcripts."""
-    cdef set seen, toremove
-    cdef str t
-    cdef list tpieces
-    cdef Exon tp
-    cdef tuple filtered_ids
-    seen = set()  # transcript structures, as tuples of exon ids
-    toremove = set() # too close transcripts
-    for t,texons in sorted(t2e.iteritems(), key=itemgetter(0)):
-        filtered_ids = tuple([te.id for te in texons if te.length < readlength])
-        if filtered_ids in seen:
-            toremove.add(t)
-        else:
-            seen.add(filtered_ids)
-    return toremove
+cdef dict filter_transcripts(dict t2p,int exon_cutoff):
+    """*t2p* is a map {transcriptID: [exon pieces]}.
+    Find transcripts that differ from others by exon parts of less than
+    one read length."""
+    cdef dict seen, replace
+    cdef str t, main, newname
+    cdef list texons, tlist
+    cdef Exon te
+    cdef tuple filtered_ids, f
+    seen = {}  # transcript structures, as tuples of exon ids
+    replace = {} # too close transcripts
+    for t,texons in sorted(t2p.iteritems(), key=itemgetter(0)):
+        filtered_ids = tuple([te.id for te in texons if te.length > exon_cutoff])
+        seen.setdefault(filtered_ids, []).append(t)
+    for f,tlist in seen.iteritems():
+        main = tlist[0]
+        if len(tlist) > 1:
+            newname = '|'.join(tlist)
+            t2p[newname] = t2p[main]
+            for t in tlist:
+                t2p.pop(t)
+                replace[t] = newname
+        else: replace[main] = main
+    return replace
 
 
 def process_chunk(list ckexons,object sam,str chrom,dict options):
     """Distribute counts across transcripts and genes of a chunk *ckexons*
     of non-overlapping exons."""
-    cdef int method, lastend, fraglength, readlength, i
+    cdef int method, lastend, fraglength, exon_cutoff, i
     cdef Exon exon0, gr, p, e
     cdef Gene gene
     cdef Transcript trans
     cdef list exons, exons2, introns, introns2, genes, transcripts
     cdef list exon_names, transcript_ids, gene_ids
     cdef list pieces, tpieces, types
-    cdef dict t2p, t2e, methods
-    cdef set toremove
+    cdef dict t2p, methods
     cdef str t, tid
     cdef bint stranded, weighted
     cdef double norm_cst, threshold
@@ -601,7 +609,7 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
     methods = options['method']
     threshold = options['threshold']
     fraglength = options['fraglength']
-    readlength = options["readlength"]
+    exon_cutoff = options['exon_cutoff']
     weighted = True  # WNNLS switch !
 
     #--- Regroup occurrences of the same Exon from a different transcript
@@ -619,17 +627,15 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
     pieces = cobble(exons)  # sorted
 
     #--- Filter out too similar transcripts
-    t2e = {}
-    for e in exons:
-        for t in e.transcripts:
-            t2e.setdefault(t,[]).append(e)
+    t2p = {}
+    for p in pieces:
+        for t in p.transcripts:
+            t2p.setdefault(t,[]).append(p)
     if 1 in types or 3 in types:
-        toremove = filter_transcripts(t2e, readlength)
-        for t in toremove:
-            t2e.pop(t)
-        for p in pieces:
-            p.transcripts = set(t for t in p.transcripts if t not in toremove)
-    transcript_ids = sorted(t2e.keys())  # sort to have the same order in all outputs from same gtf
+        replace = filter_transcripts(t2p, exon_cutoff)
+        for p in pieces + exons:
+            p.transcripts = set(replace[t] for t in p.transcripts)
+    transcript_ids = sorted(t2p.keys())  # sort to have the same order in all outputs from same gtf
 
     #--- Count reads in each piece
     lastend = max(e.end for e in exons)
@@ -640,18 +646,14 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
     intron_pieces = []
     if 3 in types:
         introns = []
-        t2p = {}
-        for p in pieces:
-            for t in p.transcripts:
-                t2p.setdefault(t,[]).append(p)
         for tid,tpieces in sorted(t2p.items()):
             tpieces.sort(key=attrgetter('start','end'))
             introns.extend(complement(tid,tpieces))
         if introns:
             intron_exon_pieces = cobble(introns+exons)
-            intron_pieces = [ip for ip in intron_exon_pieces \
-                             if ip.length > readlength \
-                             and not any([n in exon_names for n in ip.name.split('|')])]
+            intron_pieces = [ip for ip in intron_exon_pieces if \
+                             # ip.length > exon_cutoff and \
+                             not any([n in exon_names for n in ip.name.split('|')])]
             if intron_pieces:
                 lastend = max([intron.end for intron in introns])
                 ckreads = sam.fetch(chrom, intron_pieces[0].start, lastend)
@@ -738,7 +740,8 @@ def rnacounter_main(bamname, annotname, options):
 
     # Open BAM. Get read length
     sam = pysam.Samfile(bamname, "rb")
-    options["readlength"] = int(sam.next().rlen)
+    if options['exon_cutoff'] is None:
+        options["exon_cutoff"] = int(sam.next().rlen)
     sam.close()
     sam = pysam.Samfile(bamname, "rb")
 
@@ -857,6 +860,9 @@ def parse_args(args):
     except ValueError: raise ValueError("--threshold must be numeric.")
     try: args['--fraglength'] = int(args['--fraglength'])
     except ValueError: raise ValueError("--fraglength must be an integer.")
+    if args['--exon_cutoff']:
+        try: args['--exon_cutoff'] = int(args['--exon_cutoff'])
+        except ValueError: raise ValueError("--exon_cutoff must be an integer.")
 
     options = dict((k.lstrip('-').lower(), v) for k,v in args.iteritems())
     return bamname, annotname, options

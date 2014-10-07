@@ -72,6 +72,19 @@ Options:
     For easier piping the result to some other program, one can choose
     not to add the header by adding this option.
 
+* :option:`--exon_cutoff`::
+
+    Often the annotation contains (sometimes artificial) transcript structures that are
+    very close to each other and are thus hard to dinstinguish for any model due to
+    the read length constraint and lack of coverage on small regions, reducing
+    the model's power.
+    To address this, one can merge transcripts differing by exonic
+    regions of less than that many nucleotides. In the output, merged transcripts
+    are reported in a single line with their IDs joined, such as "T1|T2" if T1 and
+    T2 are highly similar.
+    Defaults to read length. Set to 0 to remove transcripts filtering, especially
+    with "local" alignments, or to a bigger number to reduce the transcripts variety.
+
 * :option:`--threshold`::
 
     Features with counts inferior or equal to the given threshold (positive number)
