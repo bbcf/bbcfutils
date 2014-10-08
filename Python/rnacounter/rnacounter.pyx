@@ -34,6 +34,7 @@ import os, sys, itertools, copy, subprocess
 from operator import attrgetter, itemgetter
 from numpy import array, zeros, diag, dot, multiply, sqrt
 from scipy.optimize import nnls
+from functools import reduce
 
 import numpy as np
 cimport numpy as cnp
@@ -72,7 +73,7 @@ def parse_gtf(str line,str gtf_ftype):
         return None
     attrs = tuple(x.strip().split() for x in row[8].rstrip(';').split(';'))  # {gene_id: "AAA", ...}
     attrs = dict((x[0],x[1].strip("\"")) for x in attrs)
-    exon_nr = Ecounter.next()
+    exon_nr = next(Ecounter)
     exon_id = attrs.get('exon_id', 'E%d'%exon_nr)
     return Exon(id=(exon_nr,),
         gene_id=attrs.get('gene_id',exon_id), gene_name=attrs.get('gene_name',exon_id),
@@ -97,7 +98,7 @@ def parse_bed(str line,str gtf_ftype):
         else: strand = 0
         score = _score(row[4])
     else: score = 0.0
-    exon_nr = Ecounter.next()
+    exon_nr = next(Ecounter)
     #exon_id = 'E%d'%exon_nr
     return Exon(id=(exon_nr,), gene_id=name, gene_name=name, chrom=chrom, start=start, end=end,
                 name=name, score=score, strand=strand, transcripts=set([name]))
@@ -267,7 +268,7 @@ cdef list cobble(list exons):
     ends.sort()
     active_exons = []
     cobbled = []
-    for i in xrange(len(ends)-1):
+    for i in range(len(ends)-1):
         a = ends[i]
         b = ends[i+1]
         if a[1]==1:
@@ -338,7 +339,7 @@ cdef list partition_chrexons(list chrexons):
         toremove = set()
         for (a,b) in mparts:
             partition[b] = (partition[a][0],partition[b][1])
-            toremove |= set(xrange(a,b))
+            toremove |= set(range(a,b))
         partition = [p for i,p in enumerate(partition) if i not in toremove]
     return partition
 
@@ -614,7 +615,7 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
     exons = []
     for key,group in itertools.groupby(ckexons, attrgetter('id')):
         # ckexons are sorted by id because chrexons were sorted by chrom,start,end
-        exon0 = group.next()
+        exon0 = next(group)
         for gr in group:
             exon0.transcripts.add(gr.transcripts.pop())
         exons.append(exon0)
@@ -743,7 +744,7 @@ def rnacounter_main(bamname, annotname, options):
     # Open BAM. Get read length
     sam = pysam.Samfile(bamname, "rb")
     if options['exon_cutoff'] is None:
-        options["exon_cutoff"] = int(sam.next().rlen)
+        options["exon_cutoff"] = int(next(sam).rlen)
     sam.close()
     sam = pysam.Samfile(bamname, "rb")
 
@@ -856,7 +857,7 @@ def parse_args(args):
         "METHOD must be one of 'raw' or 'nnls'."
     method_map = {'raw':0, 'nnls':1}  # avoid comparing strings later
     args['--method'] = [method_map[x] for x in args['--method']]
-    args['--method'] = dict(zip(args['--type'],args['--method']))
+    args['--method'] = dict(list(zip(args['--type'],args['--method'])))
 
     try: args['--threshold'] = float(args['--threshold'])
     except ValueError: raise ValueError("--threshold must be numeric.")
@@ -866,7 +867,7 @@ def parse_args(args):
         try: args['--exon_cutoff'] = int(args['--exon_cutoff'])
         except ValueError: raise ValueError("--exon_cutoff must be an integer.")
 
-    options = dict((k.lstrip('-').lower(), v) for k,v in args.iteritems())
+    options = dict((k.lstrip('-').lower(), v) for k,v in list(args.items()))
     return bamname, annotname, options
 
 
