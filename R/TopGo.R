@@ -8,7 +8,8 @@ years = list("GRCh38"="2014", "GRCm38.p2"="2014")
 biomart = "ENSEMBL_MART_ENSEMBL"
 attribute_go = "go_id"
 attribute_gene = list("2011"="external_gene_id","2014"="external_gene_name")
-filter_go = list("2011"="with_go", "2014"="with_go_id") 
+filter_go = list("2011"="with_go", "2014"="with_go_id")
+attribute_ensid = list("gene"="ensembl_gene_id","transcript"="ensembl_transcript_id")
 
 def.pdf = "TopGO_plots.pdf"
 def.table = "TopGO_table.txt"
@@ -46,7 +47,7 @@ single_topGo = function( geneList, genome, gene2GO, allGenes, pdf, table, nterms
 }
 
 
-multi_topGo = function( filename, assembly_id, pdf=def.pdf, table=def.table, nterms=def.nterms, pval=def.pval ) {
+multi_topGo = function( filename, assembly_id, pdf=def.pdf, table=def.table, nterms=def.nterms, pval=def.pval, use.ids="gene" ) {
     year = "2011"
     if (assembly_id %in% names(years)) year = years[[assembly_id]]
     ensembl = useMart(biomart,host=ensembl_url[[year]])
@@ -56,12 +57,13 @@ multi_topGo = function( filename, assembly_id, pdf=def.pdf, table=def.table, nte
     attr1 = attribute_go
     attr2 = attribute_gene[[year]]
     filt = filter_go[[year]]
-    genome = getBM(attr=c("ensembl_gene_id",attr1,attr2),
+    ensid = attribute_ensid[[use.ids]] 
+    genome = getBM(attr=c(ensid,attr1,attr2),
       filter=c(filt,"biotype"),
       values=list(TRUE,"protein_coding"),mart=ensembl)
-    gene2GO = split(genome[,attr1],genome[,"ensembl_gene_id"])
-    I = which(!duplicated(genome[,"ensembl_gene_id"]))
-    genome = data.frame(gene_name=genome[I,attr2],row.names=genome[I,"ensembl_gene_id"])
+    gene2GO = split(genome[,attr1],genome[,ensid])
+    I = which(!duplicated(genome[,ensid]))
+    genome = data.frame(gene_name=genome[I,attr2],row.names=genome[I,ensid])
     allGenes = row.names(genome)
     if (any(!nchar(genome[,1])))
       genome[which(!nchar(genome[,1])),1] = allGenes[which(!nchar(genome[,1]))]
