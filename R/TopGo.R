@@ -7,8 +7,8 @@ ensembl_url = list("2011"="sep2011.archive.ensembl.org",
 years = list("GRCh38"="2014", "GRCm38.p2"="2014")
 biomart = "ENSEMBL_MART_ENSEMBL"
 attribute_go = "go_id"
-attribute_gene = "external_gene_id"
-filter_go = "with_go"
+attribute_gene = list("2011"="external_gene_id","2014"="external_gene_name")
+filter_go = list("2011"="with_go", "2014"="with_go_id") 
 
 def.pdf = "TopGO_plots.pdf"
 def.table = "TopGO_table.txt"
@@ -54,8 +54,8 @@ multi_topGo = function( filename, assembly_id, pdf=def.pdf, table=def.table, nte
     dataset = lsds$dataset[which(lsds$version == assembly_id)]
     ensembl = useDataset(as.character(dataset),mart=ensembl)
     attr1 = attribute_go
-    attr2 = attribute_gene
-    filt = filter_go
+    attr2 = attribute_gene[[year]]
+    filt = filter_go[[year]]
     genome = getBM(attr=c("ensembl_gene_id",attr1,attr2),
       filter=c(filt,"biotype"),
       values=list(TRUE,"protein_coding"),mart=ensembl)
