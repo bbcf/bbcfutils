@@ -333,7 +333,7 @@ cdef list partition_chrexons(list chrexons):
     for g in lastgeneids:
         pinvgenes.setdefault(g,[]).append(npart)
     # Put together intervals containing parts of the same gene mixed with others - if any
-    mparts = [[p[0],p[len(p)-1]] for p in pinvgenes.itervalues() if len(p)>1]
+    mparts = [[p[0],p[len(p)-1]] for p in pinvgenes.values() if len(p)>1]
     if mparts:
         mparts = fuse(sorted(mparts))
         toremove = set()
@@ -452,7 +452,7 @@ cdef int get_total_nreads(object sam):
     cdef int length
     cdef Counter Ncounter
     Ncounter = Counter()
-    for ref,length in itertools.izip(sam.references,sam.lengths):
+    for ref,length in zip(sam.references,sam.lengths):
         sam.fetch(ref,0,length, callback=Ncounter)
     return Ncounter.n
 
@@ -574,10 +574,10 @@ cdef dict filter_transcripts(dict t2p,int exon_cutoff):
     cdef tuple filtered_ids, f
     seen = {}  # transcript structures, as tuples of exon ids
     replace = {} # too close transcripts
-    for t,texons in sorted(t2p.iteritems(), key=itemgetter(0)):
+    for t,texons in sorted(t2p.items(), key=itemgetter(0)):
         filtered_ids = tuple([te.id for te in texons if te.length > exon_cutoff])
         seen.setdefault(filtered_ids, []).append(t)
-    for f,tlist in seen.iteritems():
+    for f,tlist in seen.items():
         main = tlist[0]
         replace[main] = main
         for t in tlist[1:]:
@@ -635,7 +635,7 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
         replace = filter_transcripts(t2p, exon_cutoff)
         for p in pieces + exons:
             p.transcripts = set(replace[t] for t in p.transcripts)
-        for t,main in replace.iteritems():
+        for t,main in replace.items():
             if t!=main: synonyms.setdefault(main, []).append(t)
     transcript_ids = sorted(t2p.keys())  # sort to have the same order in all outputs from same gtf
 
@@ -715,10 +715,10 @@ def process_chunk(list ckexons,object sam,str chrom,dict options):
 
 
 def print_output(output, genes,transcripts,exons,introns, threshold,stranded):
-    igenes = itertools.ifilter(lambda x:x.count > threshold, genes)
-    itranscripts = itertools.ifilter(lambda x:x.count > threshold, transcripts)
-    iexons = itertools.ifilter(lambda x:x.count > threshold, exons)
-    iintrons = itertools.ifilter(lambda x:x.count > threshold, introns)
+    igenes = filter(lambda x:x.count > threshold, genes)
+    itranscripts = filter(lambda x:x.count > threshold, transcripts)
+    iexons = filter(lambda x:x.count > threshold, exons)
+    iintrons = filter(lambda x:x.count > threshold, introns)
     if stranded:
         for f in itertools.chain(igenes,itranscripts,iexons,iintrons):
             towrite = [str(x) for x in [f.name,f.count,f.rpk,f.chrom,f.start,f.end,
@@ -756,8 +756,7 @@ def rnacounter_main(bamname, annotname, options):
     if options['output'] is None: options['output'] = sys.stdout
     else: options['output'] = open(options['output'], "wb")
     if options['noheader'] is False:
-        header = ['ID','Count','RPKM','Chrom','Start','End','Strand','GeneName','Type']
-        if options['stranded']: header += ['Sense']
+        header = ['ID','Count','RPKM','Chrom','Start','End','Strand','GeneName','Type','Sense','Synonym']
         options['output'].write('\t'.join(header)+'\n')
 
     if options['format'] == 'gtf':
