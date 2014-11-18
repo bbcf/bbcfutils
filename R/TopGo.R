@@ -36,7 +36,7 @@ single_topGo = function( geneList, genome, gene2GO, allGenes, pdf, table, nterms
           classicFisher=result$classicFisher, elimFisher=result$elimFisher, 
           orderBy="elimFisher", ranksOf="elimFisher",
           topNodes=nterms, numChar=100)
-        tab = tab[tab$elimFisher<=pval,]
+        tab = tab[as.numeric(tab$elimFisher)<=pval,]
         showSigOfNodes(data, score(result$elimFisher), first=nterms, useInfo="all")
         tab = cbind(tab,genes=sapply(tab$GO.ID, getIdsInTerm, subset, data, genome))
         write(c("",ontol,""),file=output,append=append)
