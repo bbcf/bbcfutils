@@ -69,35 +69,37 @@ multi_topGo = function( filename, assembly_id, pdf=def.pdf, table=def.table, nte
       genome[which(!nchar(genome[,1])),1] = allGenes[which(!nchar(genome[,1]))]
 
     id_set = scan(filename,what=character())
-    name0 = gsub("[.].*","",gsub(".*/","",filename))
-    I = grep("#",id_set)
-    id_sets = list()
-    if (length(I) == 0) {
-        id_sets[[name0]] = id_set
-    } else {
-        I = c(I,length(id_set)+1)
-        n = 1
-        i = 1
-        for (j in I[-1]) {
-            name = gsub("[[:space:]]+","_",gsub("#","",id_set[i]))
-            if (nchar(name) == 0) name = paste(name0,n,sep='.')
-            id_sets[[name]] = id_set[(i+1):(j-1)]
-            i = j
-            n = n+1
-        }
-    }
     pdflist = list()
     tablelist = list()
-    for (listName in names(id_sets)) {
-        subset = id_sets[[listName]]
-        geneList = factor(as.numeric(match(allGenes,subset,nomatch=0)>0))
-        if (length(levels(geneList)) == 2) {
-            names(geneList) = allGenes
-            pdflist[[listName]] = gsub(".pdf",paste("_",listName,".pdf",sep=""),pdf)
-            tablelist[[listName]] = gsub(".txt",paste("_",listName,".txt",sep=""),table)
-            single_topGo(geneList,genome,gene2GO,allGenes,
-                         pdflist[[listName]],tablelist[[listName]],nterms,pval)
-	}
+    if (length(id_set) > 0) {
+        name0 = gsub("[.].*","",gsub(".*/","",filename))
+        I = grep("#",id_set)
+        id_sets = list()
+        if (length(I) == 0) {
+            id_sets[[name0]] = id_set
+        } else {
+            I = c(I,length(id_set)+1)
+            n = 1
+            i = 1
+            for (j in I[-1]) {
+                name = gsub("[[:space:]]+","_",gsub("#","",id_set[i]))
+                if (nchar(name) == 0) name = paste(name0,n,sep='.')
+                id_sets[[name]] = id_set[(i+1):(j-1)]
+                i = j
+                n = n+1
+            }
+        }
+        for (listName in names(id_sets)) {
+            subset = id_sets[[listName]]
+            geneList = factor(as.numeric(match(allGenes,subset,nomatch=0)>0))
+            if (length(levels(geneList)) == 2) {
+                names(geneList) = allGenes
+                pdflist[[listName]] = gsub(".pdf",paste("_",listName,".pdf",sep=""),pdf)
+                tablelist[[listName]] = gsub(".txt",paste("_",listName,".txt",sep=""),table)
+                single_topGo(geneList,genome,gene2GO,allGenes,
+                             pdflist[[listName]],tablelist[[listName]],nterms,pval)
+            }
+        }
     }
     list(pdflist,tablelist)
 }
