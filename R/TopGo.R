@@ -48,30 +48,30 @@ single_topGo = function( geneList, genome, gene2GO, allGenes, pdf, table, nterms
 
 
 multi_topGo = function( filename, assembly_id, pdf=def.pdf, table=def.table, nterms=def.nterms, pval=def.pval, use.ids="gene" ) {
-    year = "2011"
-    if (assembly_id %in% names(years)) year = years[[assembly_id]]
-    ensembl = useMart(biomart,host=ensembl_url[[year]])
-    lsds = listDatasets(ensembl)
-    dataset = lsds$dataset[which(lsds$version == assembly_id)]
-    ensembl = useDataset(as.character(dataset),mart=ensembl)
-    attr1 = attribute_go
-    attr2 = attribute_gene[[year]]
-    filt = filter_go[[year]]
-    ensid = attribute_ensid[[use.ids]] 
-    genome = getBM(attr=c(ensid,attr1,attr2),
-      filter=c(filt,"biotype"),
-      values=list(TRUE,"protein_coding"),mart=ensembl)
-    gene2GO = split(genome[,attr1],genome[,ensid])
-    I = which(!duplicated(genome[,ensid]))
-    genome = data.frame(gene_name=genome[I,attr2],row.names=genome[I,ensid])
-    allGenes = row.names(genome)
-    if (any(!nchar(genome[,1])))
-      genome[which(!nchar(genome[,1])),1] = allGenes[which(!nchar(genome[,1]))]
-
     id_set = scan(filename,what=character())
     pdflist = list()
     tablelist = list()
     if (length(id_set) > 0) {
+        year = "2011"
+        if (assembly_id %in% names(years)) year = years[[assembly_id]]
+        ensembl = useMart(biomart,host=ensembl_url[[year]])
+        lsds = listDatasets(ensembl)
+        dataset = lsds$dataset[which(lsds$version == assembly_id)]
+        ensembl = useDataset(as.character(dataset),mart=ensembl)
+        attr1 = attribute_go
+        attr2 = attribute_gene[[year]]
+        filt = filter_go[[year]]
+        ensid = attribute_ensid[[use.ids]] 
+        genome = getBM(attr=c(ensid,attr1,attr2),
+          filter=c(filt,"biotype"),
+          values=list(TRUE,"protein_coding"),mart=ensembl)
+        gene2GO = split(genome[,attr1],genome[,ensid])
+        I = which(!duplicated(genome[,ensid]))
+        genome = data.frame(gene_name=genome[I,attr2],row.names=genome[I,ensid])
+        allGenes = row.names(genome)
+        if (any(!nchar(genome[,1])))
+          genome[which(!nchar(genome[,1])),1] = allGenes[which(!nchar(genome[,1]))]
+
         name0 = gsub("[.].*","",gsub(".*/","",filename))
         I = grep("#",id_set)
         id_sets = list()
