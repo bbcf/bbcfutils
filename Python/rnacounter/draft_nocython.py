@@ -143,7 +143,7 @@ class Counter(object):
 class GenomicObject(object):
     def __init__(self, id=(0,),gene_id='',gene_name='',chrom='',start=0,end=0,
                  name='',score=0.0,strand=0,length=0,ftype='',
-                 count=0,count_anti=0,rpk=0.0,rpk_anti=0.0,synonyms=''):
+                 count=0,count_anti=0,rpk=0.0,rpk_anti=0.0,synonyms='.'):
         self.id = id
         self.gene_id = gene_id
         self.gene_name = gene_name

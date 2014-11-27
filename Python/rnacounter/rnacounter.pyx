@@ -158,7 +158,7 @@ cdef class GenomicObject(object):
         int start,end,strand,length,multiplicity
         double score,count,count_anti,rpk,rpk_anti
     def __init__(self, tuple id=(0,), str gene_id='', str gene_name='',
-             str chrom='', int start=0, int end=0, str name='', str ftype='', str synonyms='',
+             str chrom='', int start=0, int end=0, str name='', str ftype='', str synonyms='.',
              double score=0.0, int strand=0, int length=0, int multiplicity=1,
              double count=0.0, double count_anti=0.0, double rpk=0.0, double rpk_anti=0.0):
         self.id = id
