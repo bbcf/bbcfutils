@@ -1,0 +1,4 @@
+include README.rst
+include doc/*
+include rnacounter/testfiles/*
+recursive-include rnacounter *.c
