@@ -1,8 +1,16 @@
 #!/usr/bin/env Rscript
 
+# Usage: pca.R <input file> <output prefix>
+
+
 args = commandArgs(trailingOnly = TRUE)
 if (length(args) > 0) {
     filename = args[1]
+    if (length(args) > 1) {
+        outprefix = args[2]
+    } else {
+        outprefix = "pca_biplot"
+    }
 } else {
     filename = "genes_expression.txt"
 }
@@ -31,7 +39,7 @@ rnames = sub("rpkm.", "", rnames)
 gnames = sub(".[0-9]$", "", rnames)
 
 # Biplot and bar plot of variances
-pdf("pca_biplot.pdf", height=12, width=6)
+pdf(paste(outprefix,".pdf",sep=''), height=12, width=6)
 par(mfrow=c(2,1), oma=c(0,0,0,0), pty="s", cex=0.75)
 colors = as.numeric((as.factor(gnames)))
 plot(pcs, pch=20, col=colors, xlim=c(xmin,xmax), ylim=c(ymin,ymax))
