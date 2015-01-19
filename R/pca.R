@@ -8,12 +8,12 @@
 #   - "rpkm": selects all columns which name contains "rpkm"
 #   - "1,3,5,6...": comma-separated list of column indices (1-based, exclude the first column)
 #
+# The input table needs a header (column names).
 # Column names are arbitrary, but are expected to be formatted as
-# "rpkm.<group_name>.<#replicate>", e.g. "rpkm.Control.2".
-# The first "rpkm." is used only for column selection.
-# All samples with the same group name will get the same color.
+# "[rpkm.]<group_name>.<#replicate>", e.g. "rpkm.Control.2" or "TRF2_KO.1".
+# All samples with a different group name will get a different color.
 #
-# Ex: ./pca.R "genes_expression.txt" pca_biplot rpkm
+# Ex: ./pca.R genes_expression.txt pca_biplot rpkm
 
 filename = "genes_expression.txt"
 outprefix = "pca_biplot"
