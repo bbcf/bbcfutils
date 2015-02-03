@@ -29,7 +29,7 @@ columns = tolower(columns)
 if (columns == "all") {
     cols <- function(d) {1:ncol(d)}
 } else if (columns == "rpkm") {
-    cols <- function(d) {grep("rpkm.", colnames(d))}
+    cols <- function(d) {grep("[Rr]pkm[.]", colnames(d))}
 } else {
     cols <- function(d) {unlist(lapply(strsplit(columns, split=','), FUN=function(x){as.numeric(x)}))}
 }
@@ -54,7 +54,7 @@ ymax = ymax + abs(ymax*margin)
 
 # Group names
 rnames = names(X)
-rnames = sub("rpkm[.]", "", rnames)
+rnames = sub("[Rr]pkm[.]", "", rnames)
 gnames = sub("[.][0-9]$", "", rnames)
 
 # Biplot and bar plot of variances

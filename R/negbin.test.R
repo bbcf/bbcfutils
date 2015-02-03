@@ -46,7 +46,7 @@ if (sep=='tab') sep='\t'
 main <- function(data_file, sep="\t", output_file=''){
     data = read.table(data_file, header=T, row.names=1, sep=sep, quote="", check.names=F)
     header = colnames(data)
-    counts = grep("^counts[.]",header)
+    counts = grep("^[Cc]ount[s]*[.]",header)
     data = round(data[,counts])
     samples = header[counts]
     conds = sapply(strsplit(samples,'.',fixed=T),function(x){l=length(x);paste(x[2:(l-1)],collapse='.')})
@@ -62,8 +62,7 @@ main <- function(data_file, sep="\t", output_file=''){
         method = 'blind'                # pools all groups together to estimate the variance
         sharingMode='fit-only'          # use only the GLM fit across the pooled variance
     }
-
-    if (nrow(data)>3){
+    if (nrow(data)>=3){
         DES(data, conds, method, sharingMode, output_file)
     } else {
         print("Less than 3 rows. Return.")
