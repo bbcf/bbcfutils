@@ -16,11 +16,11 @@ plotDomainogram <- function(myScores,wmax,nGrad,myCex=1.5)
         {
                 cat(paste(w,";",sep=""))
                 if(w==1){
-			p <- unlist(lapply(1:length(q),function(i){w=w;pchisq(q[i], df=2*w, ncp=0,lower.tail=FALSE)})) 
+			p <- unlist(lapply(1:length(q),function(i){w=w;pchisq(q[i], df=2*w, ncp=0,lower.tail=FALSE)}))
 			p[p<10^-6]=10^-6
 #			cat(paste("length(p)=",length(p),";",sep=""))
 			plot(1:length(p),rep(w*(1/wmax),length(p)),ylim=c(0,1),col=myCols[cut(-log10(p),myBreaks,labels=FALSE)],pch=myPch,cex=myCex)
-			prev <- q 
+			prev <- q
                 }
                 else
                 {
@@ -50,7 +50,7 @@ plotLegend <- function(imgFile="")
 {
 	if(nchar(imgFile)==0){X11()}else{print(imgFile);pdf(imgFile)}
 	nGrad=10
-	myCols <- smoothColors("black",(nGrad-2)/2,"purple",(nGrad-2)/2,"red")		
+	myCols <- smoothColors("black",(nGrad-2)/2,"purple",(nGrad-2)/2,"red")
         plot(0,0,xlim=c(0,5),ylim=c(0.3,1),axes=FALSE,col="white",xlab="",ylab="")
 	gradient.rect(0,0.5,1,0.9,col=myCols,gradient="y",border=NA)
         rect(1,0.5,1.2,0.5)
@@ -139,35 +139,38 @@ plotDomainogram_vJ <- function(dataToTreat,domainogram.m,wmax,lensc,myCols,imgFi
     }
 }
 
+
 createBRICK <-function(P,wmax,gamma=0.01)
 {
 #	min_p<-which(P==min(P,na.rm=TRUE))
 #	length_min_p=which(P==min_p/nrow(P)
-	K=nrow(P);I=ncol(P)
-	min_p=0;length_min_p=NA;V=rep(NA,I);Vl<-rep(NA,I);Id=rep(NA,I)
-	if(wmax>nrow(P)){print("Error, wmax>nrow(P)");return(NA)}
-	for(i in 1:I)
-	{	w=1;min_p=0;length_min_p=NA;indice_min_p=NA
-		while(w<= min(i,wmax))
-		{
-			if(w==1){np=gamma*log(P[w,i])}else{np=log(P[w,i])}
-			np=w*np; if(i-w<=0){curV=0}else{curV=V[i-w]}; np=np+curV;
-			if(np==0){cat(paste(i,",",w,"=>",P[w,i],";",sep="")) }
-			if(np<min_p){min_p=np;length_min_p=w;indice_min_p=i}
-			w=w+1
-		}
-		V[i]=min_p;Vl[i]=length_min_p;Id[i]=indice_min_p;
-		if(i<4){print("next i")}
-	}
-	print(paste("Last i=",i,";last w=",w,"=>V[i]=",V[i]))
-	print("Traceback"); 
-	w=I;n=0;b<-c();
-	while(w>0){l=Vl[w];
-		b<-rbind(b,c(l,V[w],Id[w],P[l,Id[w]]))
-		#print(paste("Vl[",w,"]=>","length=",l,";p=",V[w],";",Id[w],";",sep=""));
-		w=w-l;n=n+1}
-	print(paste("#BRICKS found=",n))
-	return(b)
+    K=nrow(P);I=ncol(P)
+    min_p=0;length_min_p=NA;V=rep(NA,I);Vl<-rep(NA,I);Id=rep(NA,I)
+    if(wmax>nrow(P)){print("Error, wmax>nrow(P)");return(NA)}
+    for(i in 1:I){
+        w=1;min_p=0;length_min_p=NA;indice_min_p=NA
+        while(w<= min(i,wmax)){
+            if(w==1){np=gamma*log(P[w,i])}else{np=log(P[w,i])}
+            np=w*np; if(i-w<=0){curV=0}else{curV=V[i-w]}; np=np+curV;
+            if(np==0){cat(paste(i,",",w,"=>",P[w,i],";",sep="")) }
+            if(np<min_p){min_p=np;length_min_p=w;indice_min_p=i}
+            w=w+1
+        }
+        V[i]=min_p;Vl[i]=length_min_p;Id[i]=indice_min_p;
+        if(i<4){print("next i")}
+    }
+    print(paste("Last i=",i,";last w=",w,"=>V[i]=",V[i]))
+    print("Traceback");
+    w=I;n=0;b<-c();
+    b = matrix(NA,nrow=w,ncol=4)
+    while(w>0){l=Vl[w];
+        #b<-rbind(b,c(l,V[w],Id[w],P[l,Id[w]]))
+        b[n+1,]=c(l,V[w],Id[w],P[l,Id[w]])
+        #print(paste("Vl[",w,"]=>","length=",l,";p=",V[w],";",Id[w],";",sep=""));
+        w=w-l;n=n+1}
+    print(paste("#BRICKS found=",n))
+    b<-b[1:n,]
+    return(b)
 }
 #foundBricks<-createBRICK(res,50)
 
@@ -219,7 +222,7 @@ plotSelectedBRICKS <- function(coordBRICKS,data,myLim=0,myTitle="",imgFile="")
 
 	}
 	rect(coordBRICKS[k,1],-log10(coordBRICKS[k,4]),coordBRICKS[k,2],-log10(coordBRICKS[k,4])+0.2,col=colToUse,border=colToUse)
-	
+
 	if(myLim==0){
                 plot(c(0,0),col="white",xlim=c(min(coordBRICKS[k,1]),max(coordBRICKS[k,2])),ylim=c(min(coordBRICKS[k,3])-1,max(coordBRICKS[k,3])),xlab="",ylab="segment length",main="length of selected BRICKS",axes=TRUE)
         }
@@ -280,16 +283,16 @@ runDomainogram <- function(dataToTreat,curName,wmaxDomainogram=500,wmax_BRICKS=5
 	o <- order(dataToTreat[,2])
 	dataToTreat=dataToTreat[o,]
 	#dataToTreat[dataToTreat[,4]<1,4]=0
-	
+
 	curChr=as.character(dataToTreat[1,1])
-	
+
 	if(is.na(prefName)){prefName=curName}
 	if(is.na(path)){path=""}
 
 	print("In runDomainograms:")
-	print(paste("wmaxDomainogram=",wmaxDomainogram,",wmax_BRICKS=",wmax_BRICKS,",decrease=",decrease,",prefName=",prefName))        
+	print(paste("wmaxDomainogram=",wmaxDomainogram,",wmax_BRICKS=",wmax_BRICKS,",decrease=",decrease,",prefName=",prefName))
 	print(head(dataToTreat))
-	
+
 	resDomainogram<-createDomainogram_vJ(dataToTreat,wmaxDomainogram,10,myCex=myCex,imgFile=paste(path,prefName,"_domainogram.pdf",sep=""),decrease=decrease)
 #        resDomainogram<-createDomainogram_vJ(dataToTreat[,4],wmaxDomainogram,10,0.7,imgFile=NA,decrease=decrease)
 	print("createBRICK")
@@ -300,7 +303,7 @@ runDomainogram <- function(dataToTreat,curName,wmaxDomainogram=500,wmax_BRICKS=5
 	selectedBricks<-plotSelectedBRICKS(coordBricks,dataToTreat,myLim=0,myTitle=curName,imgFile=paste(path,prefName,"_selectedBRICKS.pdf",sep=""))
         write.table(cbind(rep(curChr,nrow(selectedBricks)),selectedBricks),paste(path,prefName,"_selectedBRICKS.txt",sep=""),quote=FALSE,sep="\t",row.names=FALSE)
 
-	#Write bedGraph selected BRICKS	
+	#Write bedGraph selected BRICKS
 	selectedBricksFile=paste(path,prefName,"_selectedBRICKS.bedGraph",sep="")
 	header=paste("track type=bedGraph name='",curName," (selected BRICKS)' description='",curName," (selected BRICKS)' visibility=full windowingFunction=maximum",sep="")
 	write.table(header,selectedBricksFile,row.names=FALSE,col.names=FALSE,quote=FALSE)
