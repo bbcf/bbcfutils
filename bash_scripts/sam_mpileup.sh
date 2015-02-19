@@ -1,18 +1,32 @@
 #!/bin/sh
 
-if [ $# -lt 3 ]
+if [ $# -lt 4 ]
 then
-  echo "Usage: $0 fasta depth bam [samheader]"
+  echo "Usage: $0 [call|list] fasta [depth|bed] bam [samheader]"
   exit
 fi
 
-fasta=$1
-depth=$2
-bam=$3
-if [ $# -gt 3 ]
+fasta=$2
+depth=$3
+bam=$4
+if [ $# -gt 4 ]
 then
-  samtools reheader $4 $bam | samtools mpileup -uDS -I -f $fasta - | bcftools view -vcg - | vcfutils.pl varFilter -D$depth
+    samhead=$5
+fi
+if [ $1 = "call" ]
+then
+    if [ -n "$samhead" ]
+    then
+        samtools reheader $samhead $bam | samtools mpileup -uDS -I -f $fasta - | bcftools view -vcg - | vcfutils.pl varFilter -D$depth
+    else
+        samtools mpileup -uDS -I -f $fasta $bam | bcftools view -vcg - | vcfutils.pl varFilter -D$depth
+    fi
 else
-  samtools mpileup -uDS -I -f $fasta $bam | bcftools view -vcg - | vcfutils.pl varFilter -D$depth
+    if [ -n "$samhead" ]
+    then
+        samtools reheader $samhead $bam | samtools mpileup -uDS -I -f $fasta - | bcftools view -vcgl $depth - 
+    else
+        samtools mpileup -uDS -I -f $fasta $bam | bcftools view -vcgl $depth -
+    fi
 fi
 
