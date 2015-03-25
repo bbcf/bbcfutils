@@ -61,9 +61,10 @@ fit2 <- eBayes(fit2)
 for (coef in colnames(contrasts)) {
     tt = topTable(fit2, coef=coef, adjust.method="BH", number=nrow(v), sort.by="P")
     # Reannotate
-    res = cbind(tt, d[rownames(tt), c("Chrom","Start","End","Strand","GeneName")])
+    res = cbind(rownames(tt), tt, d[rownames(tt), c("Chrom","Start","End","Strand","GeneName")])
+    colnames(res)[1] = "ID"
     comp = gsub(" ","", coef , fixed=TRUE)
     outname = paste(output_prefix,"_",comp,".txt", sep='')
-    write.table(res, outname, quote=FALSE, row.names=FALSE, sep="\t")
+    write.table(res, outname, quote=FALSE, row.names=FALSE, sep='\t')
 }
 
