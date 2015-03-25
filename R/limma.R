@@ -13,19 +13,31 @@ if (sep=="\\t") {sep='\t'}
 
 d = read.table(data_file, header=TRUE, row.names=1, sep=sep, quote="", check.names=F)
 cc = grep("^[Cc]ount[s]*[.]", colnames(d))
-
-# Design
 snames = colnames(d)[cc]
 conds = as.factor(sapply(strsplit(snames,'.',fixed=T),function(x){l=length(x);paste(x[2:(l-1)],collapse='.')}))
+groups = as.vector(unique(conds))
+
+# Statistics need replicates to work
+couples = combn(groups,2)
+ctable = table(conds)
+exclude = c()
+for (i in 1:dim(couples)[2]){
+    if ((ctable[[couples[1,i]]]==1) && (ctable[[couples[2,i]]]==1)) {
+        exclude = c(exclude, i)
+    }
+}
+if (! is.null(exclude)) {
+    couples = couples[,-exclude]
+}
+
+# Design
 design = model.matrix(~ 0+conds)
 colnames(design) = sub("conds", "", colnames(design))
 rownames(design) = snames
-groups = as.vector(unique(conds))
 
 library(limma)
 
 # Contrasts
-couples = combn(groups,2)
 comps = c()
 for (i in 1:dim(couples)[2]){
     comps = c(comps, paste(couples[1,i],"-",couples[2,i], sep=''))
@@ -61,10 +73,10 @@ fit2 <- eBayes(fit2)
 for (coef in colnames(contrasts)) {
     tt = topTable(fit2, coef=coef, adjust.method="BH", number=nrow(v), sort.by="P")
     # Reannotate
-    res = cbind(rownames(tt), tt, d[rownames(tt), c("Chrom","Start","End","Strand","GeneName")])
-    colnames(res)[1] = "ID"
+    res = cbind(tt, d[tt$ID, c("Chrom","Start","End","Strand","GeneName")])
     comp = gsub(" ","", coef , fixed=TRUE)
     outname = paste(output_prefix,"_",comp,".txt", sep='')
-    write.table(res, outname, quote=FALSE, row.names=FALSE, sep='\t')
+    write(coef, outname)
+    write.table(res, outname, append=TRUE, quote=FALSE, row.names=FALSE, col.names=TRUE, sep='\t')
 }
 
