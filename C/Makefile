@@ -6,8 +6,7 @@ TCLAPINCLUDE = $(BASE)/include
 SQLITELIBDIR = /software/lib64/  
 SQLITEINCLUDE = /software/include
 CXXFLAGS = -O3 -Wall -I$(SAMINCLUDE) -I$(TCLAPINCLUDE) -I$(SQLITEINCLUDE)
-LOADLIBES = -L$(SAMLIBDIR) -L$(SQLITELIBDIR)
-LDLIBS = -lsqlite3 -lbam -lz -ltsnnls
+LDLIBS = -L$(SAMLIBDIR) -L$(SQLITELIBDIR) -lsqlite3 -lbam -lz -ltsnnls
 
 SRC = bam2wig.cc bamstat.cc rnacounter.cc
 BIN = bam2wig bamstat rnacounter S1K S2M SMULTI

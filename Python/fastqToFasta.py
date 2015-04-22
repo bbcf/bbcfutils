@@ -1,63 +1,62 @@
 #!/usr/bin/env python
 
 from bbcflib.common import unique_filename_in
-import sys, getopt, os, re
+import sys, optparse, pysam, os
+
+usage = sys.argv[0]+" [OPTIONS]"
+description = "Conversion from fastq to fasta."
+opts = (("-i", "--input", "Fastq filename.", {'default':None}),
+        ("-o", "--output", "Output fasta filename (default stdout).", 
+         {'default':None}),
+        ("-n", "--start", "Base number to start from", {'default': 1}),
+        ("-x", "--length", "Length of reads in output", {'default': 22}),
+        ("-d", "--debug", "Print debugging info", 
+         {'action':"store_true",'default': False}))
+
+class Usage(Exception):
+    def __init__(self,  msg):
+        self.msg = msg
 
 
-def getReadLength(fqFile):
-        i=1
-        read_length=0
-        with open(fqFile,"r") as f:
-                for s in f:
-                        s=s.strip('\n')
-                        if i==2:
-                                read_length=len(s)
-                        if i>2:
-                                return read_length
-                        i=i+1
-        return read_length
+def main():
+    parser = None
+    try:
+        parser = optparse.OptionParser(usage=usage, description=description)
+        for opt in opts:
+            if len(opt) == 4:
+                parser.add_option(opt[0],opt[1],help=opt[2],**opt[3])
+            elif len(opt) == 3:
+                parser.add_option(opt[0],help=opt[1],**opt[2])
+        (opt, args) = parser.parse_args()
 
+        if not(opt.input and os.path.exists(opt.input)):
+            raise Usage("Please provide a fastq file")
 
+        if opt.debug:
+            print("""
+fastqToFasta.py
+i=%s
+n=%i
+x=%i
+""" %(opt.input,n,x))
 
-opts = dict(getopt.getopt(sys.argv[1:],"i:o:n:x:",[])[0])
+        fq = pysam.FastqFile(opt.input)
+        faFile = opt.output or unique_filename_in()
+        rlen = int(opt.length)
+        rskip = int(opt.start)-1
+        fa = open(faFile,"w")    
+        for i,s in enumerate(fq):
+            seq = s.sequence[rskip:(rskip+rlen)]
+            header = "_".join([s.name,s.sequence,s.quality])
+            fa.write(">"+header+"\n"+seq+"\n")
+        fq.close()
+        fa.close()
 
-fqFile=opts['-i']
+    except Usage, err:
+        print >>sys.stderr, '\n',err.msg,'\n'
+        if parser: parser.print_help()
+        return 1
 
-n=opts.get('-n') or 1
-x=opts.get('-x') or 22
-
-print("In fastqToFasta")
-print("i="+fqFile)
-print("n="+str(n))
-print("x="+str(n))
-
-faFile=opts.get('-o') or unique_filename_in()
-output=open(faFile,"w")
-i=1; nextIsQual=0; nextIsSeq=0;
-n=int(n);x=int(x)
-read_length=getReadLength(fqFile)
-print("readLength="+str(read_length))
-with open(fqFile,"r") as f:
-	for s in f:
-        	s=s.strip('\n')
-                i=i+1
-                if re.search(r'^@',s) and nextIsSeq == 0: #to avoid situations where the quality starts with either "@" or "+"
-                    nextIsSeq=1
-                    continue
-                if re.search(r'^\+',s) and nextIsQual == 0: #to avoid situations where the quality starts with either "@" or "+"
-                    nextIsQual=1
-                    nextIsSeq=0
-                    continue
-                if len(s)>=read_length and nextIsSeq>0:
-                    seq="".join(s.split('\t')[0][(n-1):(n+x-1)])
-                    allSeq=s
-                    nextIsSeq=0
-                    continue
-                if len(s)>=read_length and nextIsQual>0:
-                    qual=s
-                    output.write(">line"+str(i)+"_"+allSeq+"_"+qual+"\n"+seq+"\n")
-                    nextIsQual=0
-#	output.write(">line"+str(i)+"_"+allSeq+"_"+qual+"\n"+seq+"\n")
-
-#return faFile
+if __name__ == '__main__':
+    sys.exit(main())
 
