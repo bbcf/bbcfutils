@@ -1,10 +1,10 @@
 BEGIN{th=0.35;tot=0;normFactor=1000;totScore=0;}
 {
 FS="\t"
-n=split($4,a,"|"); 
+n=split($4,a,"|");
 if(NR==1)
 {
-#	print "regToExclude (before split)="reg2Excl; 
+#	print "regToExclude (before split)="reg2Excl;
 	nReg=split(reg2Excl,allRegToExcl,",");
 #	print "nReg="nReg
 	for(idReg in allRegToExcl)
@@ -12,7 +12,7 @@ if(NR==1)
 #		print "curRegToExclude(before)="allRegToExcl[idReg];
 		gsub(":","\t",allRegToExcl[idReg]);
 		gsub("-","\t",allRegToExcl[idReg]);
-#		print "curRegToExclude="allRegToExcl[idReg]; 
+#		print "curRegToExclude="allRegToExcl[idReg];
 	}
 }
 isToExclude=0
@@ -35,7 +35,7 @@ tot=tot+$5;
 }
 if(frag[$1":"a[2]]){if(a[1]~/endSegment/){endSeg[$1":"a[2]]=a[n]"\t"$5;}else{startSeg[$1":"a[2]]=a[n]"\t"$5;};frag[$1":"a[2]]=frag[$1":"a[2]]"\t"startSeg[$1":"a[2]]"\t"endSeg[$1":"a[2]]}
 else{frag[$1":"a[2]]=a[3]"\t"a[5]; if(a[1]~/endSegment/){endSeg[$1":"a[2]]=a[n]"\t"$5;}else{startSeg[$1":"a[2]]=a[n]"\t"$5;};nFrags++;} #!! $5 => score in bed format
-} 
+}
 
 END{
 nFrags=0;
@@ -48,7 +48,7 @@ if(n==4){frag[i]=frag[i]"\t"b[3]"\t"b[4];b[5]=b[3];b[6]=b[4]}
 split(b[1],c,":"); split(c[2],d,"-");
 if((c[1] == reg2Excl_coord[1] && d[1] > reg2Excl_coord[2] && d[1] < reg2Excl_coord[3]) || (c[1] == reg2Excl_coord[1] && d[2] > reg2Excl_coord[2] && d[2] < reg2Excl_coord[3]))
 {
-score="NA"; source="_notValid_Excluded"
+score="NA"; source="ExcludedFrag" #was "_notValid_Excluded"
 }
 else
 {

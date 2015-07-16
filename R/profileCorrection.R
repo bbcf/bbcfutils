@@ -1,14 +1,17 @@
 
-#profileCorrection.R --args infile baitCoord outputFile reportFile name
+#profileCorrection.R --args infile baitCoord name outputTrack reportFile tableFile script_path
+#inputFile, baitCoord, name, outputFile, reportFile, script_path=''
 
 Args <- commandArgs(TRUE)
 print(length(Args))
+print("profileCorrection.R --args ")
 print(Args)
 infile <- Args[1]
 baitcoord <- Args[2]
 curName <- Args[3]
 correctedFile <- Args[4]
 report <- Args[5]
+tableFile <- Args[6]
 
 bin.log=function(x) {
     r1=min(x$start)
@@ -82,27 +85,36 @@ profileCorrection <- function(fragsFile,baitCoord,plotFile=NA,all=FALSE)
                 dev.off()
         }
 
-	if(all)
-	{	# will return data for all chromosomes
-		I.otherChr <- which(bed[,1] != baitChr)
-		res = bed[I.otherChr,]
-		colnames(res) = colnames(data2)[c(1:3,6)]
-		res <- rbind(res,data2[,c(1:3,6)])
-       		return(res)
-	}
+    if(all)
+    {   # will return data for all chromosomes
+        I.otherChr <- which(bed[,1] != baitChr)
+        res = cbind(bed[I.otherChr,],rep(NA,length(I.otherChr)),bed[I.otherChr,4])
+        #colnames(res) = colnames(data2)[c(1:3,6)]
+        colnames(res) = colnames(data2)
+        #res <- rbind(res,data2[,c(1:3,6)])
+        res <- rbind(res,data2)
+        return(res)
+}
 
-	return(data2[,c(1:3,6)]) #return only profile corrected data (=data on baitChr only)
+    #return(data2[,c(1:3,6)]) #return only profile corrected data (=data on baitChr only)
+    return(data2) #return only profile corrected data (=data on baitChr only)
 }
 
 correctedData=profileCorrection(infile,baitcoord,report,TRUE)
+# was c(1:3,6)
 
 header=paste("track type=bedGraph name='",curName," (profile corrected)' description='",curName," (profile corrected)' visibility=full windowingFunction=maximum",sep="")
 write.table(header,correctedFile,row.names=FALSE,col.names=FALSE,quote=FALSE)
-write.table(cbind(correctedData[,1:3],round(correctedData[,4],2)),file=correctedFile,quote=FALSE,row.names=FALSE,col.names=FALSE,sep="\t",append=TRUE)
+write.table(cbind(correctedData[,1:3],round(correctedData[,6],2)),file=correctedFile,quote=FALSE,row.names=FALSE,col.names=FALSE,sep="\t",append=TRUE)
+
+## export full table (score, fit, score/fit
+write.table(cbind(correctedData[,1:3],round(correctedData[,4:6],2)),file=tableFile,quote=FALSE,row.names=FALSE,col.names=FALSE,sep="\t")
 
 print("*****************")
 print(paste("Profile Correction of ",infile," done!"))
 print(paste("resfile=",correctedFile))
+print(paste("tablefile=",tableFile))
 print(paste("report file=",report))
 print("*****************")
+
 

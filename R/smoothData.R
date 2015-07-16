@@ -1,7 +1,12 @@
 #smoothData.R --args infile nFragsPerWin curName resfile regToExclude (if any)
 
+
+options(stringsAsFactors = FALSE)
+options(scipen=999) # disable the scientific notation
+
 Args <- commandArgs(TRUE)
 print(length(Args))
+print("smoothData.R --args ")
 print(Args)
 fragsFile <- Args[1]
 nFragsPerWin <- as.numeric(Args[2])
@@ -11,6 +16,11 @@ regToExclude <- Args[5]
 
 skipN=1
 
+print(paste("fragsFile=",fragsFile))
+print(paste("nFragsPerWin=",nFragsPerWin))
+print(paste("curName=",curName))
+print(paste("resFile=",resFile))
+print(paste("regToExclude=",regToExclude))
 
 updateFactors <- function(myData)
 {
@@ -117,7 +127,7 @@ header=paste("track type=bedGraph name='",curName," (all smoothed windows - ",nF
 print("Will write file")
 write.table(header,resFile,row.names=FALSE,col.names=FALSE,quote=FALSE)
 #lapply(1:length(allSmoothedWindows),function(i){write.table(cbind(rep(names(allSmoothedWindows)[i],nrow(allSmoothedWindows[[i]])),allSmoothedWindows[[i]]),resFile,row.names=FALSE,col.names=FALSE,quote=FALSE,append=TRUE);return(nrow(allSmoothedWindows[[i]]))})
-lapply(1:length(allSmoothedWindows),function(i){j=which(allSmoothedWindows[[i]][,3]>0);write.table(cbind(rep(names(allSmoothedWindows)[i],length(j)),allSmoothedWindows[[i]][j,]),resFile,sep="\t",row.names=FALSE,col.names=FALSE,quote=FALSE,append=TRUE);return(nrow(allSmoothedWindows[[i]][j,]))})
+outlapply=lapply(1:length(allSmoothedWindows),function(i){j=which(allSmoothedWindows[[i]][,3]>0);write.table(cbind(rep(names(allSmoothedWindows)[i],length(j)),allSmoothedWindows[[i]][j,]),resFile,sep="\t",row.names=FALSE,col.names=FALSE,quote=FALSE,append=TRUE);return(nrow(allSmoothedWindows[[i]][j,]))})
 
 print("*****************")
 print(paste("Smoothing of ",fragsFile," done!"))

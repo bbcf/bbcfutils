@@ -1,4 +1,6 @@
 Args <- commandArgs(TRUE)
+print("runDomainogram.R --args")
+print(Args)
 infile <- Args[1]
 curName <- Args[2]
 prefName <- Args[3]
