@@ -64,7 +64,7 @@ profileCorrection <- function(fragsFile,baitCoord,plotFile=NA,all=FALSE)
         if(!is.na(plotFile))
         {
                 pdf(file=plotFile)
-                plot(data2$start,data2$score,t='h',ylim=c(-max(data2$scoreFit),max(data2$score)),main=paste("corrected profiles\n",plotFile,sep=""),xlab="",ylab="frags score",col="dark grey")
+                plot(data2$start,data2$score,t='h',ylim=c(-max(data2$scoreFit,na.rm=T),max(data2$score,na.rm=T)),main=paste("corrected profiles\n",plotFile,sep=""),xlab="",ylab="frags score",col="dark grey")
                 points(data2$start,-1*data2$scoreFit,t='h',col="orange")
                 lines(0.5*(data2$start+data2$end),data2$fit,col="red",lty=2) #orangered or orangered1
                 legend("topright",legend=c("before correction","profile corrected","fit"),col=c("darkgrey","orangered","red"),lwd=c(1,1,2))
