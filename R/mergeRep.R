@@ -17,7 +17,7 @@ stopifnot(length(Args)>2)
 fragsFiles.s <- Args[1]
 mergeFile <- Args[2]
 if(length(Args)>2){idColScore=as.numeric(Args[3])}else{idColScore=4}
-if(length(Args)>3 & nchar(Args[4])>2){regToExclude=Args[5]}else{regToExclude="chr2:1000-1000"} #default is a fake region which does not concern any fragments
+if(length(Args)>3 & nchar(Args[4])>2){regToExclude=Args[4]}else{regToExclude="chr2:1000-1000"} #default is a fake region which does not concern any fragments
 
 print(fragsFiles.s)
 print( mergeFile)
