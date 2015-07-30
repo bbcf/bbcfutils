@@ -130,8 +130,7 @@ plotDomainogram_vJ <- function(dataToTreat,domainogram.m,wmax,lensc,myCols,imgFi
         	ticks=seq(0,wmax,length.out=11)[-1]
         	axis(side=2,at=ticks/wmax,labels=as.integer(ticks),las=2)
 		I=seq(1,lensc,by=2000)
-		ticks=dataToTreat[I,2]+(dataToTreat[I,3]-dataToTreat[I,2])
-		ticks=round(ticks/10^6,1)
+		ticks=as.integer(0.5+(dataToTreat[I,2]+dataToTreat[I,3])*5e-7)
 		axis(side=1,at=I,labels=ticks,las=3)
 		#title(sub="position (in Mb)")
 	}
