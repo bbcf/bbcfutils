@@ -24,20 +24,22 @@ print(paste("regToExclude=",regToExclude))
 
 updateFactors <- function(myData)
 {
-	myData[] <- lapply(myData, function(x) x[,drop=TRUE])
-	return(myData)
+    myData[] <- lapply(myData, function(x) x[,drop=TRUE])
+    return(myData)
 }
 
 #getRegions <- function(myData,baitCoord,interRegCoord)
 getRegions <- function(myData,interRegCoord)
 {
-	i_baitChr <- which(myData[,1] == interRegCoord[1])
-	notBaitChr <- updateFactors(myData[which(myData[,1] != interRegCoord[1]),])
-	i <- which(myData[i_baitChr,2] < as.numeric(interRegCoord[2]))
-	regUp <- updateFactors(myData[i_baitChr[i],])
-	i <- which(myData[i_baitChr,3] > as.numeric(interRegCoord[3]))
-	regDown <- updateFactors(myData[i_baitChr[i],])
-	return(list(othersChrs=notBaitChr,upstream_of_interactiveReg=regUp,down_of_interactiveReg=regDown))
+    i_baitChr <- which(myData[,1] == interRegCoord[1])
+    notBaitChr <- updateFactors(myData[which(myData[,1] != interRegCoord[1]),])
+    ##i <- which(myData[i_baitChr,3] < as.numeric(interRegCoord[2]))
+    i <- which(myData[i_baitChr,3] < as.numeric(interRegCoord[2])) ##fragments at the border are excluded
+    regUp <- updateFactors(myData[i_baitChr[i],])
+    #i <- which(myData[i_baitChr,3] > as.numeric(interRegCoord[3]))
+    i <- which(myData[i_baitChr,2] > as.numeric(interRegCoord[3]))
+    regDown <- updateFactors(myData[i_baitChr[i],])
+    return(list(othersChrs=notBaitChr,upstream_of_interactiveReg=regUp,down_of_interactiveReg=regDown))
 }
 
 mergeLists <- function(x,y)

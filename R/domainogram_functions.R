@@ -124,17 +124,17 @@ plotDomainogram_vJ <- function(dataToTreat,domainogram.m,wmax,lensc,myCols,imgFi
         xcoord=1:lensc
         for (w in 2:wmax) xcoord=c(xcoord,w:lensc)
         image(1:lensc, 1:wmax/wmax, -log10(t(m)),
-	   xlab='position (in Mb)', ylab='size',
-           main=main, yaxt='n', xaxt='n', col=myCols )
-	if(plotAxis){
-        	ticks=seq(0,wmax,length.out=11)[-1]
-        	axis(side=2,at=ticks/wmax,labels=as.integer(ticks),las=2)
-		I=seq(1,lensc,by=2000)
-		ticks=as.integer(0.5+(dataToTreat[I,2]+dataToTreat[I,3])*5e-7)
-		axis(side=1,at=I,labels=ticks,las=3)
-		#title(sub="position (in Mb)")
-	}
-	if(nchar(imgFile)>0) dev.off()
+             xlab='position (in Mb)', ylab='size',
+             main=main, yaxt='n', xaxt='n', col=myCols )
+    if(plotAxis){
+        ticks=seq(0,wmax,length.out=11)[-1]
+        axis(side=2,at=ticks/wmax,labels=as.integer(ticks),las=2)
+        I=seq(1,lensc,by=2000)
+        ticks=as.integer(0.5+(as.numeric(dataToTreat[I,2])+as.numeric(dataToTreat[I,3]))*5e-7)
+        axis(side=1,at=I,labels=ticks,las=3)
+        #title(sub="position (in Mb)")
+    }
+    if(nchar(imgFile)>0) dev.off()
     }
 }
 
@@ -291,6 +291,9 @@ runDomainogram <- function(dataToTreat,curName,wmaxDomainogram=500,wmax_BRICKS=5
 	print("In runDomainograms:")
 	print(paste("wmaxDomainogram=",wmaxDomainogram,",wmax_BRICKS=",wmax_BRICKS,",decrease=",decrease,",prefName=",prefName))
 	print(head(dataToTreat))
+
+imgFile=paste(path,prefName,"_domainogram.pdf",sep="")
+try(save(dataToTreat,wmaxDomainogram,myCex,imgFile,decrease,file=paste(path,"../",prefName,"_domainograms.RData",sep="")))
 
 	resDomainogram<-createDomainogram_vJ(dataToTreat,wmaxDomainogram,10,myCex=myCex,imgFile=paste(path,prefName,"_domainogram.pdf",sep=""),decrease=decrease)
 #        resDomainogram<-createDomainogram_vJ(dataToTreat[,4],wmaxDomainogram,10,0.7,imgFile=NA,decrease=decrease)

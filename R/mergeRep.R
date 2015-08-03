@@ -19,10 +19,10 @@ mergeFile <- Args[2]
 if(length(Args)>2){idColScore=as.numeric(Args[3])}else{idColScore=4}
 if(length(Args)>3 & nchar(Args[4])>2){regToExclude=Args[4]}else{regToExclude="chr2:1000-1000"} #default is a fake region which does not concern any fragments
 
-print(fragsFiles.s)
-print( mergeFile)
-print(idColScore)
-print(regToExclude)
+print(paste("fragsFiles.s=",fragsFiles.s,sep=""))
+print(paste("mergeFile=",mergeFile,sep=""))
+print(paste("idColScore=",idColScore,sep=""))
+print(paste("regToExclude=",regToExclude,sep=""))
 
 
 # might be passed as parameters
@@ -47,7 +47,7 @@ for(infile in fragsFiles){
     rownames(data.l[[idfile]])=curFragsCoords
     colnames(data.l[[idfile]])=infile
     allFragsCoords=c(allFragsCoords,curFragsCoords)
-    I.exclude=which(data[,"start"]<coord_regToExclude["end"] & data[,"end"]>coord_regToExclude["start"])
+    I.exclude=which(data[,"chromosome"]==chr_regToExclude & data[,"start"]<coord_regToExclude["end"] & data[,"end"]>coord_regToExclude["start"])
     print(length(I.exclude));
     data.l[[idfile]][I.exclude,1]=NA
     idfile=idfile+1

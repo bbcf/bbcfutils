@@ -90,8 +90,6 @@ print(combinedFile)
 
 write.table(curTable,file=combinedFile,sep="\t",row.names=FALSE,quote=FALSE)
 
-save.image("../res_combineTracks.RData")
-
 print("Done!!")
 
 

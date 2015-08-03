@@ -46,7 +46,5 @@ data.norm=data.frame(chr=data[,1], start=as.numeric(data[,2]), end=as.numeric(da
 o <- order(data.norm[,1], data.norm[,2],data.norm[,3])
 write.table(data.norm[o,],file=normFile,sep="\t",quote=FALSE,row.names=FALSE)
 
-save.image("../res_normFrags.RData")
-
 print("Done!")
 
