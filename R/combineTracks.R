@@ -39,7 +39,7 @@ idfile=1 #no need to care about the sample name
 for(infile in fragsFiles){
     print(paste("read ",infile))
     data <- read.delim(infile,skip=nskip,header=FALSE,sep=curSep)
-    curFragsCoords=apply(data,1,function(x){paste(x[1:3],collapse="\t")})
+    curFragsCoords=apply(data,1,function(x){paste(c(x[1],as.numeric(x[2]),as.numeric(x[3])),collapse="\t")})
     allIdCols=as.numeric(unlist(strsplit(idCols,",")))
     data.l[[idfile]]=matrix(ncol=length(allIdCols),nrow=nrow(data))
     for(i in 1:length(allIdCols)){
@@ -54,13 +54,14 @@ for(infile in fragsFiles){
     print(head(data.l[[idfile]]))
     idfile=idfile+1
 }
+save.image("rdata_combineTrack.RData")
 
 #names(data.l)=allNames
 allFragsCoords=unique(sort(allFragsCoords))
 length(allFragsCoords)
 
 if(length(reffile)>1){
-    allFragsCoords=apply(refFrags,1,function(x){paste(x[1],x[2],x[3],sep="\t")})
+    allFragsCoords=apply(refFrags,1,function(x){paste(x[1],as.numeric(x[2]),as.numeric(x[3]),sep="\t")})
 }
 
 if(length(grep("NA",defVal))>0){defVal=NA}else{defVal=as.numeric(defVal)}
@@ -88,6 +89,7 @@ rownames(curTable)=rownames(res)[o]
 
 print(combinedFile)
 
+save.image("rdata_combineTrack.RData")
 write.table(curTable,file=combinedFile,sep="\t",row.names=FALSE,quote=FALSE)
 
 print("Done!!")
