@@ -42,7 +42,7 @@ for(infile in fragsFiles){
     print(infile)
     data <- read.delim(infile,skip=nskip,header=FALSE,sep=curSep)
     colnames(data)=c("chromosome","start","end","score")
-    curFragsCoords=apply(data,1,function(x){paste(x[1:3],collapse="\t")})
+    curFragsCoords=apply(data,1,function(x){paste(c(x[1],as.numeric(x[2]),as.numeric(x[3])),collapse="\t")})
     data.l[[idfile]]=as.matrix(data[,idColScore])
     rownames(data.l[[idfile]])=curFragsCoords
     colnames(data.l[[idfile]])=infile
