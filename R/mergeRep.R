@@ -17,11 +17,13 @@ stopifnot(length(Args)>2)
 fragsFiles.s <- Args[1]
 mergeFile <- Args[2]
 if(length(Args)>2){idColScore=as.numeric(Args[3])}else{idColScore=4}
-if(length(Args)>3 & nchar(Args[4])>2){regToExclude=Args[4]}else{regToExclude="chr2:1000-1000"} #default is a fake region which does not concern any fragments
+if(length(Args)>3){curName=Args[4]}else{curName=""}
+if(length(Args)>4 & nchar(Args[5])>2){regToExclude=Args[5]}else{regToExclude="chrNA:0-0"} #default is a fake region which does not concern any fragments
 
 print(paste("fragsFiles.s=",fragsFiles.s,sep=""))
 print(paste("mergeFile=",mergeFile,sep=""))
 print(paste("idColScore=",idColScore,sep=""))
+print(paste("curName=",curName,sep=""))
 print(paste("regToExclude=",regToExclude,sep=""))
 
 
@@ -61,8 +63,8 @@ res <- matrix(0,ncol=length(data.l),nrow=length(allFragsCoords))
 colnames(res)=names(data.l)
 rownames(res)=allFragsCoords
 
-for(curName in names(data.l)){
-res[rownames(data.l[[curName]]),curName]=data.l[[curName]][,1]
+for(cname in names(data.l)){
+res[rownames(data.l[[cname]]),cname]=data.l[[cname]][,1]
 }
 
 
@@ -70,9 +72,9 @@ res.mean=rowMeans(res,na.rm=TRUE)
 allCoords=matrix(unlist(lapply(names(res.mean),function(x){unlist(strsplit(x,"\t"))})),ncol=3,byrow=TRUE)
 res.mean.df=data.frame(chromosome=allCoords[,1],start=as.numeric(allCoords[,2]), end=as.numeric(allCoords[,3]), mean.score=round(res.mean,2))
 o <- order(res.mean.df[,1], res.mean.df[,2],res.mean.df[,3])
-
-
-write.table(res.mean.df[o,],file=mergeFile,sep="\t",quote=FALSE,row.names=FALSE)
+header=paste("track type=bedGraph name='",curName,"' description='",curName,"' visibility=full windowingFunction=maximum",sep="")
+write.table(header,mergeFile,row.names=FALSE,col.names=FALSE,quote=FALSE)
+write.table(res.mean.df[o,],file=mergeFile,quote=FALSE,row.names=FALSE,col.names=FALSE,sep="\t",append=TRUE)
 
 print("Done!!")
 
