@@ -57,8 +57,8 @@ rownames(countdata) = rownames(d)
 cd = countdata[apply(countdata, 1, function(row) any(row > 50)), ]
 
 # Normalization
-estimateSizeFactorsForMatrix <- function(counts)  {
-   loggeomeans <- rowMeans( log(counts) )
+estimateSizeFactorsForMatrix = function(counts)  {
+   loggeomeans = rowMeans( log(counts) )
    apply( counts, 2, function(cnts)
       exp( median( ( log(cnts) - loggeomeans )[ is.finite(loggeomeans) ] ) ) )
 }
@@ -66,14 +66,15 @@ norm.factors = estimateSizeFactorsForMatrix(cd)
 norm.counts = t(t(cd)/norm.factors)
 
 # DE analysis
-v <- voom(norm.counts, design)
-fit <- lmFit(v,design)
+v = voom(norm.counts, design)
+fit = lmFit(v,design)
 fit2 = contrasts.fit(fit, contrasts)
-fit2 <- eBayes(fit2)
+fit2 = eBayes(fit2)
 for (coef in colnames(contrasts)) {
     tt = topTable(fit2, coef=coef, adjust.method="BH", number=nrow(v), sort.by="P")
     # Reannotate
-    res = cbind(tt, d[tt$ID, c("Chrom","Start","End","Strand","GeneName")])
+    ##res = cbind(tt, d[tt$ID, c("Chrom","Start","End","Strand","GeneName")])
+    res = cbind(tt, d[rownames(tt), c("Chrom","Start","End","Strand","GeneName")])
     comp = gsub(" ","", coef , fixed=TRUE)
     outname = paste(output_prefix,"_",comp,".txt", sep='')
     write(coef, outname)
