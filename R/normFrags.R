@@ -12,8 +12,11 @@ fragsFile <- Args[1]
 normFile <- Args[2]
 baitCoords <- Args[3]
 extSize <- as.numeric(Args[4])
-regToExclude="chr2:1000-1000";
-if(length(Args)>4){regToExclude=Args[5]; print(paste("regToExclude=",regToExclude))} #default is a fake region which does not concern any fragments
+if(length(Args)>4){curName=Args[5]}else{curName=""}
+print(paste("curName=",curName,sep=""))
+#regToExclude="chr2:1000-1000"; #previously default is a fake region which does not concern any fragments
+regToExclude="NA"
+if(length(Args)>5){regToExclude=Args[6]; print(paste("regToExclude=",regToExclude))}
 print(paste("regToExclude=",regToExclude))
 
 # might be passed as parameters
@@ -26,6 +29,12 @@ mid_baitCoords=round(sum(coord_baitCoords)/2)
 if(mid_baitCoords-extSize>0){regStart=mid_baitCoords-extSize}else{regStart=coord_baitCoords[1]} ## make sure the extended region has a positive start coord
 coord_regToInclude=c(regStart,mid_baitCoords+extSize)
 names(coord_regToInclude)=c("start","end")
+
+## #default is set to bait +/-5kb
+if(regToExclude=="NA"){
+    regToExclude=paste(chr_regToInclude,":",mid_baitCoords-5000,"-",mid_baitCoords+5000,sep="")
+    print(paste("regToExclude=",regToExclude))
+}
 
 chr_regToExclude=unlist(strsplit(regToExclude,split=":"))[1]
 coord_regToExclude=as.numeric(unlist(strsplit(unlist(strsplit(regToExclude,split=":"))[2],"-")))
@@ -44,9 +53,9 @@ print(mean.reg)
 
 data.norm=data.frame(chr=data[,1], start=as.numeric(data[,2]), end=as.numeric(data[,3]), norm.score=as.numeric(data[,4]/mean.reg))
 o <- order(data.norm[,1], data.norm[,2],data.norm[,3])
-write.table(data.norm[o,],file=normFile,sep="\t",quote=FALSE,row.names=FALSE)
-
-save.image("../res_normFrags.RData")
+header=paste("track type=bedGraph name='",curName," normalised (factor=",mean.reg,")' description='",curName," normalised (factor=",mean.reg,")' visibility=full windowingFunction=maximum",sep="")
+write.table(header,normFile,row.names=FALSE,col.names=FALSE,quote=FALSE)
+write.table(data.norm[o,],file=normFile,sep="\t",quote=FALSE,row.names=FALSE,col.names=FALSE,append=TRUE)
 
 print("Done!")
 
