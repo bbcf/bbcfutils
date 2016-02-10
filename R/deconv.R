@@ -1,6 +1,6 @@
-args=commandArgs(trailingOnly = TRUE)
-counts.file=args[1]
-pdf.file=args[2]
+args = commandArgs(trailingOnly = TRUE)
+counts.file = args[1]
+pdf.file = args[2]
 read.length = as.integer(args[3])
 chr.name = args[4]
 output.file = args[5]
@@ -20,19 +20,19 @@ cut.ccf=ccf$acf
 cut.ccf[which(ccf$lag<mu)]=0
 lambda=ccf$lag[which.max(cut.ccf)]
 sol = inverse.solve(counts,mu=mu,lambda=lambda,len=read.length,regul=1e-3,optimize=TRUE)
-col='red'
+col = 'red'
 #lab=substitute(expression(lambda=x),list(x=sol$par$lambda))
-lab=paste('lambda=',sol$par$lambda,sep='')
+lab = paste('lambda=',sol$par$lambda,sep='')
 abline(v=sol$par$lambda,col=col)
 text(sol$par$lambda,0,lab,col=col,pos=4)
-col='blue'
+col = 'blue'
 #lab=substitute(expression(mu=x),list(x=sol$par$mu))
-lab=paste('mu=',sol$par$mu,sep='')
+lab = paste('mu=',sol$par$mu,sep='')
 abline(v=sol$par$mu,col=col)
 text(sol$par$mu,0.3,lab,col=col,pos=4)
-col='darkgreen'
+col = 'darkgreen'
 #lab=substitute(expression(ell=x),list(x=read.length))
-lab=paste('l=',read.length,sep='')
+lab = paste('l=',read.length,sep='')
 abline(v=read.length,col=col)
 text(read.length,0.6,lab,col=col,pos=4)
 par(mfrow=c(4,2))

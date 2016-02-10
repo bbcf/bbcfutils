@@ -3,12 +3,13 @@ library(topGO)
 options(stringsAsFactors=F)
 
 ensembl_url = list("2011"="sep2011.archive.ensembl.org",
+  "2012"="may2012.archive.ensembl.org",
   "2014"="aug2014.archive.ensembl.org")
-years = list("GRCh38"="2014", "GRCm38.p2"="2014")
+years = list("GRCh38"="2014", "GRCm38"="2014")
 biomart = "ENSEMBL_MART_ENSEMBL"
 attribute_go = "go_id"
-attribute_gene = list("2011"="external_gene_id","2014"="external_gene_name")
-filter_go = list("2011"="with_go", "2014"="with_go_id")
+attribute_gene = list("2011"="external_gene_id","2012"="external_gene_name","2014"="external_gene_name")
+filter_go = list("2011"="with_go", "2012"="with_go_id", "2014"="with_go_id")
 attribute_ensid = list("gene"="ensembl_gene_id","transcript"="ensembl_transcript_id")
 
 def.pdf = "TopGO_plots.pdf"
@@ -52,11 +53,11 @@ multi_topGo = function( filename, assembly_id, pdf=def.pdf, table=def.table, nte
     pdflist = list()
     tablelist = list()
     if (length(id_set) > 0) {
-        year = "2011"
+        year = "2012"
         if (assembly_id %in% names(years)) year = years[[assembly_id]]
         ensembl = useMart(biomart,host=ensembl_url[[year]])
         lsds = listDatasets(ensembl)
-        dataset = lsds$dataset[which(lsds$version == assembly_id)]
+        dataset = lsds$dataset[grep(assembly_id, lsds$version)]
         ensembl = useDataset(as.character(dataset),mart=ensembl)
         attr1 = attribute_go
         attr2 = attribute_gene[[year]]
