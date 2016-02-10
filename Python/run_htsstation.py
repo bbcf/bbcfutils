@@ -38,14 +38,18 @@ class DemulitplexWorkflow(Workflow):
 class MapseqWorkflow(Workflow):
 
     def __init__(self):
-        opts = (("--noqc","Skip fastqc step",{'action':"store_true"}),)
-        usage = "[--noqc]"
+        opts = (("--noqc","Skip fastqc step",{'action':"store_true"}),
+                ("--local","Perform local alignment",{'action':"store_true"}),)
+        usage = "[--noqc] [--local]"
         desc = "A High-throughput sequencing data mapping workflow."
         Workflow.__init__(self,module="mapseq",opts=opts,usage=usage,desc=desc)
 
     def check_options(self):
-        Workflow.check_options(self,{'bowtie2': (True,)})
+        Workflow.check_options(self,{'bowtie2': (True,), 'local': (False,)})
         map_args = self.job.options.get('map_args',{})
+        if self.job.options['local']:
+            map_args.setdefault("bwt_args",[])
+            map_args["bwt_args"] += ["--local"]
         self.job.options['create_gdv_project'] &= self.job.options['compute_densities']
         self.main_args = {"job": self.job,
                           "assembly": self.job.assembly,
@@ -55,7 +59,6 @@ class MapseqWorkflow(Workflow):
                           "via": self.opts.via,
                           "debugfile": self.debugfile,
                           "logfile": self.logfile}
-
         return True
 
     def init_files(self,ex):
