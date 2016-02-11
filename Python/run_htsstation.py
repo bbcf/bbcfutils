@@ -47,7 +47,7 @@ class MapseqWorkflow(Workflow):
     def check_options(self):
         Workflow.check_options(self,{'bowtie2': (True,), 'local': (False,)})
         map_args = self.job.options.get('map_args',{})
-        if self.job.options['local']:
+        if self.job.options['local'] or self.job.options['local_align'] :
             map_args.setdefault("bwt_args",[])
             map_args["bwt_args"] += ["--local"]
         self.job.options['create_gdv_project'] &= self.job.options['compute_densities']
