@@ -39,15 +39,15 @@ class MapseqWorkflow(Workflow):
 
     def __init__(self):
         opts = (("--noqc","Skip fastqc step",{'action':"store_true"}),
-                ("--local","Perform local alignment",{'action':"store_true"}),)
-        usage = "[--noqc] [--local]"
+                ("--local_align","Perform local alignment",{'action':"store_true"}),)
+        usage = "[--noqc] [--local_align]"
         desc = "A High-throughput sequencing data mapping workflow."
         Workflow.__init__(self,module="mapseq",opts=opts,usage=usage,desc=desc)
 
     def check_options(self):
-        Workflow.check_options(self,{'bowtie2': (True,), 'local': (False,)})
+        Workflow.check_options(self,{'bowtie2': (True,), 'local_align': (False,)})
         map_args = self.job.options.get('map_args',{})
-        if self.job.options['local'] or self.job.options['local_align'] :
+        if self.job.options['local_align']:
             map_args.setdefault("bwt_args",[])
             map_args["bwt_args"] += ["--local"]
         self.job.options['create_gdv_project'] &= self.job.options['compute_densities']
