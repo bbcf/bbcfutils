@@ -8,7 +8,7 @@ ensembl_url = list("2011"="sep2011.archive.ensembl.org",
 years = list("GRCh38"="2014", "GRCm38"="2014")
 biomart = "ENSEMBL_MART_ENSEMBL"
 attribute_go = "go_id"
-attribute_gene = list("2011"="external_gene_id","2012"="external_gene_name","2014"="external_gene_name")
+attribute_gene = list("2011"="external_gene_id","2012"="external_gene_id","2014"="external_gene_name")
 filter_go = list("2011"="with_go", "2012"="with_go_id", "2014"="with_go_id")
 attribute_ensid = list("gene"="ensembl_gene_id","transcript"="ensembl_transcript_id")
 
