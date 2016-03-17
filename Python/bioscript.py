@@ -25,13 +25,13 @@ def parse_plugin(plugin,name,sub=None):
                 sys.exit(1)
     desc = getattr(plugin,fname).info.get("description", _description)
     opts = []
-    multis = {}
+    multis = []
     for param in getattr(plugin,fname).info["in"]:
         addmore = {}
         if param['type'] == 'boolean':
             addmore['action'] = "store_true"
         if param.get('multiple'):
-            multis[param['id']] = param['multiple']
+            multis.append(param['id'])
         opts.append(("--%s"%param['id'], param['type'], addmore))
     return usage, opts, desc, fname, multis
 
@@ -60,11 +60,10 @@ def main():
     (opt, args) = parser.parse_args()
     pl_call = getattr(sys.modules["bsPlugins."+name],funcname)
     pl_call.outprefix = opt.outprefix
-    for k, v in multis.iteritems():
-        if not v in opt.__dict__: opt.__dict__[v] = {}
+    for k in multis:
         vv = None
         if k in opt.__dict__: vv = opt.__dict__.pop(k)
-        opt.__dict__[v][k] = vv.split(",") if vv else []
+        opt.__dict__[k] = vv.split(",") if vv else []
     try:
         pl_call()(**opt.__dict__)
     except Exception, err:
