@@ -70,14 +70,15 @@ v = voom(norm.counts, design)
 fit = lmFit(v,design)
 fit2 = contrasts.fit(fit, contrasts)
 fit2 = eBayes(fit2)
+annot.cols = which(names(d) %in% c("ID","Chrom","Start","End","Strand","GeneName"))
 for (coef in colnames(contrasts)) {
     tt = topTable(fit2, coef=coef, adjust.method="BH", number=nrow(v), sort.by="P")
     # Reannotate
     ##res = cbind(tt, d[tt$ID, c("Chrom","Start","End","Strand","GeneName")])
-    res = cbind(tt, d[rownames(tt), c("Chrom","Start","End","Strand","GeneName")])
+    res = cbind(tt, d[rownames(tt), annot.cols])
     comp = gsub(" ","", coef , fixed=TRUE)
     outname = paste(output_prefix,"_",comp,".txt", sep='')
     write(coef, outname)
-    write.table(res, outname, append=TRUE, quote=FALSE, row.names=FALSE, col.names=TRUE, sep='\t')
+    write.table(res, outname, append=TRUE, quote=FALSE, row.names=TRUE, col.names=NA, sep='\t')
 }
 
