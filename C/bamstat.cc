@@ -7,7 +7,7 @@ namespace samtools {
 #include "samtools/sam.h"
 }
 
-/************ 
+/************
 index  i: nb reads with i hits
 index -1: nb of different read starts
 index -2: (nb of fwd ali)-(nb of rev ali)
@@ -74,7 +74,7 @@ int main( int argc, char **argv )
 	genome_size += (end-start+1);
 	samtools::bam_fetch( _fs->x.bam, _in, chid, start, end, &stats, samstats );
     } else {
-	for (chid = 0; chid < _fs->header->n_targets; chid++) 
+	for (chid = 0; chid < _fs->header->n_targets; chid++)
 	    genome_size += _fs->header->target_len[chid];
 	samtools::bam1_t *b = ((samtools::bam1_t*)calloc(1, sizeof(samtools::bam1_t)));
 	while ( samtools::bam_read1( _fs->x.bam, b ) > 0 ) samstats( b, &stats );
@@ -88,14 +88,14 @@ int main( int argc, char **argv )
     if ( !stats.count(-3) ) stats[-3] = 0;
     std::cout << "Read length " << read_length << "\n";
     std::cout << "Genome size " << genome_size << "\n";
-    std::cout << "Nb positions " << stats[-1] << "\n";    
+    std::cout << "Nb positions " << stats[-1] << "\n";
     long ntag = 0, nali = 0;
     std::cout << "Hits Reads\n";
-    for ( std::map< int, size_t >::const_iterator I = stats.upper_bound(0); 
-	  I != stats.end(); 
+    for ( std::map< int, size_t >::const_iterator I = stats.upper_bound(0);
+	  I != stats.end();
 	  I++ ) {
 	int r = I->second/I->first;
-	std::cout << I->first << " " << r << "\n";
+    if ( r > 0 ) std::cout << I->first << " " << r << "\n";
 	ntag += r;
 	nali += I->second;
     }
@@ -103,22 +103,22 @@ int main( int argc, char **argv )
     long nfwd = (nali+stats[-2])/2,
 	 nrev = (nali-stats[-2])/2;
     std::cout << "Alignments " << nali
-	      << " (fwd: " << nfwd << "/rev: " 
+	      << " (fwd: " << nfwd << "/rev: "
 	      << nrev << ")\n";
     size_t unmap = 0;
     if ( stats.count(0) ) unmap = stats[0];
     std::cout << "Unmapped " << unmap << "\n";
-    std::cout << "Expected coverage " 
-	      << std::setiosflags(std::ios::fixed) 
+    std::cout << "Expected coverage "
+	      << std::setiosflags(std::ios::fixed)
 	      << std::setprecision(6)
 	      << (double)ntag/(double)(2.0*genome_size)
 	      << "\n";
     double act_cov = 0;
     if ( stats.count(-1) ) act_cov = (double)stats[-1]/(double)(2.0*genome_size);
-    std::cout << "Actual coverage " << std::setiosflags(std::ios::fixed) 
+    std::cout << "Actual coverage " << std::setiosflags(std::ios::fixed)
 	      << std::setprecision(6) << act_cov << "\n";
     std::cout << "Mismatches Reads\n";
-    for ( std::map< int, size_t >::const_iterator I = stats.upper_bound(-3); 
+    for ( std::map< int, size_t >::const_iterator I = stats.upper_bound(-3);
 	  I != stats.begin(); ) {
 	I--;
 	std::cout << -I->first-3 << " " << I->second << "\n";
