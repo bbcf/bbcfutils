@@ -1,12 +1,16 @@
-BASE = /mnt/common/epfl
+#BASE = /mnt/common/epfl
+BASE= /usr
+#BASE = /home/leleu/htsstation
 PREFIX = $(BASE)/bin
 SAMLIBDIR = $(BASE)/lib
 SAMINCLUDE = $(BASE)/include
 TCLAPINCLUDE = $(BASE)/include
-SQLITELIBDIR = /software/lib64/  
-SQLITEINCLUDE = /software/include
+SQLITELIBDIR = /usr/lib64/  
+#SQLITELIBDIR = /software/lib64/  
+SQLITEINCLUDE = /usr/include/
+#SQLITEINCLUDE = /software/include
 CXXFLAGS = -O3 -Wall -I$(SAMINCLUDE) -I$(TCLAPINCLUDE) -I$(SQLITEINCLUDE)
-LDLIBS = -L$(SAMLIBDIR) -L$(SQLITELIBDIR) -lsqlite3 -lbam -lz -ltsnnls
+LDLIBS = -L$(SAMLIBDIR) -L$(SQLITELIBDIR) -lsqlite3 -lbam -lz -ltsnnls -lsatlas
 
 SRC = bam2wig.cc bamstat.cc rnacounter.cc
 BIN = bam2wig bamstat rnacounter S1K S2M SMULTI

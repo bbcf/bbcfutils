@@ -13,7 +13,7 @@ _mapseq_lims_opt = ("-m", "--mapseq_minilims",
                     {'default': None})
 
 ############################# Demultiplexing #############################
-class DemulitplexWorkflow(Workflow):
+class DemultiplexWorkflow(Workflow):
 
     def __init__(self):
         desc = "Demultiplexing routine for 4C-seq data."
@@ -164,11 +164,12 @@ class C4seqWorkflow(Workflow):
     def check_options(self):
         Workflow.check_options(self)
         self.suffix = ['merged']
-        primers_dict = self.sysmod.loadPrimers(os.path.join(self.opts.wdir,'primers.fa'))
+        primersfile = self.job.options.get("primersfile",os.path.join(self.opts.wdir,'primers.fa')) 
+        primers_dict = self.sysmod.loadPrimers(primersfile)
         self.main_args = {"job": self.job,
                           "primers_dict": primers_dict,
                           "assembly": self.job.assembly,
-                          "script_path": self.globals.get('script_path',''),
+                          "gl": self.globals,
                           "logfile": self.logfile,
                           "via": self.opts.via}
         return True
@@ -217,7 +218,7 @@ def main():
         module = ''
         if len(sys.argv) > 1: module = sys.argv.pop(1)
         if module[:4] == "demu":
-            WF = DemulitplexWorkflow()
+            WF = DemultiplexWorkflow()
         elif module[:3] == "map":
             WF = MapseqWorkflow()
         elif module[:4] == "chip":
